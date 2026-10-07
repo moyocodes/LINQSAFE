@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import * as THREE from 'three'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { siInstagram, siYoutube } from 'simple-icons'
 import { Button } from '@/components/ui/button'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -36,12 +37,23 @@ const STEPS = [
 // Scroll-progress window (0..1) in which each step's text is visible.
 const WINDOWS = [[0, 0.28], [0.32, 0.56], [0.6, 0.82], [0.86, 1]]
 
+// Label icons on a 24×24 grid. Brands use their real logos (Simple Icons, CC0) filled on their brand
+// colour; the generic nodes use simple line glyphs on the node's own tint.
+const ICONS = {
+  instagram: { path: siInstagram.path, fill: true, bg: 'linear', fg: '#fff' },
+  youtube: { path: siYoutube.path, fill: true, bg: '#FF0000', fg: '#fff' },
+  store: { path: 'M6 8h12l-1 12H7z M9 8V6a3 3 0 0 1 6 0v2', bg: '#9db8d6', fg: '#170c15' },
+  newsletter: { path: 'M3 6h18v12H3z M3 7l9 6 9-6', bg: '#e3c79c', fg: '#170c15' },
+  portfolio: { path: 'M3 8h18v11H3z M9 8V5h6v3 M3 13h18', bg: '#b8a6dd', fg: '#170c15' },
+  link: { path: 'M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1 M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1', bg: '#e8b4a0', fg: '#170c15' },
+}
+
 const BRANCHES = [
-  { label: 'Instagram', color: 0xf472b6, leaves: ['Reels', 'Shop'] },
-  { label: 'YouTube', color: 0xf87171, leaves: ['Latest video', 'Playlist'] },
-  { label: 'Store', color: 0x34d399, leaves: ['Best seller', 'Discount'] },
-  { label: 'Newsletter', color: 0xfbbf24, leaves: ['Sign up', 'Archive'] },
-  { label: 'Portfolio', color: 0x60a5fa, leaves: ['Case study', 'Book a call'] },
+  { icon: 'instagram', label: 'Instagram', color: 0xe8a0b4, leaves: ['Reels', 'Shop'] },
+  { icon: 'youtube', label: 'YouTube', color: 0xe39b7b, leaves: ['Latest video', 'Playlist'] },
+  { icon: 'store', label: 'Store', color: 0x9db8d6, leaves: ['Best seller', 'Discount'] },
+  { icon: 'newsletter', label: 'Newsletter', color: 0xe3c79c, leaves: ['Sign up', 'Archive'] },
+  { icon: 'portfolio', label: 'Portfolio', color: 0xb8a6dd, leaves: ['Case study', 'Book a call'] },
 ]
 
 const TUBE_SEGMENTS = 48
@@ -50,14 +62,38 @@ const TUBE_RADIAL = 6
 // ---------------------------------------------------------------------------
 // Three.js helpers
 // ---------------------------------------------------------------------------
-function labelTexture(text) {
+function drawIcon(ctx, icon, x, y, size) {
+  // Round badge…
+  ctx.beginPath()
+  ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2)
+  if (icon.bg === 'linear') {
+    const g = ctx.createLinearGradient(x, y + size, x + size, y)
+    g.addColorStop(0, '#FEDA75'); g.addColorStop(0.35, '#FA7E1E'); g.addColorStop(0.65, '#D62976'); g.addColorStop(1, '#4F5BD5')
+    ctx.fillStyle = g
+  } else ctx.fillStyle = icon.bg
+  ctx.fill()
+  // …with the glyph scaled from its 24-unit grid into the middle 56%.
+  const inner = size * 0.56
+  ctx.save()
+  ctx.translate(x + (size - inner) / 2, y + (size - inner) / 2)
+  ctx.scale(inner / 24, inner / 24)
+  const p = new Path2D(icon.path)
+  if (icon.fill) { ctx.fillStyle = icon.fg; ctx.fill(p) }
+  else { ctx.strokeStyle = icon.fg; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(p) }
+  ctx.restore()
+}
+
+function labelTexture(text, iconKey) {
+  const icon = ICONS[iconKey]
   const dpr = 2
   const h = 56
+  const iconSize = 36
+  const lead = icon ? iconSize + 14 : 0
   const font = '600 28px Inter, system-ui, sans-serif'
   const c = document.createElement('canvas')
   const ctx = c.getContext('2d')
   ctx.font = font
-  const w = Math.ceil(ctx.measureText(text).width) + 40
+  const w = Math.ceil(ctx.measureText(text).width) + 40 + lead
   c.width = w * dpr
   c.height = h * dpr
   ctx.scale(dpr, dpr)
@@ -65,15 +101,16 @@ function labelTexture(text) {
   ctx.beginPath()
   if (ctx.roundRect) ctx.roundRect(0, 0, w, h, h / 2)
   else ctx.rect(0, 0, w, h)
-  ctx.fillStyle = 'rgba(6,16,10,0.85)'
+  ctx.fillStyle = 'rgba(23,12,21,0.85)'
   ctx.fill()
   ctx.strokeStyle = 'rgba(255,255,255,0.25)'
   ctx.lineWidth = 2
   ctx.stroke()
+  if (icon) drawIcon(ctx, icon, 10, (h - iconSize) / 2, iconSize)
   ctx.fillStyle = '#fff'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(text, w / 2, h / 2 + 1)
+  ctx.fillText(text, (w + lead) / 2 + (icon ? -2 : 0), h / 2 + 1)
   const tex = new THREE.CanvasTexture(c)
   tex.colorSpace = THREE.SRGBColorSpace
   return { tex, aspect: w / h }
@@ -110,7 +147,7 @@ function buildScene(host, reduced) {
   const tree = new THREE.Group()
   scene.add(tree)
   scene.add(new THREE.AmbientLight(0xffffff, 0.8))
-  const key = new THREE.PointLight(0xd9f99d, 120, 40)
+  const key = new THREE.PointLight(0xf5d0c5, 120, 40)
   key.position.set(0, 5, 8)
   scene.add(key)
 
@@ -118,7 +155,7 @@ function buildScene(host, reduced) {
   const startScale = reduced ? 1 : 0.001
 
   // --- nodes -------------------------------------------------------------
-  function addNode({ label, pos, color, r }) {
+  function addNode({ label, icon, pos, color, r }) {
     const group = new THREE.Group()
     group.position.copy(pos)
     group.scale.setScalar(startScale)
@@ -135,7 +172,8 @@ function buildScene(host, reduced) {
     halo.scale.setScalar(r * 6)
     group.add(halo)
 
-    const { tex, aspect } = labelTexture(label)
+    if (!label) { tree.add(group); return { group, mesh } }
+    const { tex, aspect } = labelTexture(label, icon)
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }))
     const lh = r > 0.4 ? 0.5 : 0.36
     sprite.scale.set(lh * aspect, lh, 1)
@@ -149,7 +187,7 @@ function buildScene(host, reduced) {
 
   // --- edges (glowing tubes, revealed with setDrawRange) ------------------
   const edges = []
-  function addEdge(a, b, { lift = new THREE.Vector3(0, 0.3, 0), color = 0xd9f99d, opacity = 0.7 } = {}) {
+  function addEdge(a, b, { lift = new THREE.Vector3(0, 0.3, 0), color = 0xf5d0c5, opacity = 0.7 } = {}) {
     const mid = a.clone().add(b).multiplyScalar(0.5).add(lift)
     const curve = new THREE.QuadraticBezierCurve3(a.clone(), mid, b.clone())
     const geo = new THREE.TubeGeometry(curve, TUBE_SEGMENTS, 0.028, TUBE_RADIAL, false)
@@ -173,10 +211,10 @@ function buildScene(host, reduced) {
 
   // --- the tree ----------------------------------------------------------
   const rootPos = new THREE.Vector3(0, -2.6, 0)
-  const root = addNode({ label: 'your link', pos: rootPos, color: 0xc6f432, r: 0.55 })
+  const root = addNode({ label: 'your link', icon: 'link', pos: rootPos, color: 0xe8b4a0, r: 0.55 })
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(0.9, 0.025, 8, 64),
-    new THREE.MeshBasicMaterial({ color: 0xc6f432, transparent: true, opacity: 0.6 })
+    new THREE.MeshBasicMaterial({ color: 0xe8b4a0, transparent: true, opacity: 0.6 })
   )
   ring.rotation.x = Math.PI / 2
   root.group.add(ring)
@@ -192,15 +230,15 @@ function buildScene(host, reduced) {
     const t = i / (BRANCHES.length - 1) // 0..1 across the arc
     const theta = (t - 0.5) * 2 * 1.15
     const pos = new THREE.Vector3(Math.sin(theta) * 4.4, 0.2 + Math.cos(theta) * 0.9, (i % 2 ? 1 : -1) * 1.3)
-    branchNodes.push(addNode({ label: b.label, pos, color: b.color, r: 0.34 }))
+    branchNodes.push(addNode({ label: b.label, icon: b.icon, pos, color: b.color, r: 0.34 }))
     trunk.push(addEdge(rootPos, pos, { lift: new THREE.Vector3(0, 0.6, 0), color: b.color }))
 
     const lp = []
-    b.leaves.forEach((name, j) => {
+    b.leaves.forEach((_leaf, j) => {
       const side = j ? 1 : -1
-      const leafPos = new THREE.Vector3(pos.x + side * 1.0 + pos.x * 0.12, pos.y + 1.7 + j * 0.25, pos.z + side * 0.9)
+      const leafPos = new THREE.Vector3(pos.x + side * 0.75 + pos.x * 0.12, pos.y + 1.6 + j * 0.45, pos.z + side * 1.1)
       lp.push(leafPos)
-      leafNodes.push(addNode({ label: name, pos: leafPos, color: b.color, r: 0.2 }))
+      leafNodes.push(addNode({ label: '', pos: leafPos, color: b.color, r: 0.2 }))
       leafEdges.push(addEdge(pos, leafPos, { lift: new THREE.Vector3(side * 0.2, 0.4, 0), color: b.color, opacity: 0.55 }))
     })
     leafPositions.push(lp)
@@ -241,7 +279,7 @@ function buildScene(host, reduced) {
   starGeo.setAttribute('position', new THREE.BufferAttribute(starArr, 3))
   const stars = new THREE.Points(
     starGeo,
-    new THREE.PointsMaterial({ size: 0.09, color: 0xe7f5c4, transparent: true, opacity: 0.8, depthWrite: false })
+    new THREE.PointsMaterial({ size: 0.09, color: 0xf3e1d6, transparent: true, opacity: 0.8, depthWrite: false })
   )
   scene.add(stars)
 
@@ -261,7 +299,7 @@ function buildScene(host, reduced) {
     const a = w / h
     baseZ = a < 0.8 ? 20 : a < 1.3 ? 15.5 : 12.5
     // Keep the tree clear of the text card: lift it on phones (card is at the bottom), nudge it right on desktop (card is at the left).
-    tree.position.set(a > 1.3 ? 2.6 : 0, a < 1 ? 1.7 : -0.3, 0)
+    tree.position.set(a > 1.3 ? 3.4 : 0, a < 1 ? 1.7 : -0.3, 0)
     if (reduced) render(0)
   }
 
@@ -397,17 +435,17 @@ export default function TreeStory() {
     <div
       key={s.q}
       ref={(el) => (panels.current[i] = el)}
-      className={reduced ? 'rounded-2xl border border-white/10 bg-white/5 p-6' : 'col-start-1 row-start-1 rounded-2xl border border-white/10 bg-[#06100a]/75 p-6 backdrop-blur-md'}
+      className={reduced ? 'rounded-2xl border border-white/10 bg-white/5 p-6' : 'col-start-1 row-start-1 rounded-2xl border border-white/10 bg-night/75 p-6 backdrop-blur-md'}
       style={!reduced && i > 0 ? { opacity: 0 } : undefined}
     >
-      <p className="text-xs font-semibold uppercase tracking-widest text-lime-300">
+      <p className="text-xs font-semibold uppercase tracking-widest text-sand">
         {String(i + 1).padStart(2, '0')} / {String(STEPS.length).padStart(2, '0')} · {s.q}
       </p>
       <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">{s.title}</h2>
-      <p className="mt-3 text-base leading-7 text-lime-50/80">{s.text}</p>
+      <p className="mt-3 text-base leading-7 text-sand/80">{s.text}</p>
       {i === STEPS.length - 1 && (
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button asChild size="lg" className="bg-lime-300 text-[#06100a] hover:bg-lime-200"><Link to="/signup">Create your page</Link></Button>
+          <Button asChild size="lg" className="bg-sand text-night hover:bg-sand/90"><Link to="/signup">Create your page</Link></Button>
           <Button asChild size="lg" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"><Link to="/login">Log in</Link></Button>
         </div>
       )}
@@ -418,7 +456,7 @@ export default function TreeStory() {
     <section
       ref={section}
       aria-label="How a link tree grows"
-      className={`relative overflow-hidden bg-[radial-gradient(80rem_40rem_at_50%_0%,#17361f,#06100a_70%)] text-white ${reduced ? '' : 'h-[calc(100svh-65px)]'}`}
+      className={`relative overflow-hidden bg-transparent text-white ${reduced ? '' : 'h-[calc(100svh-65px)]'}`}
     >
       <div ref={host} className={reduced ? 'h-[70vh] w-full' : 'absolute inset-0'} />
 
@@ -435,7 +473,7 @@ export default function TreeStory() {
             Scroll to grow your tree ↓
           </p>
           <div className="absolute inset-x-0 bottom-0 h-1 bg-white/10">
-            <div ref={bar} className="h-full origin-left scale-x-0 bg-lime-300" />
+            <div ref={bar} className="h-full origin-left scale-x-0 bg-sand" />
           </div>
         </>
       )}

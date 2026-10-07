@@ -1,0 +1,263 @@
+import { useEffect, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { ArrowUpRight, MessageCircle, MousePointer2, Search } from 'lucide-react'
+import { LINK_TYPES, SOCIAL_KEYS } from '@/lib/linkTypes'
+import { fadeUp, stagger } from '@/lib/motion'
+
+// Pro profile templates (Cover, Editorial, Profile card) plus pieces any layout can use:
+// the founder's note and the business WhatsApp button.
+
+const firstName = (n) => n.split(/\s+/)[0]
+const socialsOf = (links) => links.filter((l) => SOCIAL_KEYS.includes(l.type))
+const linkProps = (l, onClick) => ({ href: l.url, target: '_blank', rel: 'noopener noreferrer', onClick: () => onClick(l.id) })
+const NewTab = () => <span className="sr-only"> (opens in a new tab)</span>
+
+export function WhatsAppButton({ number, name, className = '' }) {
+  if (!number) return null
+  const text = encodeURIComponent(`Hi ${name}, I found you on your link page.`)
+  return (
+    <motion.a variants={fadeUp} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
+      href={`https://wa.me/${number}?text=${text}`} target="_blank" rel="noopener noreferrer"
+      className={`flex items-center justify-center gap-2 rounded-2xl bg-[#25d366] px-5 py-3.5 font-semibold text-[#06260f] shadow-sm ${className}`}>
+      <MessageCircle className="size-5" aria-hidden="true" /> Chat on WhatsApp<NewTab />
+    </motion.a>
+  )
+}
+
+function Paperclip() {
+  return (
+    <svg viewBox="0 0 24 64" className="absolute -top-6 right-6 h-14 w-6 text-[#b8955a]" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M8 20V8a4 4 0 0 1 8 0v40a6 6 0 0 1-12 0V16" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function FounderNote({ data, name }) {
+  if (!data.note_body) return null
+  const photo = data.avatar_url || data.cover_url
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 30, rotate: -1 }} whileInView={{ opacity: 1, y: 0, rotate: 0 }} viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+      aria-label="Founder's note"
+      className="relative mt-10 bg-[#f4efe8] p-3 text-left text-[#2b2522] shadow-[0_30px_60px_-30px_rgba(40,25,20,.45)]"
+    >
+      <div className="border border-[#2b2522]/40 px-6 pb-6 pt-8">
+        {photo && (
+          <motion.div initial={{ rotate: 8, scale: 0.9 }} whileInView={{ rotate: 4, scale: 1 }} viewport={{ once: true }}
+            className="absolute -top-6 right-2 w-28 bg-white p-1.5 pb-5 shadow-lg">
+            <Paperclip />
+            <img src={photo} alt="" className="aspect-square w-full object-cover grayscale" />
+          </motion.div>
+        )}
+        <h2 className="font-serif text-4xl font-medium leading-none tracking-tight">Founder's Note</h2>
+        <p className="mt-1 font-serif text-lg italic">{name}{data.occupation ? ` — ${data.occupation}` : ''}</p>
+        <div className="mt-8 space-y-3 font-serif text-[17px] leading-snug">
+          {data.note_body.split(/\n{2,}/).map((p, i) => <p key={i} className="whitespace-pre-line">{p}</p>)}
+        </div>
+        {data.note_sign && <p className="mt-6 text-center font-script text-5xl text-accent">{data.note_sign}</p>}
+      </div>
+    </motion.section>
+  )
+}
+
+export function CoverTemplate({ data, name, onLinkClick }) {
+  const img = data.cover_url || data.avatar_url
+  return (
+    <motion.div variants={stagger(0.08)} initial="hidden" animate="show" className="-mx-4 -mt-6 text-center">
+      <div className="relative h-[30rem] overflow-hidden bg-gradient-to-br from-rose via-sand to-accent/70">
+        {img && (
+          <motion.img src={img} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover"
+            initial={{ scale: 1.12 }} animate={{ scale: 1 }} transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }} />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/65" aria-hidden="true" />
+        <div className="absolute inset-x-0 bottom-0 px-6 pb-8 text-white">
+          <motion.h1 variants={fadeUp} className="font-serif text-5xl font-medium leading-none">Hi, I'm <em>{firstName(name)}</em></motion.h1>
+          {data.bio && <motion.p variants={fadeUp} className="mx-auto mt-3 max-w-xs text-sm text-white/85">{data.bio}</motion.p>}
+          <motion.div variants={fadeUp} className="mt-5 flex justify-center gap-6">
+            {socialsOf(data.links).map((l) => {
+              const Icon = LINK_TYPES[l.type].icon
+              return (
+                <motion.a key={l.id} {...linkProps(l, onLinkClick)} whileHover={{ y: -3 }} className="text-white">
+                  <Icon className="size-6" aria-hidden="true" /><span className="sr-only">{l.title}</span><NewTab />
+                </motion.a>
+              )
+            })}
+          </motion.div>
+        </div>
+      </div>
+      <div className="bg-card px-6 pb-4 pt-8">
+        <motion.h2 variants={fadeUp} className="font-serif text-3xl font-medium">Get <em>in touch</em></motion.h2>
+        <div className="mt-5 space-y-3">
+          <WhatsAppButton number={data.whatsapp} name={name} className="rounded-md" />
+          {data.links.filter((l) => !SOCIAL_KEYS.includes(l.type)).map((l) => (
+            <motion.a key={l.id} variants={fadeUp} {...linkProps(l, onLinkClick)} whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}
+              className="block rounded-md border border-sand bg-sand/80 px-4 py-3.5 text-sm font-medium transition-colors hover:bg-sand">
+              {l.title}<NewTab />
+            </motion.a>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+export function EditorialTemplate({ data, name, onLinkClick }) {
+  return (
+    <motion.div variants={stagger(0.08)} initial="hidden" animate="show" className="mt-4 bg-[#f4efe8] p-3 text-[#2b2522] shadow-[0_30px_60px_-30px_rgba(40,25,20,.4)]">
+      <div className="border border-[#2b2522]/40 px-6 py-10 text-center">
+        <motion.p variants={fadeUp} className="text-[10px] uppercase tracking-[0.35em]">{data.tags ? data.tags.split(',').join(' · ') : 'Links & notes'}</motion.p>
+        {data.avatar_url && (
+          <motion.img variants={fadeUp} src={data.avatar_url} alt="" referrerPolicy="no-referrer" className="mx-auto mt-6 size-24 rounded-full object-cover grayscale" />
+        )}
+        <motion.h1 variants={fadeUp} className="mt-5 font-serif text-5xl font-medium leading-none">{name}</motion.h1>
+        {(data.occupation || data.bio) && <motion.p variants={fadeUp} className="mt-2 font-serif text-lg italic">{data.occupation || data.bio}</motion.p>}
+        <motion.div variants={fadeUp} className="mx-auto my-8 h-px w-16 bg-accent/60" aria-hidden="true" />
+        <ul className="text-left">
+          {data.links.map((l) => (
+            <motion.li key={l.id} variants={fadeUp}>
+              <a {...linkProps(l, onLinkClick)} className="group flex items-center justify-between border-b border-[#2b2522]/20 py-4 font-serif text-xl">
+                <span className="transition-transform group-hover:translate-x-1">{l.title}</span>
+                <ArrowUpRight className="size-5 text-accent transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+                <NewTab />
+              </a>
+            </motion.li>
+          ))}
+        </ul>
+        <WhatsAppButton number={data.whatsapp} name={name} className="mt-8 rounded-none" />
+        {data.note_sign && <p className="mt-8 font-script text-4xl text-accent">{data.note_sign}</p>}
+      </div>
+    </motion.div>
+  )
+}
+
+function SafetyPin() {
+  return (
+    <svg viewBox="0 0 40 120" className="absolute -right-3 -top-8 h-28 w-10 rotate-[18deg] text-stone-400 drop-shadow" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+      <path d="M20 10a8 8 0 1 1 0 16v80M12 18v84a8 8 0 0 0 16 0" strokeLinecap="round" />
+      <rect x="10" y="8" width="20" height="16" rx="4" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function IdCardTemplate({ data, name, onLinkClick }) {
+  const img = data.avatar_url || data.cover_url
+  const handle = socialsOf(data.links)[0]
+  const rows = [
+    ['Name', name],
+    data.occupation && ['Occupation', data.occupation],
+    handle && ['Handle', `@${data.username}`],
+    data.location && ['Based in', data.location],
+  ].filter(Boolean)
+  return (
+    <motion.div variants={stagger(0.08)} initial="hidden" animate="show" className="mt-6 text-left">
+      <div className="relative border border-dashed border-foreground/50 p-5">
+        <motion.div variants={fadeUp} className="relative w-[78%] -rotate-1 bg-[#e8eef0] p-3 pb-10 shadow-md">
+          <SafetyPin />
+          {img
+            ? <img src={img} alt="" referrerPolicy="no-referrer" className="aspect-[4/5] w-full bg-black object-cover" />
+            : <div className="grid aspect-[4/5] w-full place-items-center bg-primary font-serif text-7xl text-primary-foreground">{name[0]}</div>}
+        </motion.div>
+        <p aria-hidden="true" className="absolute right-4 top-1/2 -translate-y-1/2 font-script text-5xl leading-none [writing-mode:vertical-rl]">
+          {data.tags?.split(',')[0] || firstName(name)}
+        </p>
+      </div>
+      <motion.dl variants={fadeUp} className="mt-6 grid border border-foreground font-mono text-sm uppercase">
+        {rows.map(([k, v]) => (
+          <div key={k} className="border-b border-foreground px-3 py-2 last:border-b-0">
+            <dt className="font-serif text-xs normal-case tracking-wide">{k}</dt>
+            <dd className="pl-6 font-semibold tracking-wider">{v}</dd>
+          </div>
+        ))}
+      </motion.dl>
+      <div className="mt-6 space-y-2">
+        <WhatsAppButton number={data.whatsapp} name={name} className="rounded-none" />
+        {data.links.map((l) => (
+          <motion.a key={l.id} variants={fadeUp} {...linkProps(l, onLinkClick)} whileHover={{ x: 4 }}
+            className="flex items-center justify-between border border-foreground px-4 py-3 font-mono text-sm font-semibold uppercase tracking-wider hover:bg-foreground hover:text-background">
+            {l.title}<ArrowUpRight className="size-4" aria-hidden="true" /><NewTab />
+          </motion.a>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
+// "the search: / the solution:" — the bio is typed into a search bar over the photo, then the links answer it.
+export function SearchTemplate({ data, name, onLinkClick }) {
+  const query = data.bio || data.occupation || `${name}'s favourites`
+  const reduce = useReducedMotion()
+  const [n, setN] = useState(reduce ? query.length : 0)
+  useEffect(() => {
+    if (reduce) return
+    const t = setInterval(() => setN((v) => (v < query.length ? v + 1 : v)), 55)
+    return () => clearInterval(t)
+  }, [query, reduce])
+  const img = data.cover_url || data.avatar_url
+  const tilts = [-4, 3, -2, 5, -3]
+  return (
+    <motion.div variants={stagger(0.1)} initial="hidden" animate="show" className="-mx-4 -mt-6">
+      <div className="relative min-h-[40rem] overflow-hidden bg-gradient-to-b from-rose via-sand to-lilac px-6 pb-10 pt-16 text-center">
+        {img && <img src={img} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover" />}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/45" aria-hidden="true" />
+        <div className="relative">
+          <motion.h1 variants={fadeUp} className="text-3xl font-bold tracking-tight text-white drop-shadow">the search:</motion.h1>
+          <motion.div variants={fadeUp} className="relative mx-auto mt-4 flex max-w-sm items-center gap-2 rounded-full bg-white px-5 py-3 text-left text-sm text-black shadow-lg">
+            <span className="flex-1">
+              <span className="sr-only">{query}</span>
+              <span aria-hidden="true">{query.slice(0, n)}<span className="ml-px inline-block h-4 w-px translate-y-0.5 animate-pulse bg-black" /></span>
+            </span>
+            <Search className="size-5 shrink-0" aria-hidden="true" />
+            {n === query.length && (
+              <motion.span initial={{ opacity: 0, x: 20, y: 20 }} animate={{ opacity: 1, x: 0, y: 0 }} className="absolute -bottom-6 right-10" aria-hidden="true">
+                <MousePointer2 className="size-7 fill-white text-black" />
+              </motion.span>
+            )}
+          </motion.div>
+          <motion.p variants={fadeUp} className="mt-16 text-3xl font-bold tracking-tight text-white drop-shadow">the solution:</motion.p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            {data.links.map((l, i) => (
+              <motion.a key={l.id} {...linkProps(l, onLinkClick)}
+                initial={{ opacity: 0, scale: 0.6, rotate: 0 }} animate={{ opacity: 1, scale: 1, rotate: tilts[i % tilts.length] }}
+                transition={{ delay: 0.4 + i * 0.12 + (reduce ? 0 : query.length * 0.055), type: 'spring', stiffness: 260, damping: 14 }}
+                whileHover={{ rotate: 0, scale: 1.06 }}
+                className="rounded-2xl bg-white/95 px-4 py-3 text-sm font-semibold text-black shadow-xl">
+                {l.title}<NewTab />
+              </motion.a>
+            ))}
+          </div>
+          <WhatsAppButton number={data.whatsapp} name={name} className="mx-auto mt-8 max-w-sm rounded-full" />
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// Client messages as chat bubbles around a big headline (after the "i got a text" post style).
+export function KindWords({ data }) {
+  const items = data.testimonials || []
+  if (!items.length) return null
+  const half = Math.ceil(items.length / 2)
+  const Bubble = ({ t, i }) => (
+    <motion.figure
+      initial={{ opacity: 0, scale: 0.6, y: 20 }} whileInView={{ opacity: 1, scale: 1, y: 0 }} viewport={{ once: true }}
+      transition={{ delay: i * 0.12, type: 'spring', stiffness: 260, damping: 16 }}
+      className={`relative max-w-[75%] rounded-2xl bg-accent/15 px-4 py-2.5 text-sm leading-snug text-foreground ${i % 2 ? 'ml-auto rotate-2' : '-rotate-2'}`}
+    >
+      <blockquote>{t}</blockquote>
+      <span aria-hidden="true" className={`absolute -bottom-1.5 size-3 rotate-45 bg-accent/15 ${i % 2 ? 'right-6' : 'left-6'}`} />
+    </motion.figure>
+  )
+  return (
+    <section aria-label="What clients say" className="mt-12 space-y-3">
+      {items.slice(0, half).map((t, i) => <Bubble key={i} t={t} i={i} />)}
+      <motion.h2 initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
+        className="py-2 text-center font-display text-5xl font-extrabold lowercase leading-none tracking-tighter text-accent sm:text-6xl">
+        i got a text
+      </motion.h2>
+      {items.slice(half).map((t, i) => <Bubble key={i + half} t={t} i={i + half} />)}
+    </section>
+  )
+}
+
+export const PROFILE_TEMPLATES = { cover: CoverTemplate, editorial: EditorialTemplate, idcard: IdCardTemplate, search: SearchTemplate }

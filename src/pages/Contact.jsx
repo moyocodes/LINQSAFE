@@ -54,11 +54,11 @@ export default function Contact() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="name">Name</Label>
-                    <Input id="name" name="name" placeholder="Alex Rivera" autoComplete="name" required maxLength={100} value={form.name} onChange={set('name')} />
+                    <Input id="name" name="name" placeholder="Moyosore James" autoComplete="name" required maxLength={100} value={form.name} onChange={set('name')} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" name="email" placeholder="you@example.com" type="email" autoComplete="email" inputMode="email" required maxLength={254} value={form.email} onChange={set('email')} />
+                    <Input id="email" name="email" placeholder="you@gmail.com" type="email" autoComplete="email" inputMode="email" required maxLength={254} value={form.email} onChange={set('email')} />
                   </div>
                 </div>
                 <div className="space-y-2">

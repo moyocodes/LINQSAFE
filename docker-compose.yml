@@ -1,0 +1,35 @@
+# Run the whole stack (app + MySQL) in Docker:  docker compose up --build
+# Reads DB_PASSWORD, JWT_SECRET etc. from .env. The site is then at http://localhost:3001
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MYSQL_DATABASE: ${DB_NAME:-linktree}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      args:
+        VITE_APP_STAGE: ${VITE_APP_STAGE:-local}
+    env_file: .env
+    environment:
+      DB_HOST: db          # the MySQL container, not localhost
+      DB_PORT: 3306
+      DB_USER: root
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:

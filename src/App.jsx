@@ -1,6 +1,9 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from '@/components/Layout'
+import StageBadge from '@/components/StageBadge'
+import CookieNotice from '@/components/CookieNotice'
+import { IS_ADMIN_HOST } from '@/lib/stage'
 import Home from '@/pages/Home'
 import Auth from '@/pages/Auth'
 import Contact from '@/pages/Contact'
@@ -11,16 +14,47 @@ import Profile from '@/pages/Profile'
 
 // Admin pulls in drag-and-drop code that visitors to public pages never need.
 const Admin = lazy(() => import('@/pages/Admin'))
+const Analytics = lazy(() => import('@/pages/Analytics'))
+const Owner = lazy(() => import('@/pages/Owner'))
+const Pricing = lazy(() => import('@/pages/Pricing'))
+const VerifyEmail = lazy(() => import('@/pages/AccountFlows').then((m) => ({ default: m.VerifyEmail })))
+const ForgotPassword = lazy(() => import('@/pages/AccountFlows').then((m) => ({ default: m.ForgotPassword })))
+const BillingCallback = lazy(() => import('@/pages/AccountFlows').then((m) => ({ default: m.BillingCallback })))
+const ResetPassword = lazy(() => import('@/pages/AccountFlows').then((m) => ({ default: m.ResetPassword })))
+
+// The founder subdomain (admin.…) is a separate, minimal app: login + the owner dashboard only.
+function AdminHostApp() {
+  return (
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/login" element={<Auth mode="login" />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="*" element={<Owner />} />
+      </Route>
+    </Routes>
+  )
+}
 
 export default function App() {
   return (
     <Suspense fallback={null}>
+      <StageBadge />
+      {!IS_ADMIN_HOST && <CookieNotice />}
+      {IS_ADMIN_HOST ? <AdminHostApp /> : (
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Auth mode="login" />} />
           <Route path="/signup" element={<Auth mode="signup" />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/analytics" element={<Analytics />} />
+          <Route path="/owner" element={<Owner />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/billing/callback" element={<BillingCallback />} />
+          <Route path="/verify" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
@@ -30,6 +64,7 @@ export default function App() {
         <Route path="/:username" element={<Profile />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      )}
     </Suspense>
   )
 }

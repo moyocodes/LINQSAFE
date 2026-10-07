@@ -1,6 +1,12 @@
+# Production image: one container serves the API and the built frontend on port 3001.
+# Used for Docker-based hosts (Render, Railway, Fly, a VPS). Vercel doesn't use this file.
+
 # ---- build the frontend ----
 FROM node:22-alpine AS build
 WORKDIR /app
+# Baked into the frontend at build time: local | dev | prod (shows a LOCAL/DEV badge outside prod)
+ARG VITE_APP_STAGE=prod
+ENV VITE_APP_STAGE=$VITE_APP_STAGE
 COPY package*.json ./
 RUN npm ci
 COPY . .

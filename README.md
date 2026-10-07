@@ -1,95 +1,65 @@
-# Linkhub
+# linqsafe
 
-Link-in-bio pages. Users sign up, add links, drag to reorder, and share one URL (`/yourname`).
-The landing page tells the story with a scroll-driven 3D link tree.
+Link-in-bio pages for creators and small businesses. Sign up, add your links, pick a template, and share one URL (`/yourname`). Extra features (unlimited links, premium templates, a founder's note, testimonials, a QR code) are each bought on their own for 1, 3, 6 or 12 months, paid in naira through Paystack. The founder sets prices from the founder dashboard.
 
-**Stack:** React 18 · Vite · Tailwind CSS · shadcn/ui-style components (Radix) · Framer Motion · GSAP (ScrollTrigger) · Three.js · Express · MySQL
+**Stack:** React 18 · Vite · Tailwind CSS · Framer Motion · GSAP · three.js · Express · MySQL 8 · Resend (email) · Paystack (payments) · Vercel (hosting)
 
-## Pages
+For the full picture (features, architecture, database, stages, security, design system), see **[PROJECT.md](PROJECT.md)**. For a step-by-step guide to rebuilding a project like this, see **[docs/linqsafe-Build-Guide.pdf](docs/linqsafe-Build-Guide.pdf)**.
 
-| Route | What |
-| --- | --- |
-| `/` | Landing page with the animated 3D link tree |
-| `/signup`, `/login` | Auth (password show/hide, Caps Lock hint) |
-| `/admin` | Dashboard: profile, links, drag/keyboard reorder, click counts, live preview |
-| `/:username` | Public profile |
-| `/contact` | Contact form (stored in the `contact_messages` table) |
-| `/terms`, `/privacy` | Legal pages |
+## Run locally (Node + MySQL)
 
-## Run locally
-
-Requires Node 20+ and a running MySQL.
+Requires Node 22 and a running MySQL 8.
 
 ```bash
-cp .env.example .env      # then edit DB_* and JWT_SECRET
+cp .env.example .env      # fill in DB_* and JWT_SECRET
 npm install
-npm run dev               # API on :3001, Vite on :5173
+npm run dev               # API on :3001, site on :5173, founder console on admin.localhost:5173
+npm run owner             # after signing up with OWNER_EMAIL: verifies it and unlocks every feature
 ```
 
-Tables (and the database, if your user may create it) are created automatically on first start.
+The database schema is created and updated automatically on start (`server/migrations.js`). Verify and reset emails are printed in the terminal until `RESEND_API_KEY` is set.
 
-## Customise
+## Run with Docker (optional)
 
-- **Brand, support email, legal dates:** `src/config.js`
-- **Colours and radius:** CSS variables at the top of `src/styles.css`
-- **Tree nodes/questions on the landing page:** `BRANCHES` and `STEPS` in `src/components/TreeStory.jsx`
-- **Terms / Privacy:** `src/pages/Terms.jsx`, `src/pages/Privacy.jsx` are sensible templates, not legal advice. Have them reviewed for your jurisdiction and edit them to match what you actually collect.
+Docker is **not** needed for local development or for Vercel. It's an alternative way to run everything in containers, or to deploy to a Docker-based host.
+
+**Whole stack (app + MySQL):**
+```bash
+docker compose up --build    # site + API at http://localhost:3001
+```
+`docker-compose.yml` starts MySQL 8.4 (data kept in a `db-data` volume) and the app, using the values in `.env`. Inside Docker the app reaches the database at `db`, not `localhost`. The compose file sets that for you.
+
+**App image only** (when your database is hosted elsewhere):
+```bash
+docker build -t linqsafe --build-arg VITE_APP_STAGE=prod .
+docker run -p 3001:3001 --env-file .env linqsafe
+```
+
+**How the image works:** a two-stage build. Stage 1 installs everything and builds the frontend into `dist/`. Stage 2 is a slim Node 22 Alpine image with production dependencies, `server/` and `dist/` only. It runs as the non-root `node` user, serves the API and the site on port 3001, and has a health check on `/api/health`.
 
 ## Deploy
 
-One process serves both the API and the built frontend, so there is only one thing to host.
+- **Vercel (main path):** import the repo. `vercel.json` routes `/api/*` to the Express app as a serverless function (`api/index.js`) and serves the built site. Set the environment variables per stage. See *Stages* in PROJECT.md.
+- **Docker hosts** (Render, Railway, Fly, a VPS): build from the `Dockerfile`, set the same environment variables, health check path `/api/health`.
+- **Any Node host:** build `npm ci && npm run build`, start `npm start`.
 
-```bash
-npm ci
-npm run build
-NODE_ENV=production npm start
-```
+In production the server refuses to start without a real `JWT_SECRET` (`openssl rand -hex 32`).
 
-In production the server **refuses to start without a real `JWT_SECRET`**
-(`openssl rand -hex 32`).
+## Scripts
 
-### Environment variables
+| Command | Does |
+|---|---|
+| `npm run dev` | API + site with live reload |
+| `npm run build` | Build the frontend into `dist/` |
+| `npm start` | Production server (API + `dist/`) |
+| `npm test` | API tests against the running dev server |
+| `npm run owner` | Verify the owner email and unlock every feature (local) |
+| `npm run set-plan -- <username> <free\|pro>` | `pro` unlocks every feature by hand (no expiry) |
 
-| Var | Notes |
-| --- | --- |
-| `DB_HOST` `DB_PORT` `DB_USER` `DB_PASSWORD` `DB_NAME` | MySQL connection |
-| `DB_SSL` | `true` for hosted MySQL that requires TLS |
-| `JWT_SECRET` | Required in production |
-| `PORT` | Most hosts set this for you |
-| `CORS_ORIGIN` | Only if the frontend is on a different origin |
+## Environment variables
 
-### Render / Railway / Fly / any Node host
-
-- Build command: `npm ci && npm run build`
-- Start command: `npm start`
-- Add the env vars above and a MySQL database (Railway MySQL, Aiven, PlanetScale, RDS…).
-- Health check path: `/api/health`
-
-### Docker
-
-```bash
-docker build -t linkhub .
-docker run -p 3001:3001 --env-file .env linkhub
-```
-
-### Before you go live
-
-- [ ] Strong `JWT_SECRET` set
-- [ ] HTTPS enabled (most hosts do this automatically)
-- [ ] `src/config.js` email and company name updated
-- [ ] Terms and Privacy reviewed
-- [ ] Check new contact messages: `SELECT * FROM contact_messages ORDER BY created_at DESC;`
-- [ ] Database backups enabled
-
-### Notes
-
-- Security headers (helmet/CSP), gzip, rate limiting on auth, contact and the API are built in.
-- Usernames that clash with pages (`admin`, `contact`, `terms`, …) are reserved.
-- The sign-in token lives in `localStorage` (7-day expiry). For higher-security needs, move to httpOnly cookies.
-- Add a `sitemap.xml` and OG image to `public/` once you have a domain.
+See [`.env.example`](.env.example) for the full list with comments: database, `JWT_SECRET`, `APP_URL`, Resend, `OWNER_EMAIL` / `ADMIN_HOST`, Paystack (`PAYSTACK_SECRET_KEY`, `VITE_PAYSTACK_PUBLIC_KEY`), default feature prices (`PRICE_*`, `DISCOUNT_*`), `VITE_APP_STAGE`.
 
 ## Accessibility
 
-Skip link, focus moved to the page on navigation with a screen-reader announcement, labelled form fields with
-described errors, visible focus rings, keyboard-reorderable links (not just drag), `prefers-reduced-motion`
-respected by Framer Motion, GSAP and the 3D scene (it renders a static tree with the questions as plain cards).
+Skip link, focus moved on navigation with a screen-reader announcement, labelled fields with described errors, visible focus rings, keyboard-reorderable links, and `prefers-reduced-motion` respected by Framer Motion, GSAP and the 3D scene.
