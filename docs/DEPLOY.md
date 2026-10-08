@@ -370,11 +370,45 @@ The first run uploads everything (a few minutes); later runs only upload what ch
 5. Then set live prices on prod.
 
 ### Email (Resend)
-1. Sign up at resend.com → **Domains** → add `linqsafe.com`.
-2. Add the DNS records Resend shows (TXT/MX/CNAME) in cPanel → **Zone Editor** (or Namecheap Advanced DNS).
-3. When verified, create an API key and put it in the `.env` of dev and prod as `RESEND_API_KEY`, with `MAIL_FROM=linqsafe <support@linqsafe.com>`. Restart.
 
-Without a key, emails (verify, reset password) are written to `stderr.log` instead of sent.
+linqsafe sends these emails (templates in `server/emails.js`, all in the site's look, each with a plain-text version):
+
+| When | Email | To |
+|---|---|---|
+| Sign-up / "Resend email" | **Confirm your email** (24-hour link) | the new user |
+| Email confirmed | **Welcome**: page link + 3 first steps | the user |
+| "Forgot password" | **Reset your password** (1-hour, single-use link) | the user |
+| Password reset done | **Your password was changed** (security notice) | the user |
+| Paystack payment verified | **Receipt**: feature, period, end date, amount, card/bank, LinqSafe reference | the buyer |
+| 3 days before a feature ends | **… ends soon** with an Extend button | the user |
+| A feature ended | **… has ended** (page still live) | the user |
+| Contact form | **New message from …** (reply goes straight to the sender) | `SUPPORT_EMAIL` (or `OWNER_EMAIL`) |
+| Contact form | **We got your message** | the sender |
+
+Replies to any email go to `SUPPORT_EMAIL` (default `support@linqsafe.com`). Preview them all locally: `npm run emails:preview` → open `email-previews/index.html`.
+
+**Set up Resend (once):**
+1. Sign up at resend.com → **Domains** → **Add Domain** → `linqsafe.com` (region: closest, e.g. EU/US).
+2. Resend shows 3–4 DNS records (TXT for SPF/DKIM, MX for bounces). Add each in cPanel → **Zone Editor** → `linqsafe.com` → **+ Add Record**, copying type, name and value exactly. Keep your existing MX and SPF records; if Resend's SPF is on a subdomain (`send.linqsafe.com`) it doesn't clash.
+3. Back in Resend click **Verify DNS Records** (can take up to an hour).
+4. **API Keys** → *Create API Key* (Sending access, domain `linqsafe.com`) → copy it.
+5. In the `.env` of **prod** (`linqsafe`, `linqsafe-admin`) and **dev** (`linqsafe-dev`):
+   ```
+   RESEND_API_KEY=re_...
+   MAIL_FROM=linqsafe <support@linqsafe.com>
+   SUPPORT_EMAIL=support@linqsafe.com
+   ```
+   → **Restart** each app.
+6. Test: sign up on dev with your own address; the confirm email should arrive within a minute. Resend → **Emails** shows every send and its status.
+7. Make sure `support@linqsafe.com` exists (cPanel → **Email Accounts**, or a forwarder to your Gmail) so replies reach you.
+
+Without `RESEND_API_KEY` nothing is sent: each email is written to `stderr.log` instead.
+
+**Daily reminder job (the "ends soon" / "has ended" emails):** cPanel → **Cron Jobs** → *Add New Cron Job* → **Once Per Day** (e.g. 08:00), command:
+```
+cd /home/linqqkto/linqsafe && /home/linqqkto/nodevenv/linqsafe/22/bin/node server/scripts/reminders.js >> reminders.log 2>&1
+```
+Only on prod (one job is enough; admin shares the database). It emails each purchase at most once before and once after it ends; renewing resets that. Run it by hand with *Run JS script* → `reminders`.
 
 ### Search engines and link previews
 

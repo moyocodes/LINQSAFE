@@ -196,6 +196,11 @@ const MIGRATIONS = [
     // Allows custom "Other" industries stored as other:<label>.
     await db.query('ALTER TABLE users MODIFY category VARCHAR(80) NOT NULL DEFAULT ""')
   }],
+  [21, 'expiry reminder tracking', async (db) => {
+    // So the daily reminder job emails each purchase once before it ends and once after.
+    await addColumn(db, 'user_features', 'reminded_at DATETIME NULL')
+    await addColumn(db, 'user_features', 'expired_notice_at DATETIME NULL')
+  }],
 ]
 
 export async function migrate(pool) {

@@ -5,3 +5,4 @@ linqsafe-*.zip
 # every env file except the documented example
 .env.*
 !.env.example
+email-previews/

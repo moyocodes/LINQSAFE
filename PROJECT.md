@@ -104,7 +104,9 @@ app.cjs                 cPanel startup file
 scripts/package.sh      builds linqsafe-dev.zip / linqsafe-prod.zip
 docs/DEPLOY.md          step-by-step deployment for local, dev, prod
 .github/workflows/      deploy.yml: test, build and FTPS-deploy on push to dev/prod
-server/mailer.js        Resend email + email template
+server/mailer.js        sends email through Resend (or prints it without a key)
+server/emails.js        all email templates (HTML + plain text)
+server/scripts/reminders.js  daily "ends soon" / "has ended" emails (cron)
 server/scripts/         set-plan.js, owner.js
 tests/api.test.js       API tests (npm test)
 Dockerfile              production image (optional hosting path)
@@ -259,7 +261,7 @@ Use these with an AI video or image tool (Meta AI, Runway, Sora, Midjourney). Ea
 
 **Open:**
 - **Payments:** one full test payment on dev (popup → paid → feature unlocked → webhook), then live keys (`sk_live_` + `pk_live_`) on prod once Paystack activates live mode.
-- **Email:** Resend domain verification and API key on dev and prod.
+- **Email:** templates and sending are built; verify linqsafe.com in Resend, add `RESEND_API_KEY` on dev and prod, create `support@linqsafe.com`, and add the daily reminders cron (DEPLOY.md → Email).
 - **Search:** submit `sitemap.xml` in Google Search Console.
 - **Browser tests:** a Playwright smoke test for onboarding and templates would be the next layer. Sign-ups are rate-limited (30 per 15 minutes), so running `npm test` many times in a row hits 429s.
 - **Image storage:** pictures are stored in the database as small data URLs, fine at small scale; move to object storage (S3, Cloudinary) as you grow.

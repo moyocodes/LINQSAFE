@@ -12,7 +12,8 @@ import crypto from 'node:crypto'
 import ct from 'countries-and-timezones'
 import './env.js'
 import { pool } from './db.js'
-import { actionEmail, sendMail } from './mailer.js'
+import { send } from './mailer.js'
+import * as Email from './emails.js'
 import { createSeo, indexable } from './seo.js'
 import { DURATIONS, FEATURES, FEATURE_KEYS, LAYOUT_FEATURE, featureByKey, pricing } from './features.js'
 
@@ -61,6 +62,25 @@ async function paystack(path, init = {}) {
   if (!res.ok || !data.status) throw new Error(data.message || `Paystack error ${res.status}`)
   return data.data
 }
+// "Visa •••• 4081 · Zenith Bank", "Bank transfer · GTBank", …: how the customer paid, for receipts.
+function methodLabel(d) {
+  const names = { card: 'Card', bank: 'Bank account', bank_transfer: 'Bank transfer', ussd: 'USSD', qr: 'QR', mobile_money: 'Mobile money', apple_pay: 'Apple Pay' }
+  const head = d.channel === 'card' && d.last4 ? `${(d.card_type || 'Card').replace(/^\w/, (c) => c.toUpperCase())} •••• ${d.last4}` : names[d.channel] || d.channel || 'Paystack'
+  return d.bank ? `${head} · ${d.bank}` : head
+}
+async function sendReceipt(userId, feature, months, tx, details) {
+  setTimeout(async () => { // let the grant commit first so the receipt shows the new end date
+    try {
+      const [[u]] = await pool.query('SELECT email, username, display_name FROM users WHERE id = ?', [userId])
+      const [[f]] = await pool.query('SELECT expires_at FROM user_features WHERE user_id = ? AND feature = ?', [userId, feature.key])
+      send(u.email, Email.receipt({
+        name: u.display_name || u.username, feature: feature.name, months, amount: tx.amount / 100,
+        until: f?.expires_at, reference: tx.reference, method: methodLabel(details), date: tx.paid_at || new Date(),
+      }), { tag: 'receipt' })
+    } catch (e) { console.error('receipt:', e.message) }
+  }, 1500)
+}
+
 // Records a verified Paystack transaction once (reference is unique) and unlocks the feature it paid for
 // for the months bought, stacked on any time left. Returns the feature key, or null if it doesn't check out.
 async function applyPayment(tx) {
@@ -98,10 +118,11 @@ async function applyPayment(tx) {
     first = ins.affectedRows > 0 && status === 'success'
   }
   if (!paid) return null
+  if (first) sendReceipt(userId, feature, months, tx, details) // after the grant below has been written
   if (first) { // first time this payment succeeded: grant/extend once
     await pool.query(`INSERT INTO user_features (user_id, feature, payment_reference, expires_at)
         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MONTH))
-      ON DUPLICATE KEY UPDATE payment_reference = VALUES(payment_reference),
+      ON DUPLICATE KEY UPDATE payment_reference = VALUES(payment_reference), reminded_at = NULL, expired_notice_at = NULL,
         expires_at = IF(expires_at IS NULL, NULL, DATE_ADD(GREATEST(expires_at, NOW()), INTERVAL ? MONTH))`,
     [userId, feature.key, tx.reference, months, months])
   }
@@ -246,11 +267,7 @@ const appUrl = (req) => process.env.APP_URL || `${req.protocol}://${req.get('hos
 
 async function sendVerification(req, user) {
   const raw = await issueToken(user.id, 'verify', 60 * 24)
-  await sendMail({ to: user.email, subject: 'Confirm your email', ...actionEmail({
-    heading: `Confirm your email, ${user.username}`,
-    body: 'Tap the button to confirm this is your email address. The link works for 24 hours.',
-    button: 'Confirm email', url: `${appUrl(req)}/verify?token=${raw}`,
-  }) })
+  await send(user.email, Email.verifyEmail({ username: user.username, url: `${appUrl(req)}/verify?token=${raw}` }), { tag: 'verify' })
 }
 
 // ---- in-house analytics ----
@@ -375,7 +392,11 @@ app.post('/api/verify-email/send', auth, authLimiter, async (req, res) => {
 app.post('/api/verify-email', authLimiter, async (req, res) => {
   const userId = await consumeToken(req.body?.token, 'verify')
   if (!userId) return res.status(400).json({ error: 'This link is invalid or has expired. Request a new one from your dashboard.' })
-  await pool.query('UPDATE users SET email_verified = 1 WHERE id = ?', [userId])
+  const [upd] = await pool.query('UPDATE users SET email_verified = 1 WHERE id = ? AND email_verified = 0', [userId])
+  if (upd.affectedRows) { // first confirmation only: send the welcome email
+    const [[u]] = await pool.query('SELECT email, username, display_name FROM users WHERE id = ?', [userId])
+    send(u.email, Email.welcome({ name: u.display_name || u.username, username: u.username }), { tag: 'welcome' })
+  }
   res.json({ ok: true })
 })
 
@@ -384,11 +405,7 @@ app.post('/api/password/forgot', authLimiter, async (req, res) => {
   const [[user]] = await pool.query('SELECT id, username, email FROM users WHERE email = ?', [email])
   if (user) {
     const raw = await issueToken(user.id, 'reset', 60)
-    await sendMail({ to: user.email, subject: 'Reset your password', ...actionEmail({
-      heading: 'Reset your password',
-      body: `Someone asked to reset the password for ${user.username}. The link works for 1 hour.`,
-      button: 'Choose a new password', url: `${appUrl(req)}/reset-password?token=${raw}`,
-    }) })
+    await send(user.email, Email.resetPassword({ username: user.username, url: `${appUrl(req)}/reset-password?token=${raw}` }), { tag: 'reset' })
   }
   res.json({ ok: true }) // same answer either way, so this can't be used to find out who has an account
 })
@@ -401,7 +418,8 @@ app.post('/api/password/reset', authLimiter, async (req, res) => {
   // Resetting proves control of the inbox, so it also verifies the email; bumping token_version signs out old sessions.
   await pool.query('UPDATE users SET password_hash = ?, email_verified = 1, token_version = token_version + 1 WHERE id = ?',
     [await bcrypt.hash(password, 10), userId])
-  const [[user]] = await pool.query('SELECT id, token_version FROM users WHERE id = ?', [userId])
+  const [[user]] = await pool.query('SELECT id, token_version, email, username FROM users WHERE id = ?', [userId])
+  send(user.email, Email.passwordChanged({ username: user.username }), { tag: 'password-changed' })
   startSession(res, user)
   res.json({ ok: true })
 })
@@ -685,6 +703,10 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Message must be between 10 and 5000 characters' })
   await pool.query('INSERT INTO contact_messages (name, email, message) VALUES (?, ?, ?)', [
     name.trim(), email.trim(), message.trim()])
+  const msg = { name: name.trim(), email: email.trim(), message: message.trim() }
+  // To support (reply goes straight to the sender) and a short "we got it" to the sender.
+  send(process.env.SUPPORT_EMAIL || process.env.OWNER_EMAIL, Email.contactNotify(msg), { tag: 'contact', replyTo: msg.email })
+  send(msg.email, Email.contactReceived(msg), { tag: 'contact-auto-reply' })
   res.json({ ok: true })
 })
 

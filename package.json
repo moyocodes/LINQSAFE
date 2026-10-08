@@ -16,7 +16,9 @@
     "package:dev": "sh scripts/package.sh dev",
     "check": "node server/scripts/check.js",
     "package:admin": "sh scripts/package.sh admin",
-    "deps": "npm install --omit=dev --no-audit --no-fund"
+    "deps": "npm install --omit=dev --no-audit --no-fund",
+    "reminders": "node server/scripts/reminders.js",
+    "emails:preview": "node server/scripts/email-preview.js"
   },
   "dependencies": {
     "@paystack/inline-js": "^2.26.0",
