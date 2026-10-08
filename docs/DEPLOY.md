@@ -327,7 +327,7 @@ Your `.env` is never in the zip, so extracting over the folder keeps your settin
 3. Test keys go in dev's `.env`, live keys in prod's `.env`. Never mix a `pk_live` with an `sk_test`.
 4. On dev, do one full test payment:
    - set a price in the founder console → *Pricing*;
-   - dashboard → *Features* → **Unlock**;
+   - dashboard → *Features* → **Unlock** (Paystack's checkout opens as a popup on the page; if the browser blocks it, it falls back to Paystack's full page);
    - pay with test card `4084 0840 8408 4081`, any future expiry, CVV `408`, PIN `0000`, OTP `123456`;
    - check: the feature is ticked, the payment shows on the founder console with "Visa •••• 4081", and Paystack shows the webhook as delivered.
 5. Then set live prices on prod.
@@ -374,6 +374,8 @@ Code and database changes are additive (migrations only add columns or tables), 
 | Founder console says "Not found" | `ADMIN_HOST` is set | open it on the admin subdomain |
 | Founder console says "Owner only" | owner email not verified | confirm the email, or `npm run owner` |
 | "Payments are not set up yet" | no `PAYSTACK_SECRET_KEY` | add it to `.env`, restart |
+| "Paystack: Invalid key" | wrong or mistyped `PAYSTACK_SECRET_KEY` | copy it again from Paystack → Settings → API Keys; restart |
+| "Paystack: …" any other message | Paystack refused the checkout (e.g. live mode not activated yet) | the message says why; check the Paystack dashboard |
 | Features say "Coming soon" | no price set | founder console → *Pricing* |
 | Feature not unlocked after paying | webhook not set | check the webhook URL for that mode in Paystack; the return page also unlocks it |
 | Country shows "Unknown" | visitor's time zone unavailable | expected for some visitors; there's no host location header on cPanel |

@@ -19,6 +19,7 @@
     "deps": "npm install --omit=dev --no-audit --no-fund"
   },
   "dependencies": {
+    "@paystack/inline-js": "^2.26.0",
     "@radix-ui/react-label": "^2.1.16",
     "@radix-ui/react-slot": "^1.4.0",
     "bcryptjs": "^2.4.3",

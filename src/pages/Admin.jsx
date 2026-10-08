@@ -377,7 +377,7 @@ export default function Admin() {
           <FeatureCard id="qr" unlocked={false} icon={QrCode} title="QR code" description="A printable code that opens your page, for flyers, packaging and story posts." />
         )}
 
-        <FeatureChecklist me={me} />
+        <FeatureChecklist me={me} onUnlocked={loadMe} />
 
         <Card id="profile" className="scroll-mt-24">
           <CardHeader>

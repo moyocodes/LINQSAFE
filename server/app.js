@@ -32,7 +32,9 @@ app.use(
         'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         'font-src': ["'self'", 'https://fonts.gstatic.com'],
         'img-src': ["'self'", 'data:', 'blob:', 'https:'], // https: so profile image links load
-        'connect-src': ["'self'"],
+        'connect-src': ["'self'", 'https://api.paystack.co'],
+        // Paystack's inline checkout runs in an iframe from checkout.paystack.com.
+        'frame-src': ['https://checkout.paystack.com', 'https://standard.paystack.co'],
         'frame-ancestors': ["'none'"],
       },
     },
@@ -471,13 +473,22 @@ app.post('/api/billing/checkout', auth, async (req, res) => {
   await pool.query(
     "INSERT INTO payments (user_id, reference, amount_kobo, currency, status, feature, months, customer_email) VALUES (?, ?, ?, 'NGN', 'initialized', ?, ?, ?)",
     [user.id, reference, price * 100, feature.key, months, user.email])
-  const tx = await paystack('/transaction/initialize', { method: 'POST', body: JSON.stringify({
+  let tx
+  try {
+    tx = await paystack('/transaction/initialize', { method: 'POST', body: JSON.stringify({
     reference, email: user.email, amount: price * 100, currency: 'NGN',
     callback_url: `${appUrl(req)}/billing/callback`,
     metadata: { user_id: user.id, username: user.username, feature: feature.key, months, price,
       custom_fields: [{ display_name: 'Feature', variable_name: 'feature', value: `${feature.name} · ${months} month${months > 1 ? 's' : ''}` }] },
   }) })
-  res.json({ url: tx.authorization_url })
+  } catch (e) {
+    // Paystack refused (wrong/mismatched key, live mode not activated, …): say why instead of "Server error".
+    console.error('Paystack initialize failed:', e.message)
+    await pool.query("UPDATE payments SET status = 'failed', gateway_response = ? WHERE reference = ?", [String(e.message).slice(0, 120), reference])
+    return res.status(502).json({ error: `Paystack: ${e.message}` })
+  }
+  // accessCode lets the browser open Paystack's inline popup; url is the full-page fallback.
+  res.json({ url: tx.authorization_url, accessCode: tx.access_code, reference })
 })
 
 app.get('/api/billing/history', auth, async (req, res) => {

@@ -47,7 +47,20 @@ export function FeatureCard({ id, unlocked, title, description, icon: Icon, chil
 
 // Checklist of every paid feature: unlocked ones are ticked with their expiry; locked ones are struck
 // through with a price and an Unlock button that starts Paystack checkout for the chosen period.
-export function FeatureChecklist({ me }) {
+// Opens Paystack's inline popup for a checkout our server already created (so price and verification
+// stay server-side). Resolves with the reference on success, null if the buyer closes it.
+async function payInline(accessCode) {
+  const { default: PaystackPop } = await import('@paystack/inline-js')
+  return new Promise((resolve, reject) => {
+    new PaystackPop().resumeTransaction(accessCode, {
+      onSuccess: (t) => resolve(t.reference),
+      onCancel: () => resolve(null),
+      onError: (e) => reject(new Error(e?.message || 'Paystack could not open')),
+    })
+  })
+}
+
+export function FeatureChecklist({ me, onUnlocked }) {
   const [cfg, setCfg] = useState(null)
   const [months, setMonths] = useState(1)
   const [busy, setBusy] = useState('')
@@ -56,14 +69,31 @@ export function FeatureChecklist({ me }) {
   useEffect(() => { api('/billing/config').then(setCfg).catch(() => setCfg({ enabled: false, features: [], durations: [1, 3, 6, 12] })) }, [])
   useEffect(() => { api('/billing/history').then(setHistory).catch(() => {}) }, [])
 
+  const [done, setDone] = useState('')
   async function unlock(feature) {
     setBusy(feature)
     setError('')
+    setDone('')
+    let checkout
     try {
-      const { url } = await api('/billing/checkout', { method: 'POST', body: { feature, months } })
-      window.location.assign(url)
+      checkout = await api('/billing/checkout', { method: 'POST', body: { feature, months } })
     } catch (e) {
       setError(e.message)
+      setBusy('')
+      return
+    }
+    try {
+      const reference = await payInline(checkout.accessCode)
+      if (!reference) { setBusy(''); return } // closed the popup
+      const r = await api('/billing/verify', { method: 'POST', body: { reference } })
+      setDone(`${r.name} unlocked${r.until ? ` until ${new Date(r.until).toLocaleDateString()}` : ''}.`)
+      onUnlocked?.()
+      api('/billing/history').then(setHistory).catch(() => {})
+    } catch (e) {
+      // Popup couldn't open (blocked script, old browser): fall back to Paystack's full page.
+      if (/could not open|load|network/i.test(e.message) && checkout.url) return window.location.assign(checkout.url)
+      setError(`${e.message}. If you were charged, the feature switches on automatically within a few minutes.`)
+    } finally {
       setBusy('')
     }
   }
@@ -123,6 +153,7 @@ export function FeatureChecklist({ me }) {
             })}
           </ul>
           {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
+          {done && <motion.p role="status" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 text-sm font-medium text-emerald-800"><CircleCheck className="size-4" aria-hidden="true" />{done}</motion.p>}
           <p className="text-xs text-muted-foreground">Secure payment by Paystack: card, bank transfer or USSD. Buying more time adds to what's left.</p>
           {history.length > 0 && (
             <details className="group rounded-md border border-foreground/10 px-4 py-3">
