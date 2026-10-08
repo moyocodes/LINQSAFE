@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowUp, Home, LayoutDashboard, LogIn, Mail, Menu, Rocket, ShieldCheck, FileText, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Logo from '@/components/Logo'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import AppearanceToggle from '@/components/AppearanceToggle'
 import { isSignedIn } from '@/api'
 import { SITE } from '@/config'
@@ -189,7 +190,7 @@ export default function Layout() {
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
         className="flex-1 outline-none"
       >
-        <Outlet />
+        <ErrorBoundary resetKey={pathname}><Outlet /></ErrorBoundary>
       </motion.main>
       <Footer />
     </div>

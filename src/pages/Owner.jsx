@@ -42,8 +42,9 @@ function PricingEditor() {
   const [limits, setLimits] = useState({ links: '', clicks: '' })
   const [state, setState] = useState('idle')
   const [error, setError] = useState('')
+  // Merge over what we had, so a reply missing a field (e.g. durations) can't blank the table.
   const load = (c) => {
-    setCfg(c)
+    setCfg((prev) => ({ durations: [1, 3, 6, 12], ...prev, ...c }))
     setPrices(Object.fromEntries(c.features.map((f) => [f.key, f.monthly || ''])))
     setDiscounts({ ...c.discounts })
     setLimits({ links: c.limits?.links ?? 3, clicks: c.limits?.clicks ?? 0 })

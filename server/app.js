@@ -737,6 +737,28 @@ app.put('/api/links-order', auth, async (req, res) => {
 })
 
 // ---- Public ----
+// Uploaded pictures are stored as data: URLs. Public pages get a short cacheable address for each one instead
+// (with a version from the picture's contents), so the page data stays tiny and browsers keep the image.
+const DATA_IMG = /^data:(image\/(?:webp|jpeg|png));base64,(.+)$/
+const imgVersion = (dataUrl) => crypto.createHash('sha1').update(dataUrl).digest('hex').slice(0, 12)
+const imgUrl = (dataUrl, path) => (dataUrl && DATA_IMG.test(dataUrl) ? `/api/img/${path}?v=${imgVersion(dataUrl)}` : dataUrl)
+function sendDataImage(res, dataUrl, versioned) {
+  const m = dataUrl?.match(DATA_IMG)
+  if (!m) return res.status(404).end()
+  res.type(m[1]).set('Cache-Control', versioned ? 'public, max-age=31536000, immutable' : 'public, max-age=3600').send(Buffer.from(m[2], 'base64'))
+}
+app.get('/api/img/u/:username/:kind', async (req, res) => {
+  const col = { avatar: 'avatar_url', cover: 'cover_url' }[req.params.kind]
+  if (!col) return res.status(404).end()
+  const [[u]] = await pool.query(`SELECT ${col} AS img FROM users WHERE username = ? AND email_verified = 1 AND deleted_at IS NULL`, [String(req.params.username).toLowerCase()])
+  sendDataImage(res, u?.img, !!req.query.v)
+})
+app.get('/api/img/link/:id', async (req, res) => {
+  const [[l]] = await pool.query(`SELECT l.icon_url AS img FROM links l JOIN users u ON u.id = l.user_id
+    WHERE l.id = ? AND l.deleted_at IS NULL AND l.is_public = 1 AND u.email_verified = 1 AND u.deleted_at IS NULL`, [Number(req.params.id) || 0])
+  sendDataImage(res, l?.img, !!req.query.v)
+})
+
 app.get('/api/u/:username', async (req, res) => {
   const [[user]] = await pool.query(
     `SELECT id, username, email_verified, redirect_link_id, display_name, bio, layout, avatar_url, cover_url, theme, tags, ${PLAN_SQL}, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur FROM users WHERE username = ? AND deleted_at IS NULL`,
@@ -765,7 +787,11 @@ app.get('/api/u/:username', async (req, res) => {
   // Redirect mode: the page sends visitors straight to one of its links.
   const redirect = links.find((l) => l.id === user.redirect_link_id)
   const { id: _id, redirect_link_id: _r, ...pub } = user // internal ids never leave the server; links keep theirs for click counting
-  res.json({ ...pub, testimonials: parseList(user.testimonials), links, redirect: redirect ? { id: redirect.id, url: redirect.url } : null, own })
+  res.json({
+    ...pub, avatar_url: imgUrl(pub.avatar_url, `u/${user.username}/avatar`), cover_url: imgUrl(pub.cover_url, `u/${user.username}/cover`),
+    testimonials: parseList(user.testimonials), links: links.map((l) => ({ ...l, icon_url: imgUrl(l.icon_url, `link/${l.id}`) })),
+    redirect: redirect ? { id: redirect.id, url: redirect.url } : null, own,
+  })
 })
 
 // Link clicks counted this calendar month (the free plan's allowance is per month).
@@ -1217,7 +1243,7 @@ app.put('/api/owner/pricing', auth, ownerOnly, async (req, res) => {
   for (const [name, value] of rows)
     await pool.query('INSERT INTO app_settings (name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)', [name, value])
   const p = await currentPricing()
-  res.json({ ok: true, discounts: p.discounts, limits: p.limits, features: p.catalog() })
+  res.json({ ok: true, durations: DURATIONS, discounts: p.discounts, limits: p.limits, features: p.catalog() })
 })
 
 // ---- SEO: robots.txt, sitemap.xml, profile pictures for link previews ----

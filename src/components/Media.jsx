@@ -18,8 +18,16 @@ export function Photo({ src, alt = '', className = '', fallback = 'bg-[linear-gr
 
 // Slow looping background video, fixed behind the page, washed out so text stays readable.
 // Reduced motion shows the still poster instead.
+// Phones, data-saver and slow connections get the still poster instead of the video (saves ~0.5 MB a visit).
+const lightweight = () => {
+  try {
+    const c = navigator.connection
+    return !!(c?.saveData || /(^|-)2g$/.test(c?.effectiveType || '') || window.matchMedia('(max-width: 767px)').matches)
+  } catch { return false }
+}
+
 export function AmbientVideo({ src, poster, className = '' }) {
-  const reduce = useReducedMotion()
+  const reduce = useReducedMotion() || lightweight()
   const [failed, setFailed] = useState(false)
   return (
     <div aria-hidden="true" className={`pointer-events-none fixed inset-0 -z-10 overflow-hidden ${className}`}>

@@ -235,7 +235,14 @@ test('redirect mode and link logos', async () => {
   const icon = 'data:image/png;base64,iVBORw0KGgo='
   assert.equal((await api('PUT', `/links/${link.id}`, { title: 'Shop', url: 'https://example.com/shop', icon_url: 'javascript:alert(1)' })).status, 400)
   assert.equal((await api('PUT', `/links/${link.id}`, { title: 'Shop', url: 'https://example.com/shop', icon_url: icon })).status, 200)
-  assert.equal((await client()('GET', `/u/${username}`)).body.links[0].icon_url, icon)
+  // Public pages get a short cacheable address for the picture, not the picture itself.
+  const pubIcon = (await client()('GET', `/u/${username}`)).body.links[0].icon_url
+  assert.match(pubIcon, /^\/api\/img\/link\/\d+\?v=[0-9a-f]+$/)
+  const img = await fetch(BASE.replace(/\/api$/, '') + pubIcon)
+  assert.equal(img.status, 200)
+  assert.equal(img.headers.get('content-type'), 'image/png')
+  assert.match(img.headers.get('cache-control'), /immutable/)
+  assert.equal((await api('GET', '/me')).body.links[0].icon_url, icon, 'the dashboard still gets the picture itself')
 })
 
 test('hidden links, click allowance, and founder-only gifting', async () => {
