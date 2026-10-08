@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { useTitle } from '@/lib/useTitle'
 import { SITE } from '@/config'
+import { Photo } from '@/components/Media'
 
 export default function Contact() {
   useTitle('Contact')
@@ -33,7 +34,21 @@ export default function Contact() {
   }
 
   return (
-    <div className="container max-w-2xl py-16">
+    <div className="container grid max-w-6xl items-start gap-10 py-16 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} className="lg:sticky lg:top-24">
+        <Photo src="/media/contact.jpg" alt="" className="aspect-[4/5] rounded-[1.75rem] shadow-[0_40px_80px_-40px_hsl(20_35%_18%/.5)] max-lg:aspect-[16/10]">
+          <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-6 text-paper">
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-paper/70">We read every message</p>
+            <p className="mt-2 font-display text-2xl font-semibold leading-tight">A real person replies, usually within a day.</p>
+          </div>
+          <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5, type: 'spring' }}
+            className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-paper/90 px-3 py-1.5 text-xs font-semibold text-ink shadow-lg backdrop-blur">
+            <span className="size-2 animate-pulse rounded-full bg-emerald-500" /> Support is online
+          </motion.span>
+        </Photo>
+      </motion.div>
+      <div>
       <h1 className="text-4xl font-bold tracking-tight">Contact us</h1>
       <p className="mt-3 text-muted-foreground">Questions, feedback or a problem with your page? Send a message and we will get back to you.</p>
       <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
@@ -76,6 +91,7 @@ export default function Contact() {
           </AnimatePresence>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

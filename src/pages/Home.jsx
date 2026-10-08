@@ -69,7 +69,7 @@ export default function Home() {
         style={{ scaleX: progress }}
         className="fixed inset-x-0 top-0 z-50 h-0.5 origin-left bg-saffron"
       />
-      <section className="bg-hero relative overflow-hidden">
+      <section className="bg-hero relative -mt-16 overflow-hidden pt-16">
         <MotionBackdrop fixed={false} />
         <div className="container relative grid items-center gap-12 py-16 md:grid-cols-2 md:py-24">
           <motion.div variants={stagger()} initial="hidden" animate="show">

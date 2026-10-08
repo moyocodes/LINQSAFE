@@ -36,7 +36,7 @@ export default function Auth({ mode }) {
   }
 
   return (
-    <div className="bg-hero">
+    <div className="bg-hero -mt-16 pt-16">
       <div className="container grid min-h-[calc(100vh-8rem)] place-items-center py-8">
         <motion.div initial={{ opacity: 0, y: 24, rotate: -0.6 }} animate={{ opacity: 1, y: 0, rotate: 0 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }} className="relative grid w-full max-w-4xl overflow-hidden rounded-md lg:grid-cols-[1fr_1.05fr]">

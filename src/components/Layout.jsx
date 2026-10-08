@@ -17,6 +17,14 @@ function Navbar() {
   const [open, setOpen] = useState(false)
   const loggedIn = isSignedIn()
   const { pathname } = useLocation()
+  // Transparent at the top so the page's colours run behind it; a floating frosted pill once you scroll.
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 12)
+    on()
+    window.addEventListener('scroll', on, { passive: true })
+    return () => window.removeEventListener('scroll', on)
+  }, [])
 
   useEffect(() => setOpen(false), [pathname])
   useEffect(() => {
@@ -29,8 +37,13 @@ function Navbar() {
     `inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-foreground ${isActive ? 'text-foreground' : 'text-muted-foreground'}`
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
-      <div className="container flex h-16 items-center justify-between">
+    <header className="sticky top-0 z-40 h-16">
+      <motion.div
+        animate={scrolled || open
+          ? { marginTop: 8, borderRadius: 999, backgroundColor: 'hsl(var(--background) / 0.72)', boxShadow: '0 10px 30px -12px hsl(20 35% 18% / 0.25), inset 0 0 0 1px hsl(var(--foreground) / 0.08)' }
+          : { marginTop: 0, borderRadius: 0, backgroundColor: 'hsl(var(--background) / 0)', boxShadow: '0 0 0 0 hsl(20 35% 18% / 0), inset 0 0 0 0 hsl(var(--foreground) / 0)' }}
+        transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+        className={`container flex items-center justify-between backdrop-blur-md transition-[height,max-width,padding] duration-300 ${scrolled || open ? 'h-14 max-w-[1100px] px-3 sm:px-4' : 'h-16'}`}>
         <Logo />
         <nav aria-label="Main" className="hidden items-center gap-6 md:flex">
           <AppearanceToggle />
@@ -52,13 +65,13 @@ function Navbar() {
           {open ? <X /> : <Menu />}
         </Button>
         </div>
-      </div>
+      </motion.div>
       <AnimatePresence>
         {open && (
           <motion.nav
             id="mobile-nav" aria-label="Mobile"
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-t md:hidden" onClick={() => setOpen(false)}
+            className="mx-3 mt-2 overflow-hidden rounded-2xl bg-background/90 shadow-lg ring-1 ring-foreground/10 backdrop-blur-md md:hidden" onClick={() => setOpen(false)}
           >
             <div className="container flex flex-col gap-3 py-4">
               {nav.map((n) => (

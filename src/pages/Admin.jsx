@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, IconChip } f
 import { useTitle } from '@/lib/useTitle'
 import AvatarPicker from '@/components/AvatarPicker'
 import QrCard from '@/components/QrCard'
+import { AmbientVideo } from '@/components/Media'
 import Onboarding from '@/components/Onboarding'
 import { AccountFields, BillingProvider, StickySave, FeatureCard, FounderNoteEditor, PaymentHistory, SocialSuggestions, TemplatePicker, TestimonialsEditor, UnlockChip } from '@/components/ProFeatures'
 import { FREE_LINK_LIMIT, TEMPLATES, has } from '@/lib/plans'
@@ -333,7 +334,8 @@ export default function Admin() {
 
   return (
     <BillingProvider me={me} onUnlocked={loadMe}>
-    <div className="container grid gap-8 py-10 pb-40 lg:grid-cols-[1fr_300px]">
+    <AmbientVideo src="/media/dashboard-loop.mp4" poster="/media/dashboard-poster.jpg" />
+    <div className="container relative grid gap-8 py-10 pb-40 lg:grid-cols-[1fr_300px]">
       <p role="status" aria-live="polite" className="sr-only">{announce}</p>
       {!me.onboarded_at && <Onboarding me={me} onDone={() => loadMe()} />}
       <div className="space-y-6">

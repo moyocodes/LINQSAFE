@@ -17,7 +17,7 @@ export default function Pricing() {
   useEffect(() => { api('/billing/config').then(setCfg).catch(() => setCfg({ enabled: false, features: [], durations: [1, 3, 6, 12] })) }, [])
 
   return (
-    <section className="bg-hero">
+    <section className="bg-hero -mt-16 pt-16">
       <div className="container py-16 md:py-24">
         <motion.div variants={stagger()} initial="hidden" animate="show" className="mx-auto max-w-xl text-center">
           <motion.h1 variants={fadeUp} className="text-4xl font-extrabold tracking-tight sm:text-5xl">Pay only for what you use</motion.h1>
