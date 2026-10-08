@@ -147,7 +147,7 @@ Full step-by-step instructions: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
 - Each stage has its own database and settings; the server reads `.env.local` first, then `.env` (`server/env.js`). Only your computer has `.env.local`.
 - Work on `dev` → deploy to dev.linqsafe.com → `git merge dev` into `prod` → deploy to linqsafe.com.
-- Deploy packages: `npm run package:dev` → `linqsafe-dev.zip`, `npm run package` → `linqsafe-prod.zip`. Each runs as a cPanel *Node.js App* with startup file `app.cjs`, next to cPanel's MySQL (`DB_HOST=localhost`).
+- Deploy packages: `npm run package:dev` → `linqsafe-dev.zip`, `npm run package` → `linqsafe-prod.zip`. Each runs as a cPanel *Node.js App* (**Node.js 20+**, startup file `app.cjs`) next to cPanel's MySQL (`DB_HOST=localhost`, user added to the database with all privileges). `npm run check` (cPanel → Run JS script → `check`) diagnoses settings and the database login.
 - A LOCAL / DEV badge shows outside prod.
 - Vercel (`api/index.js`, `vercel.json`) and Docker remain supported, but aren't used: Namecheap's MySQL only accepts connections from its own server.
 
@@ -219,6 +219,8 @@ Use these with an AI video or image tool (Meta AI, Runway, Sora, Midjourney). Ea
 ---
 
 ## 10. Status and next steps
+
+**Live:** https://linqsafe.com (prod) on Namecheap cPanel, Node.js 22 + cPanel MySQL, deployed 8 Oct 2026. Next: dev.linqsafe.com and admin.linqsafe.com apps, a full live Paystack payment, Resend email.
 
 **Done and tested end to end:** sign-up, log-in by email, httpOnly sessions, log-out, links with type detection, plan limits, analytics (views, unique visitors, clicks, country, device, referrer; owner visits, refreshes and bots excluded), migrations on an existing database.
 

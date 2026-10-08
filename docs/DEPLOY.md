@@ -1,5 +1,7 @@
 # Deploying linqsafe
 
+**Status (8 Oct 2026):** prod is live at https://linqsafe.com on Namecheap cPanel (Node.js 22, cPanel MySQL). dev.linqsafe.com and admin.linqsafe.com are set up as domains; their apps are next.
+
 The single, step-by-step reference for running linqsafe on your computer (**local**), on the test site (**dev**) and on the live site (**prod**).
 
 - [1. The three stages](#1-the-three-stages)
@@ -162,7 +164,8 @@ Untick *Share document root*. The folder cPanel suggests doesn't matter: the Nod
 cPanel → **MySQL Databases**:
 1. *Create New Database*: `linqsafe_dev` / `linqsafe` → becomes `linqqkto_linqsafe_dev` / `linqqkto_linqsafe`.
 2. *Add New User*: e.g. `lqdev` / `lqprod`, with a generated password (save it in your password manager).
-3. *Add User To Database*: pick the user and database → **All Privileges** → *Make Changes*.
+3. *Add User To Database*: pick the user and database → **Add** → tick **ALL PRIVILEGES** → *Make Changes*.
+   **Don't skip this.** Without it the login works but the database refuses the user (`ER_DBACCESS_DENIED_ERROR`).
 
 Use a **different user and password** for dev and prod.
 
@@ -189,7 +192,8 @@ In the app folder: **+ File** → name it `.env` → right-click → **Edit**. (
 ```env
 NODE_ENV=production
 
-# Database from step 4.3
+# Database from step 4.3. DB_HOST must be localhost: cPanel MySQL users can only log in from
+# localhost, so the server's IP (e.g. 162.213.255.27) gives ER_ACCESS_DENIED_ERROR.
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=linqqkto_lqdev              # prod: linqqkto_lqprod
@@ -220,7 +224,7 @@ cPanel → **Setup Node.js App** → **Create Application**:
 
 | Field | dev | prod | prod founder console |
 |---|---|---|---|
-| Node.js version | newest offered (20+) | same | same |
+| Node.js version | **newest offered, 20 or higher** (linqsafe.com runs on 22) | same | same |
 | Application mode | Production | Production | Production |
 | Application root | `linqsafe-dev` | `linqsafe` | `linqsafe-admin` |
 | Application URL | `dev.linqsafe.com` | `linqsafe.com` | `admin.linqsafe.com` |
@@ -228,21 +232,63 @@ cPanel → **Setup Node.js App** → **Create Application**:
 
 Click **Create**. On the app's page click **Run NPM Install** (wait for it to finish), then **Restart**.
 
+> **Check the Node.js version.** cPanel may default to **Node.js 10**, which can't run linqsafe at all: `stderr.log` then fills with `Error: Not supported … app.cjs:4`. Change the version, **Save**, **Run NPM Install** again (changing the version resets the packages), **Restart**.
+
+> **Run JS script** is only for `check` (below). `dev`, `build`, `package`, `test`, `start`, `server`, `preview` are commands for your computer; on the server they fail (`exit code 127`) or start a second copy that cPanel can't stop.
+
 ### 4.8 Check it works
+
+**Self-check (no Terminal needed):** *Setup Node.js App* → the app → **Run JS script** → scroll to the bottom → **`check`** → **Run**. It prints the settings it found (never the password, only its length) and whether the database login works. A healthy result:
+
+```
+Node.js v22.23.3  ·  NODE_ENV=production
+OK   .env file in /home/linqqkto/linqsafe
+OK   built website (dist/index.html)
+OK   JWT_SECRET set (16+ characters)
+     DB_HOST=localhost  DB_PORT=3306  DB_USER=linqqkto_…  DB_NAME=linqqkto_…  DB_PASSWORD=(n characters)
+OK   database login works (MySQL …, n tables)
+```
+
+Every `FAIL` line is followed by the fix. If `check` isn't in the list, the server has old files: upload the newest zip and refresh the page.
+
+**Then in the browser:**
 
 1. `https://dev.linqsafe.com/api/health` (prod: `https://linqsafe.com/api/health`) shows `{"ok":true}`.
 2. The home page loads, with a **DEV** badge on dev and none on prod.
 3. Sign up with `OWNER_EMAIL`, then confirm your email from the email you receive (or ask your terminal: see *Owner access* below).
 4. Open the founder console: `admin-dev.linqsafe.com` / `admin.linqsafe.com` (or `/owner` if you didn't set `ADMIN_HOST`).
 
-**Owner access without email:** at the top of the app's page in *Setup Node.js App* there's a command starting `source /home/linqqkto/nodevenv/...`. Copy it, open cPanel → **Terminal**, paste it, then run:
-```bash
-npm run owner
-```
+**Owner access without email:** *Setup Node.js App* → the app → **Run JS script** → **`owner`** → **Run**. It verifies `OWNER_EMAIL` and unlocks every feature. (If your plan has cPanel → **Terminal**, you can also paste the `source /home/linqqkto/nodevenv/…` command shown at the top of the app page, then run `npm run owner`.)
 
 ### 4.9 HTTPS
 
 cPanel → **SSL/TLS Status** → make sure `linqsafe.com`, `www`, `dev` and `admin` are ticked → **Run AutoSSL**. Certificates usually appear within a few hours. Login cookies need HTTPS on dev and prod.
+
+### 4.10 What goes in `public_html`
+
+Nothing of linqsafe. The Node app serves the whole site from its own folder (`/home/linqqkto/linqsafe`).
+
+- **Keep** `public_html/.htaccess`: cPanel adds a block marked `CLOUDLINUX PASSENGER CONFIGURATION … DO NOT REMOVE` that sends visitors to the Node app. Never edit or delete it.
+- **Keep** `.well-known/` (SSL validation) and `cgi-bin/` if present.
+- **Delete** any `index.html`, `index.php`, `assets/`, `favicon.svg`, `robots.txt` or old site files: files in `public_html` can be served instead of the app.
+
+The same applies to the `admin.linqsafe.com` and `dev.linqsafe.com` folders cPanel creates in your home directory.
+
+### 4.11 What the app folder should contain
+
+```
+/home/linqqkto/linqsafe
+├── .env               your settings (only here, never in git or the zip)
+├── app.cjs            startup file
+├── dist/              the built website
+├── server/            the API
+├── node_modules       a link cPanel creates on "Run NPM Install"
+├── package.json       should say "name": "linqsafe"
+├── package-lock.json
+└── stderr.log         errors (created by cPanel)
+```
+
+Delete the uploaded zip after extracting so an old one is never extracted by mistake.
 
 ---
 
@@ -254,7 +300,7 @@ git switch dev && git pull
 npm test                  # with npm run dev running
 npm run package:dev       # → linqsafe-dev.zip
 ```
-cPanel → File Manager → `linqsafe-dev` → Upload → Extract (overwrite: **yes**) → delete the zip → *Setup Node.js App* → **Run NPM Install** *(only if `package.json` changed)* → **Restart** → open `dev.linqsafe.com/api/health`.
+cPanel → File Manager → `linqsafe-dev` → **delete the old zip first** → Upload → Extract (overwrite: **yes**) → check the new `package.json` size/date changed → delete the zip → *Setup Node.js App* → **Run NPM Install** *(only if `package.json` changed)* → **Restart** → open `dev.linqsafe.com/api/health`.
 
 **prod** (after checking on dev)
 ```bash
@@ -310,11 +356,15 @@ Code and database changes are additive (migrations only add columns or tables), 
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `503` / "Incomplete response received from application" | the app crashed on start | open `stderr.log` in the app folder |
-| `Could not connect to MySQL … (ER_ACCESS_DENIED_ERROR)` | wrong user/password, or the user isn't added to the database | recheck `DB_*`; MySQL Databases → *Add User To Database* |
+| `503` / "Incomplete response received from application" | the app crashed on start | run **`check`** (section 4.8), or open `stderr.log` in the app folder |
+| `stderr.log`: `Error: Not supported` at `app.cjs:4` (and `tryModuleLoad`) | the app is on Node.js 10 | pick Node.js 20+ → Save → Run NPM Install → Restart |
+| `check`: `ER_DBACCESS_DENIED_ERROR` | the user isn't added to the database | MySQL Databases → Add User To Database → Add → **ALL PRIVILEGES** → Make Changes |
+| `check` not in the Run JS script list | old files on the server | delete the old zip, upload the new one, extract, refresh the page |
+| Run JS script: `concurrently: command not found` / `exit code 127` | ran a computer-only command (`dev`, `package`) | only run `check` (or `owner`) on the server |
+| `Could not connect to MySQL … (ER_ACCESS_DENIED_ERROR)` | `DB_HOST` is the server IP instead of `localhost`, or wrong password | `DB_HOST=localhost`; if still failing, MySQL Databases → Change Password and copy it exactly into `.env` (avoid `#`, quotes, spaces) |
 | `… (ECONNREFUSED / ETIMEDOUT)` | `DB_HOST` isn't `localhost` | on cPanel always use `DB_HOST=localhost` |
 | `Refusing to start: set a strong JWT_SECRET` | missing or `change-me` | set a long random `JWT_SECRET` |
-| `Cannot find module …` | packages not installed | *Setup Node.js App* → **Run NPM Install** → **Restart** |
+| `Cannot find module …`, or no `node_modules` in the folder | packages not installed (also reset by a Node.js version change) | *Setup Node.js App* → **Run NPM Install** → **Restart** |
 | Site shows the old version | not restarted, or browser cache | **Restart** the app; hard refresh (Cmd/Ctrl+Shift+R) |
 | Can't stay logged in | the site is on `http://` | finish AutoSSL (section 4.9) and use `https://` |
 | Founder console says "Not found" | `ADMIN_HOST` is set | open it on the admin subdomain |

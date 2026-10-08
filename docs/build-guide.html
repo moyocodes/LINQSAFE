@@ -637,7 +637,9 @@ docker run -p 3001:3001 --env-file .env linqsafe   # app only, hosted DB</pre
   <li>cPanel → MySQL Databases: one database and user for dev, another for prod.</li>
   <li>On your computer: <code>npm run package:dev</code> (dev branch) or <code>npm run package</code> (prod branch). This builds the site and zips only what the server needs: no settings files.</li>
   <li>File Manager: create the app folder outside <code>public_html</code>, upload and extract the zip, and create a <code>.env</code> with that stage's database, <code>JWT_SECRET</code>, <code>APP_URL</code>, Paystack keys and <code>NODE_ENV=production</code>.</li>
-  <li>Setup Node.js App → Create Application: root = the folder, URL = the (sub)domain, startup file <code>app.cjs</code> → Run NPM Install → Restart.</li>
+  <li>MySQL Databases → <b>Add User To Database</b> → ALL PRIVILEGES. In <code>.env</code> use <code>DB_HOST=localhost</code> (never the server IP).</li>
+  <li>Setup Node.js App → Create Application: <b>Node.js 20 or higher</b> (cPanel may default to 10, which fails with "Not supported"), root = the folder, URL = the (sub)domain, startup file <code>app.cjs</code> → Run NPM Install → Restart.</li>
+  <li>If it shows 503: Run JS script → <code>check</code>. It prints which setting is wrong and how to fix it.</li>
   <li>Check <code>/api/health</code>; turn on AutoSSL; set the Paystack webhook (test mode → dev, live mode → prod).</li>
 </ol>
 <p>Updating: build the zip, upload and extract over the folder (the <code>.env</code> stays), Restart. Database changes apply automatically on restart. Full details, backups and troubleshooting are in <code>docs/DEPLOY.md</code>.</p>
