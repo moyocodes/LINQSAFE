@@ -395,7 +395,7 @@ export function AccountFields({ me, setMe }) {
 
 // One-tap starters for socials the user hasn't added yet.
 const SUGGEST = [
-  ['instagram', 'https://instagram.com/'], ['tiktok', 'https://tiktok.com/@'], ['youtube', 'https://youtube.com/@'],
+  ['instagram', 'https://instagram.com/'], ['threads', 'https://threads.net/@'], ['tiktok', 'https://tiktok.com/@'], ['youtube', 'https://youtube.com/@'],
   ['x', 'https://x.com/'], ['linkedin', 'https://linkedin.com/in/'], ['whatsapp', 'https://wa.me/'],
   ['pinterest', 'https://pinterest.com/'], ['snapchat', 'https://snapchat.com/add/'], ['facebook', 'https://facebook.com/'],
 ]

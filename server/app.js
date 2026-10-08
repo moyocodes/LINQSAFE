@@ -177,10 +177,10 @@ const clickLimiter = limiter(60_000, 30, 'Too many clicks.')
 const contactLimiter = limiter(60 * 60_000, 5, 'You have sent a few messages already. Please try again later.')
 
 // Usernames that would collide with site pages or static files.
-const LINK_TYPES = ['instagram', 'tiktok', 'youtube', 'snapchat', 'pinterest', 'x', 'facebook', 'linkedin', 'github', 'whatsapp', 'music', 'store', 'website', 'other']
+const LINK_TYPES = ['instagram', 'threads', 'tiktok', 'youtube', 'snapchat', 'pinterest', 'x', 'facebook', 'linkedin', 'github', 'whatsapp', 'music', 'store', 'website', 'other']
 // A social badge must match the link's real domain, so a phishing page can't wear an "Instagram" badge.
 const SOCIAL_HOSTS = {
-  instagram: ['instagram.com'], tiktok: ['tiktok.com'], youtube: ['youtube.com', 'youtu.be'], snapchat: ['snapchat.com'],
+  instagram: ['instagram.com'], threads: ['threads.net', 'threads.com'], tiktok: ['tiktok.com'], youtube: ['youtube.com', 'youtu.be'], snapchat: ['snapchat.com'],
   pinterest: ['pinterest.com', 'pin.it'], x: ['x.com', 'twitter.com'], facebook: ['facebook.com', 'fb.com', 'fb.me'],
   linkedin: ['linkedin.com'], github: ['github.com'], whatsapp: ['wa.me', 'whatsapp.com'],
 }
@@ -383,6 +383,14 @@ app.get('/api/favicon/:host', async (req, res) => {
 })
 
 // Is a username free? Used by the "claim your link" box on the home page.
+// Username changes: the first is allowed any time, then the wait alternates 30, 90, 30, 90… days.
+const usernameWaitDays = (changes) => (changes % 2 === 1 ? 30 : 90)
+function nextUsernameChange(u) {
+  if (!u.username_changes || !u.username_changed_at) return null
+  const next = new Date(new Date(u.username_changed_at).getTime() + usernameWaitDays(u.username_changes) * 86400_000)
+  return next > new Date() ? next.toISOString() : null
+}
+
 app.get('/api/username/:name', async (req, res) => {
   const name = String(req.params.name || '')
   if (!/^[a-z0-9_]{3,32}$/i.test(name)) return res.json({ available: false, reason: '3–32 letters, numbers or _' })
@@ -510,11 +518,38 @@ app.post('/api/password/reset', authLimiter, async (req, res) => {
 // ---- Admin (authenticated) ----
 app.get('/api/me', auth, async (req, res) => {
   const [[user]] = await pool.query(
-    `SELECT username, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
+    `SELECT username, username_changes, username_changed_at, redirect_link_id, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
   const [links] = await pool.query(
-    'SELECT id, title, url, type, clicks FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [req.userId])
-  res.json({ ...user, is_owner: ownsSite(user), testimonials: parseList(user.testimonials),
+    'SELECT id, title, url, type, icon_url, clicks FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [req.userId])
+  const { username_changes: _n, username_changed_at: _at, ...me } = user
+  res.json({ ...me, is_owner: ownsSite(user), next_username_change: nextUsernameChange(user), testimonials: parseList(user.testimonials),
     features: await featureAccess(req.userId), links })
+})
+
+// Redirect mode: send visitors of your page straight to one of your links (null = show your page).
+app.put('/api/redirect', auth, async (req, res) => {
+  const id = req.body?.link_id == null ? null : Number(req.body.link_id)
+  if (id != null) {
+    const [[link]] = await pool.query('SELECT id FROM links WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [id, req.userId])
+    if (!link) return res.status(400).json({ error: 'Pick one of your links' })
+  }
+  await pool.query('UPDATE users SET redirect_link_id = ? WHERE id = ?', [id, req.userId])
+  res.json({ redirect_link_id: id })
+})
+
+app.put('/api/username', auth, async (req, res) => {
+  const name = String(req.body?.username || '').trim().toLowerCase()
+  if (!/^[a-z0-9_]{3,32}$/.test(name)) return res.status(400).json({ error: 'Usernames are 3–32 letters, numbers or _' })
+  if (RESERVED.has(name)) return res.status(400).json({ error: 'That username is reserved' })
+  const [[u]] = await pool.query('SELECT username, username_changes, username_changed_at FROM users WHERE id = ?', [req.userId])
+  if (u.username === name) return res.json({ username: name, next_change_at: nextUsernameChange(u) })
+  const wait = nextUsernameChange(u)
+  if (wait) return res.status(429).json({ error: `You can change your username again on ${wait.slice(0, 10)}.`, next_change_at: wait })
+  const [[taken]] = await pool.query('SELECT 1 AS x FROM users WHERE username = ? LIMIT 1', [name])
+  if (taken) return res.status(409).json({ error: 'That username is already taken' })
+  await pool.query('UPDATE users SET username = ?, username_changed_at = NOW(), username_changes = username_changes + 1 WHERE id = ?', [name, req.userId])
+  const changes = u.username_changes + 1
+  res.json({ username: name, next_change_at: new Date(Date.now() + usernameWaitDays(changes) * 86400_000).toISOString() })
 })
 
 app.put('/api/profile', auth, async (req, res) => {
@@ -662,12 +697,24 @@ app.post('/api/links', auth, async (req, res) => {
   res.json({ id: r.insertId, title, url, type, clicks: 0 })
 })
 
+// A link's own logo: a small uploaded picture (resized in the browser) or an https image link; '' clears it.
+const linkIconError = (v) => {
+  if (!v) return ''
+  if (/^data:image\/(webp|jpeg|png);base64,[a-z0-9+/=]+$/i.test(v)) return v.length > 60_000 ? 'That logo is too large' : ''
+  return v.length <= 500 && /^https:\/\//i.test(v) && validUrl(v) ? '' : 'The logo must be an uploaded picture or an https:// image link'
+}
+
 app.put('/api/links/:id', auth, async (req, res) => {
   const { title, url, type = 'website' } = req.body
   if (!title?.trim() || !validUrl(url))
     return res.status(400).json({ error: 'Title and a valid http(s) URL are required' })
   if (!LINK_TYPES.includes(type)) return res.status(400).json({ error: 'Unknown link type' })
   if (!typeMatchesUrl(type, url)) return res.status(400).json({ error: 'That link type does not match the URL' })
+  if ('icon_url' in req.body) {
+    const icon = String(req.body.icon_url || '')
+    if (linkIconError(icon)) return res.status(400).json({ error: linkIconError(icon) })
+    await pool.query('UPDATE links SET icon_url = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [icon || null, req.params.id, req.userId])
+  }
   await pool.query('UPDATE links SET title = ?, url = ?, type = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
     [title.trim().slice(0, 100), url, type, req.params.id, req.userId])
   res.json({ ok: true })
@@ -689,9 +736,16 @@ app.put('/api/links-order', auth, async (req, res) => {
 // ---- Public ----
 app.get('/api/u/:username', async (req, res) => {
   const [[user]] = await pool.query(
-    `SELECT id, username, display_name, bio, layout, avatar_url, cover_url, theme, tags, ${PLAN_SQL}, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur FROM users WHERE username = ?`,
+    `SELECT id, username, email_verified, redirect_link_id, display_name, bio, layout, avatar_url, cover_url, theme, tags, ${PLAN_SQL}, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur FROM users WHERE username = ? AND deleted_at IS NULL`,
     [req.params.username.toLowerCase()])
   if (!user) return res.status(404).json({ error: 'Profile not found' })
+  // A page goes public only once its owner confirms their email; until then it's a 404 for everyone
+  // (the owner gets a reason instead of a plain "not found").
+  if (!user.email_verified) {
+    const own = (await sessionUserId(req)) === user.id
+    return res.status(404).json({ error: own ? 'Your page goes live once you confirm your email. Check your inbox, or resend the link from your dashboard.' : 'Profile not found' })
+  }
+  delete user.email_verified
   // Anything not unlocked falls back to the free version instead of breaking the page.
   const unlocked = await unlockedFeatures(user.id)
   if (LAYOUT_FEATURE[user.layout] && !unlocked.includes(LAYOUT_FEATURE[user.layout])) user.layout = 'classic'
@@ -699,13 +753,16 @@ app.get('/api/u/:username', async (req, res) => {
   if (!unlocked.includes('testimonials')) user.testimonials = null
   if (user.account_type !== 'business') user.whatsapp = ''
   delete user.plan
-  // The owner looking at their own page isn't a visitor.
-  if ((await sessionUserId(req)) !== user.id && (await track(req, res, { userId: user.id, kind: 'view', ref: req.query.src === 'qr' ? 'qr' : String(req.query.ref || ''), tz: String(req.query.tz || '') })))
+  // The owner looking at their own page isn't a visitor (and isn't redirected away from it).
+  const own = (await sessionUserId(req)) === user.id
+  if (!own && (await track(req, res, { userId: user.id, kind: 'view', ref: req.query.src === 'qr' ? 'qr' : String(req.query.ref || ''), tz: String(req.query.tz || '') })))
     await pool.query('UPDATE users SET views = views + 1 WHERE id = ?', [user.id])
   const [links] = await pool.query(
-    'SELECT id, title, url, type FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [user.id])
-  const { id: _id, ...pub } = user // internal ids never leave the server; links keep theirs for click counting
-  res.json({ ...pub, testimonials: parseList(user.testimonials), links })
+    'SELECT id, title, url, type, icon_url FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [user.id])
+  // Redirect mode: the page sends visitors straight to one of its links.
+  const redirect = links.find((l) => l.id === user.redirect_link_id)
+  const { id: _id, redirect_link_id: _r, ...pub } = user // internal ids never leave the server; links keep theirs for click counting
+  res.json({ ...pub, testimonials: parseList(user.testimonials), links, redirect: redirect ? { id: redirect.id, url: redirect.url } : null, own })
 })
 
 app.post('/api/click/:id', clickLimiter, async (req, res) => {
@@ -956,6 +1013,28 @@ async function ownerOnly(req, res, next) {
   if (!(await isOwner(req.userId))) return res.status(403).json({ error: 'Owner only' })
   next()
 }
+
+// ---- Founder: every user, paginated and searchable ----
+app.get('/api/owner/users', auth, ownerOnly, async (req, res) => {
+  const per = 25
+  const page = Math.max(1, Math.floor(Number(req.query.page)) || 1)
+  const q = String(req.query.q || '').trim().slice(0, 80)
+  const sorts = { newest: 'u.created_at DESC', oldest: 'u.created_at ASC', active: 'u.last_login_at IS NULL, u.last_login_at DESC', views: 'u.views DESC' }
+  const order = sorts[req.query.sort] || sorts.newest
+  const where = ['u.deleted_at IS NULL']
+  const args = []
+  if (q) { where.push('(u.username LIKE ? OR u.email LIKE ? OR u.display_name LIKE ?)'); args.push(`%${q}%`, `%${q}%`, `%${q}%`) }
+  const W = where.join(' AND ')
+  const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM users u WHERE ${W}`, args)
+  const [users] = await pool.query(
+    `SELECT u.username, u.display_name, u.email, u.email_verified, u.account_type, u.category, u.layout, u.views,
+       u.onboarded_at IS NOT NULL AS onboarded, u.login_count,
+       DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i') AS joined, DATE_FORMAT(u.last_login_at, '%Y-%m-%d %H:%i') AS last_login,
+       (SELECT COUNT(*) FROM links l WHERE l.user_id = u.id AND l.deleted_at IS NULL) AS links,
+       (SELECT COUNT(*) FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > NOW())) AS paid_features
+     FROM users u WHERE ${W} ORDER BY ${order} LIMIT ? OFFSET ?`, [...args, per, (page - 1) * per])
+  res.json({ users: users.map((u) => ({ ...u, email_verified: !!u.email_verified, onboarded: !!u.onboarded })), total, page, pages: Math.max(1, Math.ceil(total / per)) })
+})
 
 // ---- Founder traffic: the users' analytics for the whole site, filterable ----
 const OWNER_DAYS = [7, 30, 90, 180, 365]

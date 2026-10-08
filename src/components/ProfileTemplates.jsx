@@ -240,7 +240,7 @@ export function SearchTemplate({ data, name, onLinkClick }) {
                 transition={{ delay: 0.4 + i * 0.12 + (reduce ? 0 : query.length * 0.055), type: 'spring', stiffness: 260, damping: 14 }}
                 whileHover={{ rotate: 0, scale: 1.06 }}
                 className="inline-flex items-center gap-2 rounded-2xl bg-white/95 py-2.5 pl-2.5 pr-4 text-sm font-semibold text-black shadow-xl">
-                <TypeBadge type={l.type} url={l.url} className="size-7" />
+                <TypeBadge type={l.type} url={l.url} icon={l.icon_url} className="size-7" />
                 {l.title}<NewTab />
               </motion.a>
             ))}
@@ -354,7 +354,7 @@ export function GridTemplate({ data, name, onLinkClick }) {
             <motion.a key={l.id} variants={fadeUp} {...linkProps(l, onLinkClick)} whileHover={{ y: -3, rotate: i % 2 ? 0.6 : -0.6 }} whileTap={{ scale: 0.97 }}
               style={{ background: tint(l.type) }}
               className={`relative flex flex-col justify-between overflow-hidden rounded-3xl border p-4 font-semibold ${i === 0 ? 'col-span-2 min-h-36' : 'aspect-square'}`}>
-              <TypeBadge type={l.type} url={l.url} className="size-11 shadow-sm" />
+              <TypeBadge type={l.type} url={l.url} icon={l.icon_url} className="size-11 shadow-sm" />
               <span className={i === 0 ? 'text-xl' : 'text-sm leading-snug'}>{l.title}</span>
               <ArrowUpRight className="absolute right-3 top-3 size-4 opacity-50" aria-hidden="true" /><NewTab />
             </motion.a>

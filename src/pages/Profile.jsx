@@ -50,7 +50,13 @@ export default function Profile() {
     loaded.current = username
     setData(null)
     setError('')
-    api(`/u/${username}?ref=${encodeURIComponent(document.referrer)}&tz=${encodeURIComponent(visitorTz)}${params.get('src') === 'qr' ? '&src=qr' : ''}`).then(setData).catch((e) => setError(e.message))
+    api(`/u/${username}?ref=${encodeURIComponent(document.referrer)}&tz=${encodeURIComponent(visitorTz)}${params.get('src') === 'qr' ? '&src=qr' : ''}`)
+      .then((d) => {
+        // Redirect mode: visitors go straight to the chosen link (counted as a click). The owner still sees the page.
+        if (d.redirect && !d.own && !params.get('preview') && params.get('embed') !== '1') { trackClick(d.redirect.id); window.location.replace(d.redirect.url); return }
+        setData(d)
+      })
+      .catch((e) => setError(e.message))
   }, [username])
 
   useEffect(() => {
@@ -66,7 +72,7 @@ export default function Profile() {
   // ?embed=1 is the dashboard's live preview: no top bar or buttons; ?theme= previews an unsaved theme.
   const embed = params.get('embed') === '1'
   const themeParam = ['light', 'sage', 'blush', 'midnight', 'auto'].includes(params.get('theme')) ? params.get('theme') : null
-  if (error) return <NotFound message="This profile doesn't exist." />
+  if (error) return <NotFound message={/confirm your email/i.test(error) ? error : "This profile doesn't exist."} />
   if (!data)
     return <PageLoader className="min-h-screen" />
 
@@ -113,6 +119,11 @@ export function ProfileView({ data, layout, theme: chosen, preview = null, embed
 
   return (
     <div className={`relative min-h-screen overflow-hidden text-foreground ${dark ? '' : 'theme-light'} ${theme.cls}`} style={themeStyle}>
+      {data.own && data.redirect && !embed && !preview && (
+        <div className="fixed inset-x-0 top-0 z-50 truncate bg-accent px-3 py-1 text-center font-mono text-[11px] uppercase tracking-widest text-accent-foreground">
+          Redirect on · visitors go straight to {data.redirect.url.replace(/^https?:\/\/(www\.)?/, '')}
+        </div>
+      )}
       {preview && !embed && (
         <div className="fixed inset-x-0 top-0 z-50 bg-foreground py-1 text-center font-mono text-[11px] uppercase tracking-widest text-background">
           Preview · not saved
@@ -184,7 +195,7 @@ export function ProfileView({ data, layout, theme: chosen, preview = null, embed
                 className={`group relative overflow-hidden transition-shadow hover:shadow-md ${linkClass}`}
               >
                 <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-foreground/15 to-transparent opacity-0 transition-none group-hover:animate-[shimmer_0.9s_ease-out] group-hover:opacity-100" />
-                <TypeBadge type={l.type} url={l.url} className={layout === 'grid' ? 'size-9' : 'size-8'} />
+                <TypeBadge type={l.type} url={l.url} icon={l.icon_url} className={layout === 'grid' ? 'size-9' : 'size-8'} />
                 <span className={layout === 'grid' ? '' : layout === 'minimal' ? 'flex-1' : 'flex-1 text-center'}>{l.title}<span className="sr-only"> (opens in a new tab)</span></span>
                 <ExternalLink className={`size-4 text-muted-foreground ${layout === 'grid' ? 'absolute right-2.5 top-2.5 size-3.5' : ''}`} aria-hidden="true" />
               </motion.a>

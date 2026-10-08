@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Banknote, CreditCard, Check, Crown, Eye, Link2, Loader2, Mail, MousePointerClick, ShieldCheck, Store, Tag, UserPlus, Users } from 'lucide-react'
+import { Banknote, CreditCard, Check, Crown, Eye, Link2, Loader2, Mail, MousePointerClick, ShieldCheck, Store, Tag, UserPlus, Users } from 'lucide-react'
 import { api } from '@/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarList, Kpi, LineChart, flag, fmtDay, regionName } from '@/pages/Analytics'
@@ -11,8 +11,8 @@ import { Input } from '@/components/ui/input'
 import { useTitle } from '@/lib/useTitle'
 import { InfoTip } from '@/components/ui/info-tip'
 import OwnerTraffic from '@/components/OwnerTraffic'
-import { IS_ADMIN_HOST, STAGE } from '@/lib/stage'
 import PageLoader from '@/components/PageLoader'
+import OwnerShell, { ownerBase } from '@/components/OwnerShell'
 
 const SIGNUPS = '#2a78d6'
 const tplName = Object.fromEntries(TEMPLATES.map((t) => [t.id, t.name]))
@@ -160,6 +160,7 @@ export default function Owner() {
   const [days, setDays] = useState(30)
   const [d, setD] = useState(null)
   const [denied, setDenied] = useState(false)
+  const [reload, setReload] = useState(0)
 
   useEffect(() => {
     setD(null)
@@ -167,7 +168,7 @@ export default function Owner() {
     if (!robots) { robots = document.createElement('meta'); robots.name = 'robots'; document.head.appendChild(robots) }
     robots.content = 'noindex, nofollow'
     api(`/owner/stats?days=${days}`).then(setD).catch((e) => (e.message === 'Not authenticated' ? navigate('/login') : setDenied(true)))
-  }, [days, navigate])
+  }, [days, navigate, reload])
 
   if (denied) return (
     <div className="container grid min-h-[50vh] place-items-center text-center">
@@ -176,28 +177,22 @@ export default function Owner() {
     </div>
   )
 
-  return (
-    <div className="container space-y-6 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          {IS_ADMIN_HOST
-            ? <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Founder console · {STAGE}</p>
-            : <Link to="/admin" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" /> Dashboard</Link>}
-          <h1 className="mt-1 flex items-center gap-2 text-3xl font-bold tracking-tight"><Crown className="size-7 text-accent" aria-hidden="true" /> Founder dashboard</h1>
-        </div>
-        <div role="radiogroup" aria-label="Date range" className="inline-flex rounded-lg border bg-card p-1">
-          {[7, 30, 90].map((n) => (
-            <button key={n} role="radio" aria-checked={days === n} onClick={() => setDays(n)}
-              className={`relative rounded-md px-3 py-1.5 text-sm font-medium ${days === n ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-              {days === n && <motion.span layoutId="owner-range" className="absolute inset-0 rounded-md bg-primary" />}
-              <span className="relative">{n} days</span>
-            </button>
-          ))}
-        </div>
-      </div>
+  const range = (
+    <div role="radiogroup" aria-label="Date range" className="inline-flex rounded-lg border bg-card p-1">
+      {[7, 30, 90].map((n) => (
+        <button key={n} role="radio" aria-checked={days === n} onClick={() => setDays(n)}
+          className={`relative rounded-md px-2.5 py-1 text-sm font-medium ${days === n ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+          {days === n && <motion.span layoutId="owner-range" className="absolute inset-0 rounded-md bg-primary" />}
+          <span className="relative">{n}d</span>
+        </button>
+      ))}
+    </div>
+  )
 
+  return (
+    <OwnerShell title={<span className="flex items-center gap-2"><Crown className="size-5 text-accent" aria-hidden="true" /> Founder dashboard</span>} tools={range} onRefresh={() => setReload((r) => r + 1)}>
       {!d ? <PageLoader label="Loading numbers" className="h-64" /> : (<>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div id="overview" className="grid scroll-mt-24 grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi icon={Users} label="Total users" info="Every account ever created, verified or not." value={d.totals.users.toLocaleString()} />
           <Kpi icon={UserPlus} label={`New in ${days} days`} info="Accounts created in the selected range (today counts as day 1)." value={d.totals.newUsers.toLocaleString()} />
           <Kpi icon={Crown} label="Paying users" info="Users with at least one paid feature active right now (not expired). The % is out of all users." value={`${d.totals.pro} (${d.totals.users ? Math.round((d.totals.pro / d.totals.users) * 100) : 0}%)`} />
@@ -209,7 +204,7 @@ export default function Owner() {
           <Kpi icon={Banknote} label={`Revenue, ${days} days`} info="Sum of successful Paystack payments in the range. Started or failed payments are left out." value={naira(d.totals.revenue || 0)} />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div id="growth" className="grid scroll-mt-24 gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2">Activation funnel <InfoTip>Of the people who signed up in the range: how many finished onboarding, added a bio or photo, added a first link, got a first visitor, and paid. Each % is out of signups.</InfoTip></CardTitle><CardDescription>People who signed up in the last {days} days, and how far they got.</CardDescription></CardHeader>
             <CardContent>
@@ -233,7 +228,7 @@ export default function Owner() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div id="revenue" className="grid scroll-mt-24 grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi icon={Banknote} label="Monthly run-rate" info="For every purchase still running today: its price ÷ its months, added up. ₦3,000 for 3 months adds ₦1,000." value={naira(Math.round(d.money.runRate))} />
           <Kpi icon={Banknote} label="Yearly equivalent" info="Monthly run-rate × 12." value={naira(Math.round(d.money.arr))} />
           <Kpi icon={Crown} label="Revenue per paying user" info="Lifetime revenue ÷ the number of users who have ever paid." value={naira(Math.round(d.money.arppu))} />
@@ -274,11 +269,11 @@ export default function Owner() {
           </Card>
         </div>
 
-        <OwnerTraffic />
+        <div id="traffic" className="scroll-mt-24"><OwnerTraffic /></div>
 
-        <PricingEditor />
+        <div id="pricing" className="scroll-mt-24"><PricingEditor /></div>
 
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div id="payments" className="grid scroll-mt-24 gap-6 lg:grid-cols-[2fr_1fr]">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><CreditCard className="size-5" aria-hidden="true" /> Payments</CardTitle>
@@ -317,7 +312,7 @@ export default function Owner() {
           </Card>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div id="signups" className="grid scroll-mt-24 gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2">Signups per day <InfoTip>New accounts per day in the range.</InfoTip></CardTitle><CardDescription>{d.totals.verified} of {d.totals.users} users have verified their email.</CardDescription></CardHeader>
             <CardContent><SignupBars series={d.series} /></CardContent>
@@ -330,7 +325,7 @@ export default function Owner() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
-            <CardHeader><CardTitle>Latest signups</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center justify-between gap-2">Latest signups <Link to={`${ownerBase}/users`} className="text-sm font-medium text-accent hover:underline">All users →</Link></CardTitle></CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-left text-muted-foreground"><tr><th className="py-1.5 font-medium">User</th><th className="font-medium">Type</th><th className="font-medium">Paid features</th><th className="font-medium">Joined</th><th className="font-medium">Last login</th></tr></thead>
@@ -346,7 +341,7 @@ export default function Owner() {
               </table>
             </CardContent>
           </Card>
-          <Card>
+          <Card id="messages" className="scroll-mt-24">
             <CardHeader><CardTitle className="flex items-center gap-2"><Mail className="size-5" aria-hidden="true" /> Contact messages</CardTitle></CardHeader>
             <CardContent>
               {d.messages.length ? (
@@ -361,6 +356,6 @@ export default function Owner() {
           </Card>
         </div>
       </>)}
-    </div>
+    </OwnerShell>
   )
 }

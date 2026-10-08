@@ -27,6 +27,20 @@ function Navbar() {
   }, [])
 
   useEffect(() => setOpen(false), [pathname])
+
+  // Sections marked data-hide-nav (the home page's feature showcase) get the full screen: the bar slides
+  // away while one of them is at the top, and comes back after.
+  const [hidden, setHidden] = useState(false)
+  useEffect(() => {
+    const io = new IntersectionObserver((entries) => setHidden(entries.some((e) => e.isIntersecting)), { rootMargin: '0px 0px -95% 0px' })
+    const seen = new Set()
+    // Pages load lazily, so keep watching for marked sections to appear.
+    const attach = () => document.querySelectorAll('[data-hide-nav]').forEach((t) => { if (!seen.has(t)) { seen.add(t); io.observe(t) } })
+    attach()
+    const mo = new MutationObserver(attach)
+    mo.observe(document.body, { childList: true, subtree: true })
+    return () => { io.disconnect(); mo.disconnect(); setHidden(false) }
+  }, [pathname])
   useEffect(() => {
     if (!open) return
     const onKey = (e) => e.key === 'Escape' && setOpen(false)
@@ -37,7 +51,7 @@ function Navbar() {
     `inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-foreground ${isActive ? 'text-foreground' : 'text-muted-foreground'}`
 
   return (
-    <header className="sticky top-0 z-40 h-16">
+    <header className={`sticky top-0 z-40 h-16 transition-transform duration-300 ${hidden && !open ? '-translate-y-[120%]' : ''}`}>
       <motion.div
         animate={scrolled || open
           ? { marginTop: 8, borderRadius: 999, backgroundColor: 'hsl(var(--background) / 0.72)', boxShadow: '0 10px 30px -12px hsl(20 35% 18% / 0.25), inset 0 0 0 1px hsl(var(--foreground) / 0.08)' }

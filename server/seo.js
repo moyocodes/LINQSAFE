@@ -37,10 +37,14 @@ export function baseUrl(req) {
   return `${req.protocol}://${req.get('host')}`
 }
 
+// Including common misspellings people search for (linksafe, linq safe).
+const KEYWORDS = 'linqsafe, linksafe, linq safe, link safe, link in bio, bio link, one link for everything, links page, WhatsApp link, Nigeria'
+
 function block({ title, desc, url, image, imageAlt, type = 'website', noindex, ld = [], square = false }) {
   return [
     `<title>${esc(title)}</title>`,
     `<meta name="description" content="${esc(desc)}" />`,
+    `<meta name="keywords" content="${KEYWORDS}" />`,
     noindex ? '<meta name="robots" content="noindex, nofollow" />' : '<meta name="robots" content="index, follow, max-image-preview:large" />',
     `<link rel="canonical" href="${esc(url)}" />`,
     `<meta property="og:site_name" content="${NAME}" />`,
@@ -73,7 +77,7 @@ export function createSeo({ pool, dist }) {
   async function profile(username) {
     if (!/^[a-z0-9_]{3,32}$/i.test(username)) return null
     const [[u]] = await pool.query(
-      'SELECT id, username, display_name, bio, avatar_url, account_type, occupation, location FROM users WHERE username = ?', [username.toLowerCase()])
+      'SELECT id, username, display_name, bio, avatar_url, account_type, occupation, location FROM users WHERE username = ? AND email_verified = 1 AND deleted_at IS NULL', [username.toLowerCase()])
     if (!u) return null
     const [links] = await pool.query("SELECT url, type FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id", [u.id])
     return { ...u, links }
@@ -175,7 +179,7 @@ export function createSeo({ pool, dist }) {
     // Profiles worth indexing: at least one link. lastmod = newest link (or signup).
     const [rows] = await pool.query(
       `SELECT u.username, DATE_FORMAT(GREATEST(u.created_at, COALESCE(MAX(l.created_at), u.created_at)), '%Y-%m-%d') AS lastmod
-       FROM users u JOIN links l ON l.user_id = u.id AND l.deleted_at IS NULL GROUP BY u.id ORDER BY u.id LIMIT 45000`)
+       FROM users u JOIN links l ON l.user_id = u.id AND l.deleted_at IS NULL WHERE u.email_verified = 1 AND u.deleted_at IS NULL GROUP BY u.id ORDER BY u.id LIMIT 45000`)
     const url = (loc, extra = '') => `  <url><loc>${esc(loc)}</loc>${extra}</url>`
     res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send([
       '<?xml version="1.0" encoding="UTF-8"?>',
@@ -189,7 +193,7 @@ export function createSeo({ pool, dist }) {
 
   // Serves an uploaded profile picture (stored as a data: URL) as a real image, for link previews.
   async function avatar(req, res) {
-    const [[u]] = await pool.query('SELECT avatar_url FROM users WHERE username = ?', [String(req.params.username).toLowerCase()])
+    const [[u]] = await pool.query('SELECT avatar_url FROM users WHERE username = ? AND email_verified = 1 AND deleted_at IS NULL', [String(req.params.username).toLowerCase()])
     const m = u?.avatar_url?.match(/^data:(image\/(?:webp|jpeg|png));base64,(.+)$/)
     if (!m) return res.status(404).end()
     res.type(m[1]).set('Cache-Control', 'public, max-age=86400').send(Buffer.from(m[2], 'base64'))

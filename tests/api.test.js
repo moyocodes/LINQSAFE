@@ -13,9 +13,8 @@ const created = []
 // Delete every account this run created (and, by cascade, its links, visits and payments),
 // so test runs never show up as real users in the founder dashboard. Local runs only.
 after(async () => {
-  if (process.env.API_URL || !created.length) return
-  const { pool } = await import('../server/db.js')
-  await pool.query("DELETE FROM users WHERE username IN (?) AND email LIKE '%@example.com'", [created])
+  if (process.env.API_URL || !created.length) return pool?.end()
+  await (await db()).query("DELETE FROM users WHERE username IN (?) AND email LIKE '%@example.com'", [created])
   await pool.end()
 })
 
@@ -40,13 +39,17 @@ function client(ua = 'Mozilla/5.0 (Macintosh) qa-test') {
   }
 }
 
-async function signUp(api) {
+async function signUp(api, { verified = true } = {}) {
   const username = `qa_${rand()}`
   created.push(username)
   const r = await api('POST', '/register', { username, email: `${username}@example.com`, password: 'secret123' })
   assert.equal(r.status, 200, JSON.stringify(r.body))
+  // Pages only go public once the email is confirmed; mark it confirmed directly (no inbox in tests).
+  if (verified) await (await db()).query('UPDATE users SET email_verified = 1 WHERE username = ?', [username])
   return username
 }
+let pool
+const db = async () => (pool ??= (await import('../server/db.js')).pool)
 
 test('health check', async () => {
   const r = await client()('GET', '/health')
@@ -187,4 +190,50 @@ test('paid features: catalog, checkout validation, signed webhooks only', async 
   assert.equal(hook.status, 401, 'unsigned webhooks are rejected')
   assert.equal((await api('GET', '/owner/pricing')).status, 403, 'only the founder can see/edit prices')
   assert.equal((await api('PUT', '/owner/pricing', { prices: { qr_code: 1 } })).status, 403)
+})
+
+test('a page is a 404 until its owner confirms their email', async () => {
+  const owner = client()
+  const username = await signUp(owner, { verified: false })
+  assert.equal((await client()('GET', `/u/${username}`)).status, 404)
+  const own = await owner('GET', `/u/${username}`)
+  assert.equal(own.status, 404)
+  assert.match(own.body.error, /confirm your email/i)
+  await (await db()).query('UPDATE users SET email_verified = 1 WHERE username = ?', [username])
+  assert.equal((await client()('GET', `/u/${username}`)).status, 200)
+})
+
+test('username change: free first time, then a wait', async () => {
+  const api = client()
+  const username = await signUp(api)
+  const next = `${username}x`.slice(0, 32)
+  created.push(next)
+  const r = await api('PUT', '/username', { username: next })
+  assert.equal(r.status, 200, JSON.stringify(r.body))
+  assert.ok(r.body.next_change_at)
+  assert.equal((await api('PUT', '/username', { username: `${username}y`.slice(0, 32) })).status, 429)
+  assert.equal((await api('GET', '/me')).body.username, next)
+  assert.equal((await api('GET', '/me')).body.id, undefined, 'internal ids stay on the server')
+})
+
+test('redirect mode and link logos', async () => {
+  const api = client()
+  const username = await signUp(api)
+  const link = (await api('POST', '/links', { title: 'Shop', url: 'https://example.com/shop' })).body
+  const other = await signUp(client())
+  const theirs = (await client()('GET', `/u/${other}`)).body
+  assert.equal(theirs.redirect, null)
+  assert.equal((await api('PUT', '/redirect', { link_id: 999999999 })).status, 400, "can't redirect to someone else's link")
+  assert.equal((await api('PUT', '/redirect', { link_id: link.id })).status, 200)
+  const pub = (await client()('GET', `/u/${username}`)).body
+  assert.equal(pub.redirect.url, 'https://example.com/shop')
+  assert.equal(pub.own, false)
+  assert.equal((await api('GET', `/u/${username}`)).body.own, true)
+  await api('PUT', '/redirect', { link_id: null })
+  assert.equal((await client()('GET', `/u/${username}`)).body.redirect, null)
+
+  const icon = 'data:image/png;base64,iVBORw0KGgo='
+  assert.equal((await api('PUT', `/links/${link.id}`, { title: 'Shop', url: 'https://example.com/shop', icon_url: 'javascript:alert(1)' })).status, 400)
+  assert.equal((await api('PUT', `/links/${link.id}`, { title: 'Shop', url: 'https://example.com/shop', icon_url: icon })).status, 200)
+  assert.equal((await client()('GET', `/u/${username}`)).body.links[0].icon_url, icon)
 })

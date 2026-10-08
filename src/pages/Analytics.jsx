@@ -115,7 +115,7 @@ export function BarList({ rows, empty = 'No data yet.', color = VIEWS }) {
 // Friendly names for where visitors came from (referrer domains are stored as-is).
 const SOURCES = [[/(^|\.)instagram\.com$/, 'Instagram'], [/(^|\.)tiktok\.com$/, 'TikTok'], [/(^|\.)(t\.co|x\.com|twitter\.com)$/, 'X / Twitter'],
   [/(^|\.)(youtube\.com|youtu\.be)$/, 'YouTube'], [/(^|\.)(facebook\.com|fb\.com)$/, 'Facebook'], [/(^|\.)(whatsapp\.com|wa\.me)$/, 'WhatsApp'],
-  [/(^|\.)linkedin\.com$/, 'LinkedIn'], [/(^|\.)google\./, 'Google'], [/(^|\.)snapchat\.com$/, 'Snapchat'], [/(^|\.)pinterest\./, 'Pinterest']]
+  [/(^|\.)linkedin\.com$/, 'LinkedIn'], [/(^|\.)google\./, 'Google'], [/(^|\.)snapchat\.com$/, 'Snapchat'], [/(^|\.)pinterest\./, 'Pinterest'], [/(^|\.)threads\.(net|com)$/, 'Threads']]
 export const sourceName = (host) => (host === 'qr' ? 'QR code scans' : !host ? 'Direct / unknown' : SOURCES.find(([re]) => re.test(host))?.[1] || host)
 
 export const pct = (x) => `${(x * 100).toFixed(x > 0 && x < 0.1 ? 1 : 0)}%`

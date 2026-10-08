@@ -16,6 +16,7 @@ const SOCIALS = [
   ['instagram', 'https://instagram.com/', 'yourname'], ['tiktok', 'https://tiktok.com/@', 'yourname'],
   ['youtube', 'https://youtube.com/@', 'yourchannel'], ['x', 'https://x.com/', 'yourname'],
   ['linkedin', 'https://linkedin.com/in/', 'yourname'], ['pinterest', 'https://pinterest.com/', 'yourname'],
+  ['threads', 'https://threads.net/@', 'yourname'],
 ]
 const STEPS = ['About you', 'Details', 'Profile', 'Socials', 'Template']
 

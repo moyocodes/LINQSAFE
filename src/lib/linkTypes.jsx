@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Globe, Headphones, Link2, Store } from 'lucide-react'
-import { siFacebook, siGithub, siInstagram, siPinterest, siSnapchat, siTiktok, siWhatsapp, siX, siYoutube } from 'simple-icons'
+import { siFacebook, siGithub, siInstagram, siPinterest, siSnapchat, siThreads, siTiktok, siWhatsapp, siX, siYoutube } from 'simple-icons'
 
 // Real brand logos (Simple Icons, CC0) drawn as 24×24 SVGs. LinkedIn isn't in Simple Icons, so its
 // standard "in" mark is inlined. Generic types (shop, website, music, other) use line icons.
@@ -11,6 +11,7 @@ const brand = (path) => function BrandIcon({ className = 'size-5', ...rest }) {
 
 export const LINK_TYPES = {
   instagram: { label: 'Instagram', icon: brand(siInstagram.path), bg: 'linear-gradient(45deg,#FEDA75,#FA7E1E 30%,#D62976 60%,#962FBF 80%,#4F5BD5)', hosts: ['instagram.com'] },
+  threads: { label: 'Threads', icon: brand(siThreads.path), bg: '#000000', hosts: ['threads.net', 'threads.com'] },
   tiktok: { label: 'TikTok', icon: brand(siTiktok.path), bg: '#000000', hosts: ['tiktok.com'] },
   youtube: { label: 'YouTube', icon: brand(siYoutube.path), bg: '#FF0000', hosts: ['youtube.com', 'youtu.be'] },
   snapchat: { label: 'Snapchat', icon: brand(siSnapchat.path), bg: '#FFFC00', fg: '#000000', hosts: ['snapchat.com'] },
@@ -43,9 +44,16 @@ export function detectType(url) {
 const FAVICON_TYPES = ['website', 'other', 'store']
 export const hostOf = (url) => { try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? u.hostname.replace(/^www\./, '') : '' } catch { return '' } }
 
-export function TypeBadge({ type, url, className = 'size-9' }) {
+export function TypeBadge({ type, url, icon, className = 'size-9' }) {
   const t = LINK_TYPES[type] || LINK_TYPES.website
   const Icon = t.icon
+  // The owner's own logo / thumbnail for this link wins over the brand icon.
+  if (icon) return (
+    <span className={`block shrink-0 overflow-hidden rounded-full bg-white ring-1 ring-black/10 ${className}`} title={t.label}>
+      <img src={icon} alt="" loading="lazy" className="size-full object-cover" />
+      <span className="sr-only">{t.label}</span>
+    </span>
+  )
   const host = url && FAVICON_TYPES.includes(type) ? hostOf(url) : ''
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [host])

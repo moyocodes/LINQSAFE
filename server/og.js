@@ -19,7 +19,7 @@ const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s)
 
 // Brand colours and Simple Icons paths for the platform row (same set as src/lib/linkTypes.jsx).
 const BRANDS = {
-  instagram: ['siInstagram', '#E1306C'], tiktok: ['siTiktok', '#000000'], youtube: ['siYoutube', '#FF0000'],
+  instagram: ['siInstagram', '#E1306C'], threads: ['siThreads', '#000000'], tiktok: ['siTiktok', '#000000'], youtube: ['siYoutube', '#FF0000'],
   snapchat: ['siSnapchat', '#FFFC00', '#000000'], pinterest: ['siPinterest', '#E60023'], x: ['siX', '#000000'],
   facebook: ['siFacebook', '#0866FF'], github: ['siGithub', '#181717'], whatsapp: ['siWhatsapp', '#25D366'], music: ['siSpotify', '#1DB954'],
 }
@@ -105,7 +105,7 @@ export function createOg({ pool }) {
 
   async function profileData(username) {
     const [[u]] = await pool.query(
-      'SELECT id, username, display_name, bio, avatar_url, occupation, location FROM users WHERE username = ?', [username.toLowerCase()])
+      'SELECT id, username, display_name, bio, avatar_url, occupation, location FROM users WHERE username = ? AND email_verified = 1 AND deleted_at IS NULL', [username.toLowerCase()])
     if (!u) return null
     const [links] = await pool.query('SELECT type FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [u.id])
     return { ...u, links }

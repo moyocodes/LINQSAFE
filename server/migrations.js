@@ -232,6 +232,14 @@ const MIGRATIONS = [
     await db.query('UPDATE users SET updated_at = created_at')
     await db.query('UPDATE links SET updated_at = created_at')
   }],
+  [26, 'username changes: when and how many (for the 30 / 90 day wait)', async (db) => {
+    await addColumn(db, 'users', 'username_changed_at DATETIME NULL')
+    await addColumn(db, 'users', 'username_changes INT NOT NULL DEFAULT 0')
+  }],
+  [27, 'link logos; profile redirect to one link', async (db) => {
+    await addColumn(db, 'links', 'icon_url MEDIUMTEXT NULL')
+    await addColumn(db, 'users', 'redirect_link_id INT NULL')
+  }],
 ]
 
 export async function migrate(pool) {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, Reorder, motion, useDragControls } from 'framer-motion'
-import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, UserRound, Share2, Smartphone, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, GripVertical, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
+import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, UserRound, Share2, Smartphone, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
 import { api, logout, setSignedIn } from '@/api'
 import { ProfileView } from '@/pages/Profile'
 import ShareButton from '@/ShareButton'
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, IconChip } from '@/components/ui/card'
 import { useTitle } from '@/lib/useTitle'
-import AvatarPicker from '@/components/AvatarPicker'
+import AvatarPicker, { toSmallDataUrl } from '@/components/AvatarPicker'
 import QrCard, { QrDialog } from '@/components/QrCard'
 import { AmbientVideo } from '@/components/Media'
 import Onboarding from '@/components/Onboarding'
@@ -19,6 +19,63 @@ import { AccountFields, BillingProvider, StickySave, FeatureCard, TemplatePrevie
 import { FREE_LINK_LIMIT, TEMPLATES, has } from '@/lib/plans'
 import { LINK_TYPES, TypeBadge, TypeSelect, detectType } from '@/lib/linkTypes'
 import PageLoader from '@/components/PageLoader'
+
+// What your link does: show your page (default), or send visitors straight to one of your links.
+function RedirectPicker({ me, setMe }) {
+  const [error, setError] = useState('')
+  const value = me.redirect_link_id && me.links.some((l) => l.id === me.redirect_link_id) ? String(me.redirect_link_id) : ''
+  async function choose(v) {
+    setError('')
+    const link_id = v ? Number(v) : null
+    const before = me.redirect_link_id
+    setMe({ ...me, redirect_link_id: link_id })
+    try { await api('/redirect', { method: 'PUT', body: { link_id } }) } catch (e) { setError(e.message); setMe((m) => ({ ...m, redirect_link_id: before })) }
+  }
+  return (
+    <div className={`space-y-2 rounded-lg border p-3 ${value ? 'border-accent/40 bg-accent/[0.05]' : ''}`}>
+      <label htmlFor="redirect" className="block text-sm font-semibold">When someone opens {location.host}/{me.username}</label>
+      <select id="redirect" value={value} onChange={(e) => choose(e.target.value)} disabled={!me.links.length}
+        className="h-10 w-full rounded-md border bg-background px-3 text-sm">
+        <option value="">Show my page with all my links</option>
+        {me.links.map((l) => <option key={l.id} value={l.id}>Go straight to: {l.title || l.url}</option>)}
+      </select>
+      <p className="text-xs text-muted-foreground">{value ? 'Visitors skip your page and land on that link (counted as a click). You still see your page when signed in.' : 'Or send everyone to just one link, for a launch, a sale or a new video.'}</p>
+      {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
+    </div>
+  )
+}
+
+// The link's icon doubles as a button: tap to add or change its own logo / thumbnail; × goes back to the brand icon.
+function LinkLogo({ link, onChange, onSave }) {
+  const input = useRef(null)
+  const [busy, setBusy] = useState(false)
+  async function pick(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBusy(true)
+    try {
+      const icon_url = await toSmallDataUrl(file, 128, 128)
+      onChange({ icon_url }); onSave({ icon_url })
+    } catch { window.alert("That picture couldn't be read. Try a JPG or PNG.") } finally { setBusy(false) }
+  }
+  return (
+    <span className="relative">
+      <button type="button" onClick={() => input.current?.click()} title={link.icon_url ? 'Change logo' : 'Add a logo or thumbnail'}
+        aria-label={`${link.icon_url ? 'Change' : 'Add'} logo for ${link.title || 'link'}`} className="group relative block rounded-full">
+        <TypeBadge type={link.type} url={link.url} icon={link.icon_url} className="size-8 sm:size-9" />
+        <span aria-hidden="true" className="absolute inset-0 grid place-items-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <ImagePlus className="size-3.5" />}
+        </span>
+      </button>
+      {link.icon_url && (
+        <button type="button" onClick={() => { onChange({ icon_url: '' }); onSave({ icon_url: '' }) }} aria-label={`Remove logo from ${link.title || 'link'}`}
+          className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-foreground text-[10px] leading-none text-background">×</button>
+      )}
+      <input ref={input} type="file" accept="image/*" hidden onChange={pick} />
+    </span>
+  )
+}
 
 function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDragEnd }) {
   const controls = useDragControls()
@@ -38,7 +95,7 @@ function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDra
           >
             <GripVertical className="size-5" aria-hidden="true" />
           </button>
-          <TypeBadge type={link.type} url={link.url} className="size-8 sm:size-9" />
+          <LinkLogo link={link} onChange={onChange} onSave={onSave} />
         </div>
         <div className="grid min-w-0 gap-2">
           <Input placeholder="Link title" aria-label={`Title for link ${index + 1}`} value={link.title} onChange={(e) => onChange({ title: e.target.value })} onBlur={onSave} />
@@ -151,7 +208,7 @@ function PreviewToolbar({ me, url, canQr }) {
 const SECTIONS = [
   ['overview', 'Overview', Eye], ['share', 'Share & QR', Share2], ['profile', 'Profile', UserRound], ['account', 'Account type', Briefcase],
   ['template', 'Template & theme', LayoutTemplate], ['links', 'Links', Link2],
-  ['note', "Founder's note", Feather], ['testimonials', 'Kind words', MessageSquareQuote], ['payments', 'Payments', Crown],
+  ['note', "Founder's note", Feather], ['testimonials', 'Kind words', MessageSquareQuote], ['you', 'Your account', UserRound], ['payments', 'Payments', Crown],
 ]
 
 // Which dashboard section is on screen (desktop jump-to list).
@@ -221,6 +278,81 @@ function MobileSectionNav() {
   )
 }
 
+// Who's signed in: picture, name, @username and email; change the username (30 / 90 day waits) and
+// send yourself a password reset link.
+function YouCard({ me, setMe }) {
+  const [name, setName] = useState(me.username)
+  const [state, setState] = useState('idle')
+  const [error, setError] = useState('')
+  const [reset, setReset] = useState('idle')
+  const wait = me.next_username_change && new Date(me.next_username_change) > new Date() ? new Date(me.next_username_change) : null
+  const changed = name.trim().toLowerCase() !== me.username
+  async function changeUsername(e) {
+    e.preventDefault()
+    if (!changed) return
+    if (!window.confirm(`Change your link to ${location.host}/${name.trim().toLowerCase()}? Your old link will stop working, and after this you'll have to wait before changing it again.`)) return
+    setState('saving'); setError('')
+    try {
+      const r = await api('/username', { method: 'PUT', body: { username: name } })
+      setMe({ ...me, username: r.username, next_username_change: r.next_change_at })
+      setName(r.username)
+      setState('saved'); setTimeout(() => setState('idle'), 2000)
+    } catch (err) { setError(err.message); setState('idle') }
+  }
+  async function sendReset() {
+    setReset('sending')
+    try { await api('/password/forgot', { method: 'POST', body: { email: me.email } }); setReset('sent') } catch { setReset('error') }
+  }
+  return (
+    <Card id="you" accent="mist" className="scroll-mt-24">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2.5"><IconChip icon={UserRound} tone="mist" /> Your account</CardTitle>
+        <CardDescription>Signed in as you. Only you can see this.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="flex min-w-0 items-center gap-3">
+          {me.avatar_url
+            ? <img src={me.avatar_url} alt="" className="size-14 shrink-0 rounded-full object-cover" />
+            : <span aria-hidden="true" className="grid size-14 shrink-0 place-items-center rounded-full bg-accent text-xl font-bold text-accent-foreground">{(me.display_name || me.username)[0].toUpperCase()}</span>}
+          <div className="min-w-0">
+            <p className="truncate font-semibold">{me.display_name || `@${me.username}`}</p>
+            <Link to={`/${me.username}`} target="_blank" className="block truncate text-sm text-accent hover:underline">{location.host}/{me.username}</Link>
+            <p className="break-all text-sm text-muted-foreground">{me.email || 'No email yet'}{me.email && <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold ${me.email_verified ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>{me.email_verified ? 'Verified' : 'Not confirmed'}</span>}</p>
+          </div>
+        </div>
+
+        <form onSubmit={changeUsername} className="space-y-2">
+          <Label htmlFor="new-username">Username</Label>
+          <div className="flex flex-wrap gap-2">
+            <div className="flex h-10 min-w-0 flex-1 items-center rounded-md border bg-background pl-3 text-sm focus-within:ring-2 focus-within:ring-ring">
+              <span className="shrink-0 text-muted-foreground">{location.host}/</span>
+              <input id="new-username" value={name} onChange={(e) => setName(e.target.value.replace(/[^a-z0-9_]/gi, '').slice(0, 32))} disabled={!!wait}
+                autoCapitalize="none" autoCorrect="off" spellCheck={false} aria-describedby="username-rule"
+                className="h-full min-w-0 flex-1 bg-transparent pr-3 outline-none disabled:opacity-60" />
+            </div>
+            <Button disabled={!!wait || !changed || state === 'saving' || name.length < 3}>
+              {state === 'saving' ? <Loader2 className="animate-spin" aria-hidden="true" /> : state === 'saved' ? <Check aria-hidden="true" /> : null}{state === 'saved' ? 'Changed' : 'Change'}
+            </Button>
+          </div>
+          <p id="username-rule" className="text-xs text-muted-foreground">
+            {wait ? <>You can change it again on <b>{wait.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}</b>.</> : 'Your page link. After a change you wait 30 days, then 90, then 30 and so on before the next one.'}
+          </p>
+          {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
+        </form>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-4 py-3">
+          <span className="text-sm"><b>Password</b> <span className="text-muted-foreground">· we'll email you a link to set a new one</span></span>
+          {me.email
+            ? <Button type="button" size="sm" variant="outline" onClick={sendReset} disabled={reset === 'sending' || reset === 'sent'}>
+                {reset === 'sending' && <Loader2 className="animate-spin" aria-hidden="true" />}{reset === 'sent' ? 'Link sent, check your inbox' : reset === 'error' ? 'Try again' : 'Send reset link'}
+              </Button>
+            : <span className="text-xs text-muted-foreground">Add an email first</span>}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function VerifyBanner({ email, onChanged }) {
   const [state, setState] = useState('idle')
   const [editing, setEditing] = useState(!email)
@@ -251,7 +383,7 @@ function VerifyBanner({ email, onChanged }) {
       {editing ? (
         <form onSubmit={save} className="space-y-2">
           <p className="flex items-center gap-2"><MailWarning className="size-4 shrink-0" aria-hidden="true" />
-            {email ? 'Change your email. We will send a confirmation link.' : <span><strong>Add your email.</strong> You need it to pay for features and to reset your password.</span>}</p>
+            {email ? 'Change your email. We will send a confirmation link.' : <span><strong>Add your email.</strong> Your page goes public once you confirm it, and you need it to pay and to reset your password.</span>}</p>
           <div className="flex flex-wrap gap-2">
             <Input type="email" required autoComplete="email" placeholder="you@example.com" value={value} onChange={(e) => setValue(e.target.value)}
               aria-label="Email address" aria-invalid={!!error} className="h-10 min-w-0 flex-1 bg-white text-ink" />
@@ -262,7 +394,7 @@ function VerifyBanner({ email, onChanged }) {
         </form>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="flex min-w-0 items-start gap-2"><MailWarning className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">Confirm <strong className="break-all">{email}</strong> so you can pay and reset your password.</span></span>
+          <span className="flex min-w-0 items-start gap-2"><MailWarning className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">Confirm <strong className="break-all">{email}</strong> to make your page public. Until then your link shows “not found”. You also need it to pay and reset your password.</span></span>
           <span className="flex gap-2">
             <Button size="sm" variant="outline" onClick={resend} disabled={state === 'sending' || state === 'sent'}>
               {state === 'sent' ? 'Email sent, check your inbox' : state === 'error' ? 'Try again' : 'Resend email'}
@@ -392,7 +524,19 @@ export default function Admin() {
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight">Your links</h1>
-          <Button variant="ghost" size="sm" onClick={() => logout().then(() => navigate('/'))}><LogOut /> Log out</Button>
+          <div className="flex min-w-0 items-center gap-1">
+            {/* Who's signed in; tap for account settings. */}
+            <a href="#you" className="flex min-w-0 items-center gap-2 rounded-full border bg-card/80 py-1 pl-1 pr-3 text-left hover:bg-muted" title={me.email || undefined}>
+              {me.avatar_url
+                ? <img src={me.avatar_url} alt="" className="size-7 shrink-0 rounded-full object-cover" />
+                : <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">{(me.display_name || me.username)[0].toUpperCase()}</span>}
+              <span className="min-w-0 leading-tight">
+                <span className="block max-w-[10rem] truncate text-xs font-semibold">@{me.username}</span>
+                <span className="block max-w-[10rem] truncate text-[11px] text-muted-foreground">{me.email || 'No email'}</span>
+              </span>
+            </a>
+            <Button variant="ghost" size="sm" onClick={() => logout().then(() => navigate('/'))}><LogOut /> <span className="sr-only sm:not-sr-only">Log out</span></Button>
+          </div>
         </div>
 
         <MobileSectionNav />
@@ -523,6 +667,7 @@ export default function Admin() {
             <CardDescription>Drag the handle to reorder. Changes save automatically.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <RedirectPicker me={me} setMe={setMe} />
             <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900"><Globe className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>Public: every link title and URL you add is shown on your public page. Only add links you are happy for anyone to see.</span></p>
             {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
             <Reorder.Group axis="y" values={me.links} onReorder={(links) => setMe({ ...me, links })} className="space-y-3">
@@ -579,6 +724,8 @@ export default function Admin() {
         <FeatureCard id="testimonials" feature="testimonials" tone="rose" unlocked={has(me, 'testimonials')} icon={MessageSquareQuote} title="Kind words" description="Messages from happy clients, shown as chat bubbles around your page.">
           <TestimonialsEditor me={me} setMe={setMe} />
         </FeatureCard>
+
+        <YouCard me={me} setMe={setMe} />
 
         <PaymentHistory />
       </div>

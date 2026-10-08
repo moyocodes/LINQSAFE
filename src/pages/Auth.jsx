@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
-import { api, setSignedIn } from '@/api'
+import { api, isSignedIn, setSignedIn } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -23,6 +23,13 @@ export default function Auth({ mode }) {
   const expired = isLogin && query.get('expired') === '1'
   // Back to the page they were on when the session ran out (same-site paths only).
   const next = /^\/(?!\/)/.test(query.get('next') || '') ? query.get('next') : null
+
+  // Already signed in: log in / sign up just take you to your dashboard until you log out.
+  // (The session is checked first, so an expired one still shows the form.)
+  useEffect(() => {
+    if (!isSignedIn()) return
+    api('/me').then(() => navigate(next || (IS_ADMIN_HOST ? '/' : '/admin'), { replace: true })).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submit(e) {
     e.preventDefault()

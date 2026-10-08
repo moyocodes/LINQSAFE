@@ -19,6 +19,7 @@ import PageLoader from '@/components/PageLoader'
 const Admin = lazy(() => import('@/pages/Admin'))
 const Analytics = lazy(() => import('@/pages/Analytics'))
 const Owner = lazy(() => import('@/pages/Owner'))
+const OwnerUsers = lazy(() => import('@/pages/OwnerUsers'))
 const Pricing = lazy(() => import('@/pages/Pricing'))
 const VerifyEmail = lazy(() => import('@/pages/AccountFlows').then((m) => ({ default: m.VerifyEmail })))
 const ForgotPassword = lazy(() => import('@/pages/AccountFlows').then((m) => ({ default: m.ForgotPassword })))
@@ -33,6 +34,7 @@ function AdminHostApp() {
         <Route path="/login" element={<Auth mode="login" />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/users" element={<OwnerUsers />} />
         <Route path="*" element={<Owner />} />
       </Route>
     </Routes>
@@ -55,6 +57,7 @@ export default function App() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/analytics" element={<Analytics />} />
           <Route path="/owner" element={<Owner />} />
+          <Route path="/owner/users" element={<OwnerUsers />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/billing/callback" element={<BillingCallback />} />
           <Route path="/verify" element={<VerifyEmail />} />

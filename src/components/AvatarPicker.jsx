@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 // Centre-crop to the target shape and shrink to WebP so the picture stays small enough to store with the profile.
-async function toSmallDataUrl(file, w, h) {
+export async function toSmallDataUrl(file, w, h) {
   const bmp = await createImageBitmap(file)
   const scale = Math.max(w / bmp.width, h / bmp.height)
   const sw = w / scale, sh = h / scale

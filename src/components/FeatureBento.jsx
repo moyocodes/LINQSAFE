@@ -117,7 +117,7 @@ function ReorderDemo() {
 }
 
 function BadgesDemo() {
-  const types = ['instagram', 'tiktok', 'youtube', 'pinterest', 'snapchat', 'linkedin', 'x', 'whatsapp']
+  const types = ['instagram', 'threads', 'tiktok', 'youtube', 'pinterest', 'snapchat', 'linkedin', 'x', 'whatsapp']
   return (
     <div className="flex flex-wrap gap-2.5">
       {types.map((t, i) => (
@@ -265,7 +265,7 @@ export default function FeatureBento() {
   }
 
   return (
-    <section id="features" ref={section} className="relative scroll-mt-20" style={{ height: `calc(100svh + ${distance}px)` }}>
+    <section id="features" ref={section} data-hide-nav className="relative scroll-mt-20" style={{ height: `calc(100svh + ${distance}px)` }}>
       <div className="sticky top-[65px] flex h-[calc(100svh-65px)] flex-col justify-center overflow-hidden py-8">
         {header}
         <motion.div ref={row} style={{ x }} className={`mt-10 flex w-max gap-6 ${pad}`}>{slides}</motion.div>
