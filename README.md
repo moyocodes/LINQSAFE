@@ -37,7 +37,7 @@ npm run package       # prod branch → linqsafe-prod.zip
 npm run package:admin # prod branch → linqsafe-admin.zip (admin.linqsafe.com)
 ```
 
-Upload and extract the zip into the app folder, then *Setup Node.js App* → **Restart**. Use Node.js 20+ and `DB_HOST=localhost`; run `check` from *Run JS script* if anything fails. Each server keeps its own `.env`. First-time setup, DNS, SSL, Paystack, email, backups and troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).
+**Automatic:** pushing to `dev` or `prod` tests, builds and deploys over FTPS with GitHub Actions (free), see [DEPLOY.md → Automatic deploys](docs/DEPLOY.md#5b-automatic-deploys-github-actions). **Manual fallback:** upload and extract the zip into the app folder, then *Setup Node.js App* → **Restart**. Use Node.js 20+ and `DB_HOST=localhost`; run `check` from *Run JS script* if anything fails. Each server keeps its own `.env`. First-time setup, DNS, SSL, Paystack, email, backups and troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 Docker (`docker compose up --build`) and Vercel are still supported as alternatives, but the live site runs on cPanel.
 

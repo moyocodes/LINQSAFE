@@ -102,6 +102,7 @@ server/seo.js           per-page titles, previews, structured data, robots.txt, 
 app.cjs                 cPanel startup file
 scripts/package.sh      builds linqsafe-dev.zip / linqsafe-prod.zip
 docs/DEPLOY.md          step-by-step deployment for local, dev, prod
+.github/workflows/      deploy.yml: test, build and FTPS-deploy on push to dev/prod
 server/mailer.js        Resend email + email template
 server/scripts/         set-plan.js, owner.js
 tests/api.test.js       API tests (npm test)
@@ -147,7 +148,7 @@ Full step-by-step instructions: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 | **prod** | Namecheap cPanel | `linqsafe.com`, `admin.linqsafe.com` | `linqqkto_linqsafe` | `.env` on the server | `prod` | live |
 
 - Each stage has its own database and settings; the server reads `.env.local` first, then `.env` (`server/env.js`). Only your computer has `.env.local`.
-- Work on `dev` → deploy to dev.linqsafe.com → `git merge dev` into `prod` → deploy to linqsafe.com.
+- Work on `dev` → push (GitHub Actions deploys dev.linqsafe.com) → `git merge dev` into `prod` → push (deploys linqsafe.com + admin). Free CI/CD: `.github/workflows/deploy.yml`.
 - Deploy packages: `npm run package:dev` → `linqsafe-dev.zip`, `npm run package` → `linqsafe-prod.zip`. Each runs as a cPanel *Node.js App* (**Node.js 20+**, startup file `app.cjs`) next to cPanel's MySQL (`DB_HOST=localhost`, user added to the database with all privileges). `npm run check` (cPanel → Run JS script → `check`) diagnoses settings and the database login.
 - A LOCAL / DEV badge shows outside prod.
 - Vercel (`api/index.js`, `vercel.json`) and Docker remain supported, but aren't used: Namecheap's MySQL only accepts connections from its own server.

@@ -1,0 +1,128 @@
+# Free CI/CD: test, build and deploy to Namecheap cPanel over FTPS on every push.
+#   push to dev  → dev.linqsafe.com            (/linqsafe-dev)
+#   push to prod → linqsafe.com + admin.linqsafe.com (/linqsafe and /linqsafe-admin)
+# Needs three repository secrets (Settings → Secrets and variables → Actions):
+#   FTP_SERVER    e.g. ftp.linqsafe.com
+#   FTP_USERNAME  a cPanel FTP account whose directory is /home/linqqkto
+#   FTP_PASSWORD
+# Server settings (.env) are never uploaded or changed. If package.json dependencies change,
+# run "Run NPM Install" (or Run JS script → deps) once in cPanel after the deploy.
+# Docs: docs/DEPLOY.md → "Automatic deploys (GitHub Actions)".
+name: Deploy
+
+on:
+  push:
+    branches: [dev, prod]
+  workflow_dispatch: # "Run workflow" button in the Actions tab
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false # never cut an upload off halfway
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+          MYSQL_DATABASE: linqsafe_ci
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-root-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ci-root-password
+      DB_NAME: linqsafe_ci
+      JWT_SECRET: ci-only-secret-not-used-anywhere-else
+      PORT: 3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Start API
+        run: |
+          node server/index.js > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf localhost:3001/api/health && exit 0; sleep 1; done
+          cat server.log; exit 1
+      - run: npm test
+      - if: failure()
+        run: cat server.log
+
+  deploy:
+    name: Deploy ${{ github.ref_name }}
+    needs: test
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }} # shows the deploy history per stage on GitHub
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_APP_STAGE: ${{ github.ref_name == 'prod' && 'prod' || 'dev' }}
+
+      # Exactly what the server needs (same as scripts/package.sh), plus tmp/restart.txt:
+      # cPanel's Node runner restarts the app when that file changes.
+      - name: Prepare upload
+        run: |
+          mkdir -p release/tmp
+          cp -r app.cjs package.json package-lock.json server dist release/
+          date -u +%FT%TZ > release/tmp/restart.txt
+          echo "${{ github.sha }}" > release/dist/version.txt
+
+      - name: Upload to /linqsafe-dev
+        if: github.ref_name == 'dev'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: release/
+          server-dir: linqsafe-dev/
+
+      - name: Upload to /linqsafe
+        if: github.ref_name == 'prod'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: release/
+          server-dir: linqsafe/
+
+      - name: Upload to /linqsafe-admin
+        if: github.ref_name == 'prod'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: release/
+          server-dir: linqsafe-admin/
+
+      - name: Check the site
+        run: |
+          case "${{ github.ref_name }}" in
+            dev)  urls="https://dev.linqsafe.com" ;;
+            prod) urls="https://linqsafe.com https://admin.linqsafe.com" ;;
+          esac
+          sleep 20 # give the app time to restart
+          for u in $urls; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$u/api/health")
+            echo "$u/api/health → $code"
+            # Not fatal: a restart can take a moment, and admin may not be set up yet.
+            [ "$code" = 200 ] || echo "::warning::$u/api/health returned $code. If it stays like this, open cPanel → Setup Node.js App and click Restart (or Run NPM Install if dependencies changed)."
+          done

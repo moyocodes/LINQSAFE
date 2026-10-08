@@ -9,6 +9,7 @@ The single, step-by-step reference for running linqsafe on your computer (**loca
 - [3. Local setup](#3-local-setup)
 - [4. Server setup on Namecheap (first time)](#4-server-setup-on-namecheap-first-time)
 - [5. Deploying an update](#5-deploying-an-update)
+- [5b. Automatic deploys (GitHub Actions)](#5b-automatic-deploys-github-actions)
 - [6. Going live with payments and email](#6-going-live-with-payments-and-email)
 - [7. Backups and rollback](#7-backups-and-rollback)
 - [8. Troubleshooting](#8-troubleshooting)
@@ -314,6 +315,42 @@ Upload `linqsafe-prod.zip` into `linqsafe` and `linqsafe-admin.zip` into `linqsa
 Your `.env` is never in the zip, so extracting over the folder keeps your settings. Database changes apply automatically on restart (see `server/migrations.js`): you'll see `Applying migration …` in `stderr.log`.
 
 **Before a prod deploy:** take a database backup (section 7) if the update includes a new migration.
+
+---
+
+## 5b. Automatic deploys (GitHub Actions)
+
+Free for this repo: GitHub Actions runs on every push and deploys over FTPS, so you don't upload zips by hand. Workflow: `.github/workflows/deploy.yml`.
+
+| Push to | Runs | Uploads to | Site |
+|---|---|---|---|
+| `dev` | tests → build (DEV badge) | `/home/linqqkto/linqsafe-dev` | dev.linqsafe.com |
+| `prod` | tests → build | `/home/linqqkto/linqsafe` and `/home/linqqkto/linqsafe-admin` | linqsafe.com, admin.linqsafe.com |
+
+Each run: starts a throwaway MySQL, runs `npm test` against it (a failing test stops the deploy), builds the site, uploads only the changed files, then writes `tmp/restart.txt`, which makes cPanel restart the app. Finally it checks `/api/health` and shows a warning if the site didn't come back. Your `.env`, `node_modules` and logs on the server are never touched.
+
+### One-time setup
+1. **FTP account:** cPanel → **FTP Accounts** → *Add FTP Account*: login e.g. `deploy`, a generated password, **Directory: `/home/linqqkto`** (clear the suggested `public_html/deploy`), quota *Unlimited* → **Create**. Under *Configure FTP Client* note the **FTP server** (usually `ftp.linqsafe.com`) and the full username (`deploy@linqsafe.com`).
+2. **GitHub secrets:** github.com/moyocodes/linktree → **Settings → Secrets and variables → Actions → New repository secret**, three times:
+   - `FTP_SERVER` = `ftp.linqsafe.com`
+   - `FTP_USERNAME` = `deploy@linqsafe.com`
+   - `FTP_PASSWORD` = the password from step 1
+3. **Run it:** push to `dev` (or GitHub → **Actions → Deploy → Run workflow**). Watch it in the **Actions** tab; a green tick means deployed.
+
+### Day to day
+```bash
+git switch dev
+# …change, test locally…
+git push                                   # → deploys dev.linqsafe.com
+git switch prod && git merge dev && git push && git switch dev   # → deploys linqsafe.com + admin
+```
+
+### When you still need cPanel
+- **Dependencies changed** (`package.json` gained or updated a package): after the deploy, *Setup Node.js App* → **Run NPM Install** (or *Run JS script* → `deps`) → **Restart**. FTP can't install packages.
+- **The warning "…/api/health returned 503":** open *Setup Node.js App* → **Restart**; if it persists, run `check`.
+- **Settings change:** edit `.env` in File Manager, then **Restart**.
+
+The first run uploads everything (a few minutes); later runs only upload what changed. The zips (`npm run package…`) still work as a manual fallback.
 
 ---
 
