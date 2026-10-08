@@ -15,7 +15,8 @@
     "package": "sh scripts/package.sh prod",
     "package:dev": "sh scripts/package.sh dev",
     "check": "node server/scripts/check.js",
-    "package:admin": "sh scripts/package.sh admin"
+    "package:admin": "sh scripts/package.sh admin",
+    "deps": "npm install --omit=dev --no-audit --no-fund"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.16",

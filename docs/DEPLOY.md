@@ -365,6 +365,7 @@ Code and database changes are additive (migrations only add columns or tables), 
 | `Could not connect to MySQL … (ER_ACCESS_DENIED_ERROR)` | `DB_HOST` is the server IP instead of `localhost`, or wrong password | `DB_HOST=localhost`; if still failing, MySQL Databases → Change Password and copy it exactly into `.env` (avoid `#`, quotes, spaces) |
 | `… (ECONNREFUSED / ETIMEDOUT)` | `DB_HOST` isn't `localhost` | on cPanel always use `DB_HOST=localhost` |
 | `Refusing to start: set a strong JWT_SECRET` | missing or `change-me` | set a long random `JWT_SECRET` |
+| Run NPM Install keeps failing | cPanel's site test blocks it | **Run JS script → `deps`** installs the packages directly (no site test), then **Restart** |
 | "Web application is inaccessible by its address … The operation wasn't performed" | cPanel tests the site before finishing a version change / NPM Install, and the app was crashing | `app.cjs` now answers "installing" when packages are missing, so the step can finish; with an old `app.cjs`, upload the latest zip first. If it persists: **STOP APP** → change → **START APP** |
 | **Never change the Application root of an existing app** | cPanel tries to move the files and fails (`Destination path … already exists`) | **DESTROY** the app (files stay) and create a new one |
 | `Cannot find module …`, or no `node_modules` in the folder | packages not installed (also reset by a Node.js version change) | *Setup Node.js App* → **Run NPM Install** → **Restart** |
