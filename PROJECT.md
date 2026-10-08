@@ -66,7 +66,8 @@ Limits are enforced on the server (`server/app.js`) as well as in the UI.
 | Email                 | **Resend** HTTP API                                                                          | Verify and reset emails; printed to the console in local dev                                     |
 | Payments              | **Paystack**                                                                                 | Naira checkout, server-side verification, signed webhook                                         |
 | QR codes              | `qrcode`                                                                                     | Generated in the browser                                                                         |
-| Hosting               | **Vercel** (frontend + serverless API)                                                       | Main deployment path                                                                             |
+| Hosting | **Namecheap cPanel** Node.js App (Passenger/LiteSpeed) + cPanel MySQL | Live site; deployed by GitHub Actions over FTPS; Vercel and Docker remain as alternatives |
+| CI/CD | **GitHub Actions** (free) | Tests, builds and FTPS-deploys `dev` → dev.linqsafe.com, `prod` → linqsafe.com + admin |
 | Containers (optional) | **Docker** + Docker Compose                                                                  | Alternative for Docker hosts or running app + MySQL together; not used in local dev or on Vercel |
 | Site analytics | In-house `events` table (no third-party trackers) | Each user's page analytics and the founder dashboard |
 
@@ -216,37 +217,49 @@ linqsafe is a single-page app, so the server fills in each page's `<head>` befor
 
 ## 9. Design system
 
-- **Palette** (`src/styles.css`): beige background, espresso text and primary, **maroon accent** used mostly at low opacity (`bg-accent/10`). Supporting tints: `rose`, `lilac`, `sand`, `mist` (dusty blue). No greens.
-- **Section moods:** blush hero → aubergine-night 3D story → dusty-blue showcase → lilac/peach feature cards → wine call-to-action → espresso footer.
-- **Fonts:** Bricolage Grotesque (headings), Inter (body), Cormorant Garamond (editorial serif), Allura (signatures), IBM Plex Mono (profile card).
-- **Motion:** spring-based hover and press on buttons and cards, scroll reveals, a scroll-clip panel, and the 3D link tree. Everything respects `prefers-reduced-motion`.
+- **Palette** (`src/styles.css` tokens + fixed brand colours in `tailwind.config.js`, all usable with opacity, e.g. `bg-cobalt/20`, `text-ink/60`):
+  - neutrals: paper `#F6F3EE` (background), ink `#261F1C` (text), card `#FCFAF8`
+  - accent: **cobalt** `#2B4FAF` (buttons, links, highlights)
+  - supporting tints: coral `#F2A07E` (`rose`), teal `#6CC3BA` (`lilac`), sand `#E5D2BD`, blue `#93ACCF` (`mist`)
+  - contrast pop: **saffron** `#D99A2B`, used sparingly (live indicators, active markers)
+  - night `#170C15` / plum `#3A1C33` for the dark 3D section; maroon `#77313F` as a secondary accent
+- **Text hierarchy by ink opacity:** headings 100%, body ~88%, secondary 60%, labels 55% (not separate greys), so it sits right on every surface and theme.
+- **Section moods:** warm paper hero → night "workshop" (3D tree flowing into the scroll-clip showcase) → paper feature cards → cobalt call-to-action → espresso footer.
+- **Fonts (three families):** **Fraunces** (headings, serif with soft italics), **DM Sans** (body and UI), **IBM Plex Mono** (labels, eyebrows, codes). Allura is used only for founder's-note signatures.
+- **Surfaces:** "paper" cards with fine grain, a hairline edge and a long soft shadow; small corners (`--radius: 0.375rem`); inputs warm to the accent on focus.
+- **Motion:** spring hover/press on buttons and cards, scroll reveals, word-by-word hero headline, looping phone story, a GSAP scroll-clip panel, the 3D link tree, live analytics bars. Everything respects `prefers-reduced-motion`.
 
 ### Prompts for matching animations and images
 
-Use these with an AI video or image tool (Meta AI, Runway, Sora, Midjourney). Each keeps to the site palette: beige `#F6F1EA`, espresso `#2A201C`, maroon `#6B2433`, blush `#F2CDD3`, lilac `#DCD5EE`, sand `#E9D6BF`, dusty blue `#B4C4D6`.
+Use these with an AI video or image tool (Meta AI, Runway, Sora, Midjourney). Each keeps to the site palette: paper `#F6F3EE`, ink `#261F1C`, cobalt `#2B4FAF`, coral `#F2A07E`, teal `#6CC3BA`, sand `#E5D2BD`, saffron `#D99A2B`, night `#170C15`.
 
-1. **Hero loop:** "Slow, seamless 6-second loop of soft blush and lilac light blooms drifting across a warm beige paper background, subtle film grain, gentle parallax, calm and premium, no text, 16:9."
-2. **Phone mockup:** "Hand holding a matte maroon phone against a warm beige wall, the screen shows a minimal link-in-bio page with rounded beige buttons, soft daylight, editorial lifestyle photography, shallow depth of field."
+1. **Hero loop:** "Slow, seamless 6-second loop of soft coral, teal and saffron light blooms drifting across a warm paper background, subtle film grain, gentle parallax, calm and premium, no text, 16:9."
+2. **Phone mockup:** "Hand holding a matte cobalt-blue phone against a warm paper-white wall, the screen shows a minimal link-in-bio page with rounded beige buttons, soft daylight, editorial lifestyle photography, shallow depth of field."
 3. **Section transition:** "Abstract dusty-blue to sand gradient fog slowly rolling, soft light rays from top right, cinematic, minimal, seamless loop, 10 seconds."
-4. **3D link tree:** "Glowing thin lines branching from one rose-gold orb into five pastel orbs (dusty rose, terracotta, dusty blue, sand, lilac) on a deep aubergine night background with faint stars, slow camera orbit, elegant, no text."
-5. **Founder's note backdrop:** "Overhead shot of cream textured paper, a paperclip, a polaroid and a maroon fountain pen on a linen tablecloth, warm natural light, quiet luxury aesthetic."
-6. **Testimonial bubbles:** "Soft pink chat bubbles floating up and gently bobbing around empty centre space on a warm off-white background, playful but refined, 3D clay style, seamless loop."
-7. **Business category covers:** "[beauty studio / bakery / fashion boutique / coaching office] interior in warm beige, blush and espresso tones, soft morning light, editorial, portrait 4:5, space at the bottom for text."
+4. **3D link tree:** "Glowing thin lines branching from one rose-gold orb into five pastel orbs (coral, cobalt, teal, sand, saffron) on a deep night-plum background (#170C15) with faint stars, slow camera orbit, elegant, no text."
+5. **Founder's note backdrop:** "Overhead shot of cream textured paper, a paperclip, a polaroid and a cobalt fountain pen on a linen tablecloth, warm natural light, quiet luxury aesthetic."
+6. **Testimonial bubbles:** "Soft coral and cobalt chat bubbles floating up and gently bobbing around empty centre space on a warm off-white background, playful but refined, 3D clay style, seamless loop."
+7. **Business category covers:** "[beauty studio / bakery / fashion boutique / coaching office] interior in warm paper-white, cobalt and coral tones, soft morning light, editorial, portrait 4:5, space at the bottom for text."
 
 ---
 
 ## 10. Status and next steps
 
-**Live:** https://linqsafe.com (prod) on Namecheap cPanel, Node.js 22 + cPanel MySQL, deployed 8 Oct 2026. Next: dev.linqsafe.com and admin.linqsafe.com apps, a full live Paystack payment, Resend email.
+**Live (8 Oct 2026):**
+- **prod** https://linqsafe.com on Namecheap cPanel (Node.js 22 + cPanel MySQL).
+- **dev** https://dev.linqsafe.com running on its own database.
+- **admin** admin.linqsafe.com: domain and app created; packages still to install (Run JS script → `deps`).
+- **CI/CD:** GitHub Actions tests and builds on every push; deploying needs the three FTP secrets (DEPLOY.md → 5b).
 
-**Done and tested end to end:** sign-up, log-in by email, httpOnly sessions, log-out, links with type detection, plan limits, analytics (views, unique visitors, clicks, country, device, referrer; owner visits, refreshes and bots excluded), migrations on an existing database.
+**Tested end to end (API tests, run locally and in GitHub Actions):** sign-up, log-in by email, httpOnly sessions, log-out, links with type detection, free limits and paid-feature locks, business profile and WhatsApp validation, onboarding, analytics (views, unique visitors, clicks, country, device, referrer; owner visits, refreshes and bots excluded), founder-dashboard lockout, Paystack refusing unsigned webhooks.
 
-**Also tested end to end:** free limits (4th link and paid templates refused), features after unlocking, owner dashboard access rules (unverified email and wrong host refused), onboarding completion, last-login tracking, Paystack endpoints refusing unsigned webhooks and missing keys.
+**Tested by hand:** Paystack checkout creation against Paystack's test API (real checkout page, `LQS-` reference, abandoned status recorded); the cPanel package starting under Node 22; SEO output (robots, sitemap, per-page and profile meta, noindex on dev/admin).
 
-**Built but only checked by compiling:** the new templates, onboarding wizard, founder dashboard UI, footer, pricing page and admin subdomain routing need a visual pass in the browser.
+**Not yet seen in a browser:** the Paystack inline popup, onboarding wizard, premium templates, founder dashboard charts.
 
 **Open:**
-
-- **Payments:** checkout was tested against Paystack's test API (a real checkout page is created with the right amount). A full test payment (pay → callback → feature unlocked → webhook) still needs doing once in the browser, then again on dev with the webhook URL set.
-- **Browser tests:** `tests/api.test.js` covers the API (10 tests). A browser smoke test (e.g. Playwright) for onboarding and templates would be the next layer. Sign-ups are rate-limited (30 per 15 minutes), so running `npm test` many times in a row will start failing with 429s.
-- **Image storage:** pictures are stored in the database as small data URLs, which is fine at small scale. Move to object storage (Vercel Blob, S3, Cloudinary) as you grow.
+- **Payments:** one full test payment on dev (popup → paid → feature unlocked → webhook), then live keys (`sk_live_` + `pk_live_`) on prod once Paystack activates live mode.
+- **Email:** Resend domain verification and API key on dev and prod.
+- **Search:** submit `sitemap.xml` in Google Search Console.
+- **Browser tests:** a Playwright smoke test for onboarding and templates would be the next layer. Sign-ups are rate-limited (30 per 15 minutes), so running `npm test` many times in a row hits 429s.
+- **Image storage:** pictures are stored in the database as small data URLs, fine at small scale; move to object storage (S3, Cloudinary) as you grow.

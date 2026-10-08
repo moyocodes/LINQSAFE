@@ -31,15 +31,39 @@ npm test                     # API tests (they clean up after themselves)
 
 ## Deploy (Namecheap cPanel)
 
+### Automatic (GitHub Actions, free)
+
+Every push deploys itself: `.github/workflows/deploy.yml`.
+
+| Push to | What happens | Goes live on |
+|---|---|---|
+| `dev` | tests (throwaway MySQL) → build with DEV badge → FTPS upload → restart | dev.linqsafe.com |
+| `prod` | tests → build → FTPS upload to both prod apps → restart | linqsafe.com + admin.linqsafe.com |
+
+```bash
+git switch dev && git push                                          # deploy dev
+git switch prod && git merge dev && git push && git switch dev       # deploy prod
+```
+
+- A failing test stops the deploy. Only changed files are uploaded; `.env`, `node_modules` and logs on the server are never touched.
+- After each upload the app restarts (`tmp/restart.txt`) and the run checks `/api/health`.
+- Watch runs in the repo's **Actions** tab; **Run workflow** redeploys by hand.
+- One-time setup: a cPanel FTP account for `/home/linqqkto`, and three repository secrets `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`. Steps: [DEPLOY.md → Automatic deploys](docs/DEPLOY.md#5b-automatic-deploys-github-actions).
+- If `package.json` dependencies change, click **Run NPM Install** (or Run JS script → `deps`) once in cPanel; FTP can't install packages.
+
+### Manual fallback (zip upload)
+
 ```bash
 npm run package:dev   # dev branch  → linqsafe-dev.zip
 npm run package       # prod branch → linqsafe-prod.zip
 npm run package:admin # prod branch → linqsafe-admin.zip (admin.linqsafe.com)
 ```
 
-**Automatic:** pushing to `dev` or `prod` tests, builds and deploys over FTPS with GitHub Actions (free), see [DEPLOY.md → Automatic deploys](docs/DEPLOY.md#5b-automatic-deploys-github-actions). **Manual fallback:** upload and extract the zip into the app folder, then *Setup Node.js App* → **Restart**. Use Node.js 20+ and `DB_HOST=localhost`; run `check` from *Run JS script* if anything fails. Each server keeps its own `.env`. First-time setup, DNS, SSL, Paystack, email, backups and troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).
+Upload and extract the zip into the app folder, then *Setup Node.js App* → **Restart**.
 
-Docker (`docker compose up --build`) and Vercel are still supported as alternatives, but the live site runs on cPanel.
+### Server rules
+
+Node.js **20+** on every cPanel app, `DB_HOST=localhost`, the database user added to its database with all privileges, and each server keeps its own `.env`. If anything fails, *Run JS script* → `check`. First-time setup, DNS, SSL, Paystack, email, SEO, backups and troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## SEO
 

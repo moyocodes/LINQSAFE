@@ -367,9 +367,7 @@ npx tailwindcss init -p</pre
       >
       <p class="prompt">
         <b>Prompt:</b> "Add Tailwind with shadcn-style Button, Card, Input and
-        Label components. Palette: warm beige background, espresso text, maroon
-        accent used at low opacity, plus rose, lilac, sand and dusty-blue tints.
-        Fonts: Bricolage Grotesque for headings, Inter for body."
+        Label components. Palette as colour codes in tailwind.config.js usable with opacity (bg-cobalt/20): paper background, ink text, cobalt accent, coral, teal and sand tints, saffron for small highlights. Fonts: Fraunces for headings, DM Sans for body, IBM Plex Mono for labels."
       </p>
     </div>
 
@@ -646,6 +644,16 @@ docker run -p 3001:3001 --env-file .env linqsafe   # app only, hosted DB</pre
   <li>Check <code>/api/health</code>; turn on AutoSSL; set the Paystack webhook (test mode → dev, live mode → prod).</li>
 </ol>
 <p>Updating: build the zip, upload and extract over the folder (the <code>.env</code> stays), Restart. Database changes apply automatically on restart. Full details, backups and troubleshooting are in <code>docs/DEPLOY.md</code>.</p>
+<h3>Automatic deploys with GitHub Actions (free)</h3>
+<p>Instead of uploading zips, let GitHub deploy on every push. A workflow file (<code>.github/workflows/deploy.yml</code>) runs on pushes to <code>dev</code> and <code>prod</code>:</p>
+<ol>
+  <li><b>Test:</b> start a throwaway MySQL service, run the server, run <code>npm test</code>. A failure stops here.</li>
+  <li><b>Build:</b> <code>npm ci</code> and <code>npm run build</code> with the stage set (DEV badge on dev).</li>
+  <li><b>Upload:</b> FTPS-sync <code>app.cjs</code>, <code>package.json</code>, <code>server/</code> and <code>dist/</code> to the app folder (only changed files; <code>.env</code> is never touched).</li>
+  <li><b>Restart:</b> write <code>tmp/restart.txt</code>, which cPanel's Node runner watches, then check <code>/api/health</code>.</li>
+</ol>
+<p>One-time setup: a cPanel FTP account for your home folder, and three GitHub repository secrets: <code>FTP_SERVER</code>, <code>FTP_USERNAME</code>, <code>FTP_PASSWORD</code>. GitHub Actions is free for public repositories and includes free minutes for private ones. When dependencies change you still click <b>Run NPM Install</b> once, because FTP can't install packages.</p>
+<p class="prompt"><b>Prompt:</b> "Add a free GitHub Actions pipeline: on push to dev/prod run the API tests against a MySQL service, build with the right stage, FTPS-deploy to the cPanel app folders, trigger a restart with tmp/restart.txt and check /api/health."</p>
 <p class="prompt"><b>Prompt:</b> "Set up local, dev and prod stages with separate databases and settings files, a startup file for cPanel's Node.js App, and a script that builds a deploy zip per stage."</p>
 
 <h2>6. Launch checklist</h2>
