@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, CircleCheck, Crown, Lock, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { Check, CircleCheck, Crown, Eye, Lock, Loader2, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { api } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -224,8 +224,36 @@ function MiniPreview({ id }) {
   return <div aria-hidden="true" className={`h-14 overflow-hidden rounded-md p-2 ${id === 'search' ? 'bg-gradient-to-b from-rose to-lilac' : id === 'backdrop' ? 'bg-[linear-gradient(135deg,#F2A07E,#6CC3BA_55%,#2B4FAF)]' : 'bg-muted'}`}>{map[id]}</div>
 }
 
+// Full-size preview of the user's own page in a template, in a phone frame (not saved).
+function TemplatePreview({ username, template, onClose, onUse, locked }) {
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <motion.div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+      <motion.div role="dialog" aria-modal="true" aria-label={`${template.name} preview`} onClick={(e) => e.stopPropagation()}
+        initial={{ y: 30, scale: 0.96 }} animate={{ y: 0, scale: 1 }} exit={{ y: 30, scale: 0.96 }} transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        className="flex max-h-full w-full max-w-sm flex-col items-center gap-3">
+        <div className="flex w-full items-center justify-between text-white">
+          <p className="font-display text-lg font-semibold !text-white">{template.name}</p>
+          <button type="button" onClick={onClose} aria-label="Close preview" className="grid size-9 place-items-center rounded-full bg-white/15 hover:bg-white/25"><X className="size-4" /></button>
+        </div>
+        <div className="h-[min(640px,72vh)] w-full overflow-hidden rounded-[2rem] border-[6px] border-black bg-white shadow-2xl">
+          <iframe title={`${template.name} preview`} src={`/${username}?preview=${template.id}`} className="size-full" />
+        </div>
+        <div className="flex w-full flex-wrap items-center justify-center gap-2">
+          {locked ? <UnlockChip feature={template.feature} /> : <Button onClick={onUse} className="bg-white text-black hover:bg-white/90"><Check /> Use this template</Button>}
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 export function TemplatePicker({ value, onChange, me, category, accountType }) {
   const fit = accountType === 'business' ? category : 'personal'
+  const [previewing, setPreviewing] = useState(null)
   return (
     <fieldset id="template" className="scroll-mt-24 space-y-2">
       <legend className="label-form">Template</legend>
@@ -243,13 +271,25 @@ export function TemplatePicker({ value, onChange, me, category, accountType }) {
                 <span className="mt-2 flex items-center justify-between gap-1 text-sm font-semibold">{t.name}{t.feature && <PaidBadge unlocked={!locked} />}</span>
                 <span className="block text-xs text-muted-foreground">{t.hint}</span>
                 {recommended && <span className="mt-1 block text-[10px] font-semibold uppercase tracking-wider text-accent">Suits you</span>}
+                {me?.username && (
+                  <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreviewing(t) }}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-accent underline-offset-4 hover:underline">
+                    <Eye className="size-3.5" aria-hidden="true" /> Preview
+                  </button>
+                )}
                 {locked && t.feature && <span className="mt-2 block border-t border-foreground/10 pt-2"><UnlockChip feature={t.feature} /></span>}
               </motion.span>
             </label>
           )
         })}
       </div>
-      {TEMPLATES.some((t) => t.feature && !has(me, t.feature)) && <p className="text-xs text-muted-foreground">Tap <b>Add</b> on any locked template, then pay for everything you picked at once.</p>}
+      {TEMPLATES.some((t) => t.feature && !has(me, t.feature)) && <p className="text-xs text-muted-foreground"><b>Preview</b> any template on your own page; tap <b>Add</b> on locked ones, then pay for everything you picked at once.</p>}
+      <AnimatePresence>
+        {previewing && (
+          <TemplatePreview username={me.username} template={previewing} locked={!!previewing.feature && !has(me, previewing.feature)}
+            onClose={() => setPreviewing(null)} onUse={() => { onChange(previewing); setPreviewing(null) }} />
+        )}
+      </AnimatePresence>
     </fieldset>
   )
 }

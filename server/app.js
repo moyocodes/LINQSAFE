@@ -37,7 +37,7 @@ app.use(
         'connect-src': ["'self'", 'https://api.paystack.co'],
         // Paystack's inline checkout runs in an iframe from checkout.paystack.com.
         'frame-src': ['https://checkout.paystack.com', 'https://standard.paystack.co'],
-        'frame-ancestors': ["'none'"],
+        'frame-ancestors': ["'self'"], // the dashboard previews templates in an iframe; other sites still can't frame linqsafe
       },
     },
   })
@@ -71,10 +71,10 @@ function methodLabel(d) {
 async function sendReceipt(userId, items, tx, details) {
   setTimeout(async () => { // let the grants commit first so the receipt shows the new end dates
     try {
-      const [[u]] = await pool.query('SELECT email, username, display_name FROM users WHERE id = ?', [userId])
+      const [[u]] = await pool.query('SELECT email, username, display_name, avatar_url FROM users WHERE id = ?', [userId])
       const access = await featureAccess(userId)
       send(u.email, Email.receipt({
-        name: u.display_name || u.username, amount: tx.amount / 100, reference: tx.reference, method: methodLabel(details),
+        person: Email.personOf(u), name: u.display_name || u.username, amount: tx.amount / 100, reference: tx.reference, method: methodLabel(details),
         date: tx.paid_at || new Date(),
         items: items.map((i) => ({ feature: featureByKey[i.feature]?.name || i.feature, months: i.months, until: access[i.feature] })),
       }), { tag: 'receipt' })
@@ -416,8 +416,8 @@ app.post('/api/verify-email', authLimiter, async (req, res) => {
   if (!userId) return res.status(400).json({ error: 'This link is invalid or has expired. Request a new one from your dashboard.' })
   const [upd] = await pool.query('UPDATE users SET email_verified = 1 WHERE id = ? AND email_verified = 0', [userId])
   if (upd.affectedRows) { // first confirmation only: send the welcome email
-    const [[u]] = await pool.query('SELECT email, username, display_name FROM users WHERE id = ?', [userId])
-    send(u.email, Email.welcome({ name: u.display_name || u.username, username: u.username }), { tag: 'welcome' })
+    const [[u]] = await pool.query('SELECT email, username, display_name, avatar_url FROM users WHERE id = ?', [userId])
+    send(u.email, Email.welcome({ name: u.display_name || u.username, username: u.username, person: Email.personOf(u) }), { tag: 'welcome' })
   }
   res.json({ ok: true })
 })
@@ -440,8 +440,8 @@ app.post('/api/password/reset', authLimiter, async (req, res) => {
   // Resetting proves control of the inbox, so it also verifies the email; bumping token_version signs out old sessions.
   await pool.query('UPDATE users SET password_hash = ?, email_verified = 1, token_version = token_version + 1 WHERE id = ?',
     [await bcrypt.hash(password, 10), userId])
-  const [[user]] = await pool.query('SELECT id, token_version, email, username FROM users WHERE id = ?', [userId])
-  send(user.email, Email.passwordChanged({ username: user.username }), { tag: 'password-changed' })
+  const [[user]] = await pool.query('SELECT id, token_version, email, username, display_name, avatar_url FROM users WHERE id = ?', [userId])
+  send(user.email, Email.passwordChanged({ username: user.username, person: Email.personOf(user) }), { tag: 'password-changed' })
   startSession(res, user)
   res.json({ ok: true })
 })

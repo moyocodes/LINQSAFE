@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowUp, Home, LayoutDashboard, LogIn, Mail, Menu, Rocket, ShieldCheck, FileText, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Logo from '@/components/Logo'
+import AppearanceToggle from '@/components/AppearanceToggle'
 import { isSignedIn } from '@/api'
 import { SITE } from '@/config'
 
@@ -32,6 +33,7 @@ function Navbar() {
       <div className="container flex h-16 items-center justify-between">
         <Logo />
         <nav aria-label="Main" className="hidden items-center gap-6 md:flex">
+          <AppearanceToggle />
           {nav.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className={linkClass}><n.icon className="size-4" aria-hidden="true" />{n.label}</NavLink>
           ))}
@@ -44,9 +46,12 @@ function Navbar() {
             </>
           )}
         </nav>
-        <Button variant="ghost" size="icon" className="md:hidden" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} aria-controls="mobile-nav" onClick={() => setOpen(!open)}>
+        <div className="flex items-center gap-2 md:hidden">
+        <AppearanceToggle />
+        <Button variant="ghost" size="icon" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} aria-controls="mobile-nav" onClick={() => setOpen(!open)}>
           {open ? <X /> : <Menu />}
         </Button>
+        </div>
       </div>
       <AnimatePresence>
         {open && (

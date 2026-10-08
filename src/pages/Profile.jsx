@@ -58,7 +58,10 @@ export default function Profile() {
     if (meta) meta.content = data.bio || `${name}'s links`
   }, [data, name])
 
-  const layout = data?.layout || 'classic'
+  // ?preview=<template> shows this page in another template without saving (the dashboard's Preview button).
+  const PREVIEWABLE = ['classic', 'grid', 'minimal', 'cover', 'editorial', 'search', 'backdrop', 'idcard']
+  const preview = PREVIEWABLE.includes(params.get('preview')) ? params.get('preview') : null
+  const layout = preview || data?.layout || 'classic'
   const prefersDark = useMedia('(prefers-color-scheme: dark)')
   const midnight = {
     background: 'hsl(330 20% 8%)',
@@ -97,7 +100,12 @@ export default function Profile() {
     return <div className="grid min-h-screen place-items-center"><Loader2 className="animate-spin text-muted-foreground" role="status" aria-label="Loading" /></div>
 
   return (
-    <div className={`relative min-h-screen overflow-hidden text-foreground ${theme.cls}`} style={themeStyle}>
+    <div className={`relative min-h-screen overflow-hidden text-foreground ${dark ? '' : 'theme-light'} ${theme.cls}`} style={themeStyle}>
+      {preview && (
+        <div className="fixed inset-x-0 top-0 z-50 bg-foreground py-1 text-center font-mono text-[11px] uppercase tracking-widest text-background">
+          Preview · not saved
+        </div>
+      )}
       {!dark && <MotionBackdrop palette={key === 'blush' ? 'blush' : key === 'sage' ? 'sage' : 'fresh'} />}
       <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col px-4 py-6">
         <div className={`flex items-center justify-between ${['cover', 'search'].includes(layout) ? 'relative z-20 mb-[-4rem] [&_a]:bg-card/90' : ''}`}>

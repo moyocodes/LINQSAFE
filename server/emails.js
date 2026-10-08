@@ -35,7 +35,23 @@ const box = (rows) => `
 const quote = (text) => `<div style="margin:0 0 20px;padding:14px 16px;border-left:3px solid ${C.cobalt};background:#ffffff;font:15px/1.6 ${SANS};color:${C.ink};white-space:pre-wrap">${esc(text)}</div>`
 
 // ---- the frame every email shares -------------------------------------------
-function layout({ preheader, eyebrow, heading, body, footnote }) {
+// The person an email is about: their profile picture (or initial) and name, shown top right.
+// avatar is a public https URL; uploaded pictures are served from /api/u/:username/avatar.
+export function personOf(u) {
+  if (!u) return null
+  const app = APP()
+  const avatar = u.avatar_url ? (String(u.avatar_url).startsWith('data:') ? `${app}/api/u/${u.username}/avatar` : u.avatar_url) : null
+  return { name: u.display_name || u.username, username: u.username, avatar }
+}
+function personChip(person) {
+  if (!person) return ''
+  const pic = person.avatar
+    ? `<img src="${esc(person.avatar)}" width="36" height="36" alt="" style="display:inline-block;vertical-align:middle;width:36px;height:36px;border-radius:18px;object-fit:cover;border:2px solid ${C.card}">`
+    : `<span style="display:inline-block;vertical-align:middle;width:36px;height:36px;border-radius:18px;background:${C.cobalt};color:#fff;font:600 16px/36px ${SERIF};text-align:center">${esc((person.name || '?')[0].toUpperCase())}</span>`
+  return `<td align="right" style="padding:0 8px 20px;white-space:nowrap"><span style="vertical-align:middle;margin-right:10px;font:600 13px ${SANS};color:${C.muted}">@${esc(person.username)}</span>${pic}</td>`
+}
+
+function layout({ preheader, eyebrow, heading, body, footnote, person }) {
   const app = APP()
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -45,11 +61,14 @@ function layout({ preheader, eyebrow, heading, body, footnote }) {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${C.paper}">${esc(preheader)}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.paper}"><tr><td align="center" style="padding:32px 12px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px">
-    <tr><td style="padding:0 8px 20px">
-      <a href="${app}" style="text-decoration:none"><img src="${app}/icon-192.png" width="36" height="36" alt="" style="vertical-align:middle;border:0;border-radius:9px">
-      <span style="vertical-align:middle;margin-left:10px;font:700 20px ${SANS};color:${C.ink}">linqsafe</span></a>
-    </td></tr>
-    <tr><td style="background:${C.card};border:1px solid ${C.line};border-radius:10px;padding:36px 32px">
+    <tr><td style="padding:0 0 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td style="padding:0 8px 20px">
+        <a href="${app}" style="text-decoration:none"><img src="${app}/icon-192.png" width="36" height="36" alt="linqsafe" style="vertical-align:middle;border:0;border-radius:9px">
+        <span style="vertical-align:middle;margin-left:10px;font:700 20px ${SANS};color:${C.ink}">linqsafe</span></a>
+      </td>
+      ${personChip(person)}
+    </tr></table></td></tr>
+    <tr><td style=""background:${C.card};border:1px solid ${C.line};border-radius:10px;padding:36px 32px">
       ${eyebrow ? `<p style="margin:0 0 10px;font:600 11px ${MONO};letter-spacing:.14em;text-transform:uppercase;color:${C.cobalt}">${esc(eyebrow)}</p>` : ''}
       <h1 style="margin:0 0 20px;font:600 30px/1.15 ${SERIF};color:${C.ink};letter-spacing:-.01em">${heading}</h1>
       ${body}
@@ -82,13 +101,14 @@ export function verifyEmail({ username, url }) {
   }
 }
 
-export function welcome({ name, username }) {
+export function welcome({ name, username, person }) {
   const app = APP()
   const page = `${app}/${username}`
   return {
     subject: "You're all set. Here's how to make your page shine",
     html: layout({
       preheader: 'Your email is confirmed. Three quick things that make a page work.',
+      person,
       eyebrow: 'Email confirmed',
       heading: `You're all set, ${esc(name)}`,
       body: p(`Your page lives at <a href="${page}" style="color:${C.cobalt};font-weight:600">${esc(page.replace(/^https?:\/\//, ''))}</a>. Three things that make it work:`)
@@ -117,12 +137,13 @@ export function resetPassword({ username, url }) {
   }
 }
 
-export function passwordChanged({ username, when = new Date() }) {
+export function passwordChanged({ username, when = new Date(), person }) {
   const forgot = `${APP()}/forgot-password`
   return {
     subject: 'Your linqsafe password was changed',
     html: layout({
       preheader: 'If this was you, there is nothing to do.',
+      person,
       eyebrow: 'Security',
       heading: 'Your password was changed',
       body: p(`The password for <b>@${esc(username)}</b> was changed on ${esc(fmtDate(when))}, and every other device was signed out.`)
@@ -135,7 +156,7 @@ export function passwordChanged({ username, when = new Date() }) {
 }
 
 // items: [{ feature, months, until }]; one payment can unlock several features.
-export function receipt({ name, items, amount, reference, method, date = new Date() }) {
+export function receipt({ name, items, amount, reference, method, date = new Date(), person }) {
   const app = APP()
   const names = items.map((i) => i.feature)
   const title = names.length === 1 ? `${names[0]} is unlocked` : `${names.length} features unlocked`
@@ -145,6 +166,7 @@ export function receipt({ name, items, amount, reference, method, date = new Dat
     subject: `Receipt: ${names.length === 1 ? names[0] : `${names.length} features`} unlocked`,
     html: layout({
       preheader: `${names.join(', ')}: active now. Thank you!`,
+      person,
       eyebrow: 'Payment received',
       heading: esc(title),
       body: p(`Thank you, ${esc(name)}! Your payment went through and ${names.length === 1 ? 'it is' : 'they are'} ready on your page.`)
@@ -162,12 +184,13 @@ export function receipt({ name, items, amount, reference, method, date = new Dat
   }
 }
 
-export function featureExpiring({ name, feature, until }) {
+export function featureExpiring({ name, feature, until, person }) {
   const url = `${APP()}/admin`
   return {
     subject: `${feature} ends on ${fmtDate(until)}`,
     html: layout({
       preheader: 'Extend it now and the new time is added to what is left.',
+      person,
       eyebrow: 'Heads up',
       heading: `${esc(feature)} ends soon`,
       body: p(`Hi ${esc(name)}, your <b>${esc(feature)}</b> is active until <b>${esc(fmtDate(until))}</b>. After that your page switches back to the free version of it.`)
@@ -178,12 +201,13 @@ export function featureExpiring({ name, feature, until }) {
   }
 }
 
-export function featureExpired({ name, feature }) {
+export function featureExpired({ name, feature, person }) {
   const url = `${APP()}/admin`
   return {
     subject: `${feature} has ended`,
     html: layout({
       preheader: 'Your page is still live; this feature is back to the free version.',
+      person,
       eyebrow: 'Feature ended',
       heading: `${esc(feature)} has ended`,
       body: p(`Hi ${esc(name)}, your <b>${esc(feature)}</b> period is over. Don't worry: your page is still live, and everything you set up is saved. It simply uses the free version until you unlock it again.`)
@@ -223,10 +247,10 @@ export function contactNotify({ name, email, message }) {
 // Sample data for previews.
 export const SAMPLES = {
   verifyEmail: [verifyEmail, { username: 'moyosore_james', url: 'https://linqsafe.com/verify?token=example' }],
-  welcome: [welcome, { name: 'Moyosore', username: 'moyosore_james' }],
+  welcome: [welcome, { name: 'Moyosore', username: 'moyosore_james', person: { name: 'Moyosore', username: 'moyosore_james', avatar: null } }],
   resetPassword: [resetPassword, { username: 'moyosore_james', url: 'https://linqsafe.com/reset-password?token=example' }],
   passwordChanged: [passwordChanged, { username: 'moyosore_james' }],
-  receipt: [receipt, { name: 'Moyosore', amount: 8400, reference: 'LQS-MUYV7SAK-306953', method: 'Visa •••• 4081 · Zenith Bank', items: [{ feature: 'Unlimited links', months: 3, until: new Date(Date.now() + 90 * 864e5) }, { feature: 'Cover template', months: 3, until: new Date(Date.now() + 90 * 864e5) }] }],
+  receipt: [receipt, { person: { name: 'Moyosore', username: 'moyosore_james', avatar: null }, name: 'Moyosore', amount: 8400, reference: 'LQS-MUYV7SAK-306953', method: 'Visa •••• 4081 · Zenith Bank', items: [{ feature: 'Unlimited links', months: 3, until: new Date(Date.now() + 90 * 864e5) }, { feature: 'Cover template', months: 3, until: new Date(Date.now() + 90 * 864e5) }] }],
   featureExpiring: [featureExpiring, { name: 'Moyosore', feature: 'Cover template', until: new Date(Date.now() + 3 * 864e5) }],
   featureExpired: [featureExpired, { name: 'Moyosore', feature: 'Cover template' }],
   contactReceived: [contactReceived, { name: 'Ada', message: 'Hi! Can I use my own domain for my page?\n\nThanks.' }],
