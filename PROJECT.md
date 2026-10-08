@@ -225,7 +225,7 @@ linqsafe is a single-page app, so the server fills in each page's `<head>` befor
   - night `#170C15` / plum `#3A1C33` for the dark 3D section; maroon `#77313F` as a secondary accent
 - **Text hierarchy by ink opacity:** headings 100%, body ~88%, secondary 60%, labels 55% (not separate greys), so it sits right on every surface and theme.
 - **Section moods:** warm paper hero → night "workshop" (3D tree flowing into the scroll-clip showcase) → paper feature cards → cobalt call-to-action → espresso footer.
-- **Fonts (three families):** **Fraunces** (headings, serif with soft italics), **DM Sans** (body and UI), **IBM Plex Mono** (labels, eyebrows, codes). Allura is used only for founder's-note signatures.
+- **Fonts (three families, used consistently everywhere):** **Fraunces** for every heading and card title; **IBM Plex Mono** in small caps for every form label, legend, stat label and eyebrow (`.label-form`, `.eyebrow`); **DM Sans** for body text, inputs and buttons. Allura is used only for founder's-note signatures.
 - **Surfaces:** "paper" cards with fine grain, a hairline edge and a long soft shadow; small corners (`--radius: 0.375rem`); inputs warm to the accent on focus.
 - **Motion:** spring hover/press on buttons and cards, scroll reveals, word-by-word hero headline, looping phone story, a GSAP scroll-clip panel, the 3D link tree, live analytics bars. Everything respects `prefers-reduced-motion`.
 

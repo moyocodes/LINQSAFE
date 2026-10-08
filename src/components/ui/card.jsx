@@ -40,7 +40,7 @@ export function IconChip({ icon: Icon, tone = 'cobalt' }) {
 }
 Card.displayName = 'Card'
 export const CardHeader = make('CardHeader', 'flex flex-col space-y-1.5 p-6')
-export const CardTitle = make('CardTitle', 'text-xl font-semibold leading-none tracking-tight')
+export const CardTitle = make('CardTitle', 'font-display text-xl font-semibold leading-tight tracking-tight text-foreground')
 export const CardDescription = make('CardDescription', 'text-sm text-muted-foreground')
 export const CardContent = make('CardContent', 'p-6 pt-0')
 export const CardFooter = make('CardFooter', 'flex items-center p-6 pt-0')

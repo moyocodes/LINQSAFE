@@ -349,7 +349,7 @@ export default function Admin() {
                 <IconChip icon={Icon} tone={tone} />
                 <div>
                   <motion.p key={n} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-2xl font-bold tabular-nums">{n.toLocaleString()}</motion.p>
-                  <p className="text-xs text-muted-foreground">{label}</p>
+                  <p className="eyebrow mt-0.5">{label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -408,7 +408,7 @@ export default function Admin() {
               <Input id="tags" placeholder="Fashion, Beauty, Lifestyle, Inspiration" maxLength={110} value={me.tags || ''} onChange={(e) => setMe({ ...me, tags: e.target.value })} />
             </div>
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">Theme <span className="font-normal text-muted-foreground">(Auto follows each visitor's light or dark setting)</span></legend>
+              <legend className="label-form">Theme <span className="font-normal text-muted-foreground">(Auto follows each visitor's light or dark setting)</span></legend>
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                 {[['light', 'Light'], ['sage', 'Sage'], ['midnight', 'Midnight'], ['blush', 'Blush'], ['auto', 'Auto']].map(([v, label]) => (
                   <label key={v} className="cursor-pointer">

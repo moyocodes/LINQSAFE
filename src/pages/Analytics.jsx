@@ -21,8 +21,8 @@ export function Kpi({ icon: Icon, label, value }) {
   return (
     <Card>
       <CardContent className="p-4">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Icon className="size-4" aria-hidden="true" />{label}</p>
-        <motion.p key={value} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-1 text-3xl font-bold tabular-nums">{value}</motion.p>
+        <p className="eyebrow flex items-center gap-1.5"><Icon className="size-3.5" aria-hidden="true" />{label}</p>
+        <motion.p key={value} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-1 font-display text-3xl font-semibold tabular-nums">{value}</motion.p>
       </CardContent>
     </Card>
   )

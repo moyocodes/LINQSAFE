@@ -228,7 +228,7 @@ export function TemplatePicker({ value, onChange, me, category, accountType }) {
   const fit = accountType === 'business' ? category : 'personal'
   return (
     <fieldset id="template" className="scroll-mt-24 space-y-2">
-      <legend className="text-sm font-medium">Template</legend>
+      <legend className="label-form">Template</legend>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {TEMPLATES.map((t) => {
           const locked = !!t.feature && !has(me, t.feature)
@@ -263,7 +263,7 @@ export function AccountFields({ me, setMe }) {
   return (
     <div id="account" className="scroll-mt-24 space-y-4 rounded-md border border-foreground/10 p-4">
       <fieldset>
-        <legend className="text-sm font-medium">Account type</legend>
+        <legend className="label-form">Account type</legend>
         <div className="mt-2 inline-flex rounded-lg border bg-muted p-1">
           {[['personal', 'Personal'], ['business', 'Business']].map(([v, label]) => (
             <label key={v} className="relative cursor-pointer">
