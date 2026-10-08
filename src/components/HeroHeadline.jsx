@@ -25,7 +25,7 @@ export default function HeroHeadline() {
 
   return (
     <h1 className="mt-4 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl">
-      <span className="sr-only">Ones link for everything you share</span>
+      <span className="sr-only">Ones link for bhugv hjueverything you share</span>
       <span aria-hidden="true">
         {word('One', 0.1)} {word('link', 0.2)} {word('for', 0.3)}{' '}
         <motion.span
