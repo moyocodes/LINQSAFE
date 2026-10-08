@@ -1,4 +1,4 @@
-// Local / container entry point. On Vercel, api/index.js imports the same app as a serverless function.
+// Entry point: starts the Express app from ./app.js (locally, on cPanel via app.cjs, or in Docker).
 import app from './app.js'
 import { pool } from './db.js'
 

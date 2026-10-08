@@ -66,9 +66,9 @@ Limits are enforced on the server (`server/app.js`) as well as in the UI.
 | Email                 | **Resend** HTTP API                                                                          | Verify and reset emails; printed to the console in local dev                                     |
 | Payments              | **Paystack**                                                                                 | Naira checkout, server-side verification, signed webhook                                         |
 | QR codes              | `qrcode`                                                                                     | Generated in the browser                                                                         |
-| Hosting | **Namecheap cPanel** Node.js App (Passenger/LiteSpeed) + cPanel MySQL | Live site; deployed by GitHub Actions over FTPS; Vercel and Docker remain as alternatives |
+| Hosting | **Namecheap cPanel** Node.js App (Passenger/LiteSpeed) + cPanel MySQL | Live site; deployed by GitHub Actions over FTPS; Docker remains as an alternative |
 | CI/CD | **GitHub Actions** (free) | Tests, builds and FTPS-deploys `dev` → dev.linqsafe.com, `prod` → linqsafe.com + admin |
-| Containers (optional) | **Docker** + Docker Compose                                                                  | Alternative for Docker hosts or running app + MySQL together; not used in local dev or on Vercel |
+| Containers (optional) | **Docker** + Docker Compose                                                                  | Alternative for Docker hosts or running app + MySQL together; not used in local dev or on cPanel |
 | Site analytics | In-house `events` table (no third-party trackers) | Each user's page analytics and the founder dashboard |
 
 ---
@@ -88,12 +88,10 @@ Express app  (server/app.js)
 ```
 
 - **Local, Node hosts and Docker:** `server/index.js` starts Express, which also serves the built frontend from `dist/`.
-- **Vercel:** `api/index.js` exports the same Express app as one serverless function. `vercel.json` sends `/api/*` to it and everything else to `index.html`.
 
 ### Folder map
 
 ```
-api/index.js            Vercel serverless entry
 server/app.js           all API routes
 server/db.js            MySQL connection, runs migrations
 server/migrations.js    versioned schema changes (append-only)
@@ -154,7 +152,7 @@ Full step-by-step instructions: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 - Work on `dev` → push (GitHub Actions deploys dev.linqsafe.com) → `git merge dev` into `prod` → push (deploys linqsafe.com + admin). Free CI/CD: `.github/workflows/deploy.yml`.
 - Deploy packages: `npm run package:dev` → `linqsafe-dev.zip`, `npm run package` → `linqsafe-prod.zip`. Each runs as a cPanel *Node.js App* (**Node.js 20+**, startup file `app.cjs`) next to cPanel's MySQL (`DB_HOST=localhost`, user added to the database with all privileges). `npm run check` (cPanel → Run JS script → `check`) diagnoses settings and the database login.
 - A LOCAL / DEV badge shows outside prod.
-- Vercel (`api/index.js`, `vercel.json`) and Docker remain supported, but aren't used: Namecheap's MySQL only accepts connections from its own server.
+- Docker remains supported as an optional alternative.
 
 ## 6. Environment variables
 

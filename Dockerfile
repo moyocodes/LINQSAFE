@@ -1,5 +1,5 @@
 # Production image: one container serves the API and the built frontend on port 3001.
-# Used for Docker-based hosts (Render, Railway, Fly, a VPS). Vercel doesn't use this file.
+# Optional: for Docker-based hosts (Render, Railway, Fly, a VPS). The live site runs on cPanel without it.
 
 # ---- build the frontend ----
 FROM node:22-alpine AS build

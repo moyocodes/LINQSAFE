@@ -306,10 +306,10 @@ async function track(req, res, { userId, kind, linkId = null, ref = '', consent 
       [userId, visitor])
     if (recent) return false
   }
-  // Country: the host's geo header (Vercel / Cloudflare) when present, otherwise the visitor's browser
+  // Country: a CDN geo header (e.g. Cloudflare) when present, otherwise the visitor's browser
   // time zone (e.g. Africa/Lagos → NG). No IP address or user agent is stored.
   const fromTz = /^[A-Za-z_]+\/[A-Za-z_/+-]+$/.test(tz) ? ct.getCountryForTimezone(tz)?.id || '' : ''
-  const country = (req.get('x-vercel-ip-country') || req.get('cf-ipcountry') || fromTz).slice(0, 2).toUpperCase()
+  const country = (req.get('cf-ipcountry') || fromTz).slice(0, 2).toUpperCase()
   await pool.query('INSERT INTO events (user_id, link_id, kind, referrer, device, country, visitor) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [userId, linkId, kind, refHost(req, ref), deviceOf(ua), /^[A-Z]{2}$/.test(country) ? country : '', visitor])
   return true

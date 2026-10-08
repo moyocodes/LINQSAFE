@@ -30,7 +30,6 @@ try {
   else if (e.code === 'ECONNREFUSED')
     console.error('Is MySQL running? Check DB_HOST and DB_PORT in your .env file.')
   console.error('')
-  if (process.env.VERCEL) throw e // serverless: fail this invocation instead of killing the runtime
   process.exit(1)
 }
 

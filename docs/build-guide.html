@@ -295,11 +295,7 @@
       </tr>
       <tr>
         <td>Hosting</td>
-        <td>Vercel</td>
-        <td>
-          Puts the site online, runs the server as a "serverless function",
-          handles domains.
-        </td>
+        <td>Namecheap cPanel</td><td>Runs the Node app next to cPanel's MySQL; GitHub Actions deploys to it.</td>
       </tr>
       <tr>
         <td>Hosted database</td>
@@ -311,7 +307,7 @@
         <td>Docker + Docker Compose</td>
         <td>
           Packs the app into one image for Docker hosts, or runs app + MySQL
-          together. Not needed for local dev or Vercel.
+          together. Not needed for local dev or cPanel.
         </td>
       </tr>
     </table>
@@ -326,8 +322,7 @@
         container setup.
       </li>
       <li>
-        <b>Accounts:</b> GitHub (code), Vercel (hosting), a hosted MySQL
-        provider, Resend (email), Paystack (payments), a domain name.
+        <b>Accounts:</b> GitHub (code and free deploys), Namecheap shared hosting with cPanel (hosting + MySQL), Resend (email), Paystack (payments), a domain name.
       </li>
     </ul>
     <div class="note">
@@ -470,8 +465,7 @@ npm install express mysql2 dotenv helmet compression express-rate-limit express-
       <h3>Step 9: Your own analytics</h3>
       <p>
         An <code>events</code> table gets one row per view or click: referring
-        site, device type, country (from Vercel's
-        <code>x-vercel-ip-country</code> header) and a random visitor id from a
+        site, device type, country (from the visitor's time zone, or a CDN geo header) and a random visitor id from a
         cookie, so refreshes and repeat visits count once. Don't store IP
         addresses. Skip bots and the owner's own visits. Chart it in the
         dashboard.
@@ -561,14 +555,8 @@ npm install express mysql2 dotenv helmet compression express-rate-limit express-
     </div>
 
     <div class="step">
-      <h3>Step 13: Make it deployable to Vercel</h3>
-      <p>
-        Split the server into <code>server/app.js</code> (exports the app) and
-        <code>server/index.js</code> (starts it locally). Add
-        <code>api/index.js</code> that exports the app for Vercel, and a
-        <code>vercel.json</code> that sends <code>/api/*</code> to it and
-        everything else to <code>index.html</code>.
-      </p>
+      <h3>Step 13: Make it deployable to cPanel</h3>
+      <p>Split the server into <code>server/app.js</code> (the Express app) and <code>server/index.js</code> (starts it), and add <code>app.cjs</code>, a small CommonJS startup file that cPanel's Node runner can load. A script zips exactly what the server needs (<code>npm run package</code>), and GitHub Actions uploads it automatically.</p>
     </div>
 
     <div class="step">

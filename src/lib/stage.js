@@ -1,5 +1,5 @@
 // Which deployment this is (local / dev / prod) and whether we're on the founder subdomain.
-// APP_STAGE is set per environment (.env locally, Vercel env vars for dev/prod).
+// APP_STAGE is set per environment (.env.local locally; set at build time by npm run package / GitHub Actions for dev and prod).
 export const STAGE =
   import.meta.env.APP_STAGE || (import.meta.env.DEV ? "local" : "prod");
 

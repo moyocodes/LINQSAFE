@@ -145,11 +145,10 @@ Do this **once for dev** and **once for prod**. Below, values are given as *dev 
 
 1. Namecheap → **Domain List** → **linqsafe.com** → **Manage**.
 2. **Nameservers** → choose **Namecheap Web Hosting DNS** (this sets `dns1.namecheaphosting.com` and `dns2.namecheaphosting.com`) → ✓ save.
-3. Remove linqsafe.com from any Vercel project.
 
 DNS usually updates within 30 minutes (up to 48 h). With these nameservers cPanel manages all records, including subdomains.
 
-*Using Advanced DNS instead?* Add `A` records for `@`, `www`, `dev` and `admin` pointing to the shared IP shown in cPanel (*General Information → Shared IP Address*), and delete old Vercel records (`76.76.21.21`, `cname.vercel-dns.com`). Keep any `MX`/`TXT` records for email.
+*Using Advanced DNS instead?* Add `A` records for `@`, `www`, `dev` and `admin` pointing to the shared IP shown in cPanel (*General Information → Shared IP Address*). Keep any `MX`/`TXT` records for email.
 
 ### 4.2 Create the subdomains
 
@@ -481,4 +480,4 @@ Code and database changes are additive (migrations only add columns or tables), 
 | `RESEND_API_KEY` `MAIL_FROM` | — | optional | yes | |
 | `PRICE_*` `DISCOUNT_*` | optional | optional | optional | founder console overrides |
 
-The code also supports Vercel (`api/index.js`, `vercel.json`) and Docker (`Dockerfile`, `docker-compose.yml`), but Namecheap's MySQL only accepts connections from its own server, so linqsafe runs on cPanel next to its database.
+Docker (`Dockerfile`, `docker-compose.yml`) is kept as an optional alternative. linqsafe runs on cPanel next to its database because Namecheap's MySQL only accepts connections from its own server.
