@@ -19,6 +19,10 @@ export default function Auth({ mode }) {
   const [busy, setBusy] = useState(false)
   const [agree, setAgree] = useState(false)
   const navigate = useNavigate()
+  const query = new URLSearchParams(location.search)
+  const expired = isLogin && query.get('expired') === '1'
+  // Back to the page they were on when the session ran out (same-site paths only).
+  const next = /^\/(?!\/)/.test(query.get('next') || '') ? query.get('next') : null
 
   async function submit(e) {
     e.preventDefault()
@@ -27,7 +31,7 @@ export default function Auth({ mode }) {
     try {
       await api(`/${mode === 'login' ? 'login' : 'register'}`, { method: 'POST', body: isLogin ? { username: form.username, password: form.password } : form })
       setSignedIn(true)
-      navigate(IS_ADMIN_HOST ? '/' : '/admin')
+      navigate(next || (IS_ADMIN_HOST ? '/' : '/admin'))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -72,6 +76,7 @@ export default function Auth({ mode }) {
                   {isLogin ? <>Welcome <em className="text-accent">back</em></> : <>Make it <em className="text-accent">yours</em></>}
                 </h1>
                 <p className="mt-2 text-sm text-muted-foreground">{isLogin ? 'Log in to manage your page.' : 'Pick a username. It becomes your link.'}</p>
+                {expired && <p role="status" className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">Your session expired. Log in again to carry on.</p>}
 
                 <form onSubmit={submit} className="mt-5 space-y-3.5">
                   <div className="space-y-1.5">

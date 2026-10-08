@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, IconChip } from '@/components/ui/card'
 import { useTitle } from '@/lib/useTitle'
 import AvatarPicker from '@/components/AvatarPicker'
-import QrCard from '@/components/QrCard'
+import QrCard, { QrDialog } from '@/components/QrCard'
 import { AmbientVideo } from '@/components/Media'
 import Onboarding from '@/components/Onboarding'
 import { AccountFields, BillingProvider, StickySave, FeatureCard, TemplatePreview, FounderNoteEditor, PaymentHistory, SocialSuggestions, TemplatePicker, TestimonialsEditor, UnlockChip } from '@/components/ProFeatures'
@@ -72,28 +72,20 @@ const PHOTO_TEMPLATES = {
   editorial: { field: 'avatar_url', title: 'Editorial shows a small round black-and-white portrait', hint: 'Upload a profile picture.' },
 }
 
+// Desktop live preview: your page drawn right here from the editor's data (no iframe, no network),
+// so it updates as you type and never depends on loading the live site.
 function Preview({ me }) {
   const layout = me.layout || 'classic'
   const theme = me.theme || 'light'
-  const content = JSON.stringify([me.links?.map((l) => [l.id, l.title, l.url, l.type]), me.display_name, me.bio, me.avatar_url, me.cover_url, me.bg_blur, me.tags, me.occupation, me.location, me.whatsapp])
-  const [version, setVersion] = useState(content)
-  useEffect(() => { const t = setTimeout(() => setVersion(content), 700); return () => clearTimeout(t) }, [content])
-  const [loading, setLoading] = useState(true)
-  const src = `/${me.username}?preview=${layout}&theme=${theme}&embed=1`
-  useEffect(() => setLoading(true), [src, version])
   return (
     <motion.div whileHover={{ y: -6, rotate: -1 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
       <Link to={`/${me.username}`} target="_blank" rel="noopener noreferrer"
-        className="group relative mx-auto block h-[540px] w-[260px] overflow-hidden rounded-[2.5rem] border-[6px] border-ink bg-ink shadow-xl">
+        className="group relative mx-auto block h-[540px] w-[260px] overflow-hidden rounded-[2.5rem] border-[6px] border-ink bg-white shadow-xl">
         <span className="sr-only">Open your live page in a new tab</span>
-        <iframe key={`${src}|${version}`} title="Live preview of your page" src={src} tabIndex={-1} aria-hidden="true" onLoad={() => setLoading(false)}
-          className="pointer-events-none h-[828px] w-[390px] origin-top-left scale-[0.6359] border-0 bg-white" />
-        <AnimatePresence>
-          {loading && (
-            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 grid place-items-center bg-ink/40 backdrop-blur-sm"><Loader2 className="size-5 animate-spin text-white" /></motion.span>
-          )}
-        </AnimatePresence>
+        {/* Drawn at phone width (390px) and scaled down; translateZ(0) keeps fixed backgrounds inside the frame. */}
+        <div aria-hidden="true" inert="" className="pointer-events-none h-[828px] w-[390px] origin-top-left overflow-hidden [transform:translateZ(0)_scale(0.6359)]">
+          <ProfileView data={me} layout={layout} theme={theme} embed />
+        </div>
         <motion.span key={layout + theme} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           className="absolute left-1/2 top-3 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink/80 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-paper backdrop-blur">
           {TEMPLATES.find((t) => t.id === layout)?.name || layout} · {theme}
@@ -112,23 +104,14 @@ function PreviewToolbar({ me, url, canQr }) {
   async function copy() {
     try { await navigator.clipboard.writeText(url) } catch { window.prompt('Copy this link:', url); return }
     setCopied(true)
-    setTimeout(() => setCopied(false), 1400)
-  }
-  async function downloadQr() {
-    const { default: QRCode } = await import('qrcode')
-    const a = document.createElement('a')
-    a.href = await QRCode.toDataURL(`${url}?src=qr`, { width: 640, margin: 2 })
-    a.download = `${me.username}-qr.png`
-    a.click()
-    setQr(true)
-    setTimeout(() => setQr(false), 1400)
+    setTimeout(() => setCopied(false), 2000)
   }
   const share = () => (navigator.share ? navigator.share({ title: me.display_name || me.username, url }).catch(() => {}) : copy())
   const tools = [
     { label: 'Open', icon: ExternalLink, as: 'link', to: `/${me.username}` },
     { label: copied ? 'Copied' : 'Copy', icon: copied ? Check : Copy, onClick: copy },
     { label: 'Share', icon: Share2, onClick: share },
-    canQr ? { label: qr ? 'Saved' : 'QR', icon: qr ? Check : QrCode, onClick: downloadQr } : { label: 'QR', icon: QrCode, as: 'link', to: '#qr', pro: true },
+    canQr ? { label: 'QR', icon: QrCode, onClick: () => setQr(true) } : { label: 'QR', icon: QrCode, as: 'link', to: '#qr', pro: true },
     { label: 'Stats', icon: BarChart3, as: 'link', to: '/admin/analytics' },
   ]
   return (
@@ -160,6 +143,7 @@ function PreviewToolbar({ me, url, canQr }) {
           </motion.div>
         )
       })}
+      <AnimatePresence>{qr && <QrDialog url={url} username={me.username} onClose={() => setQr(false)} />}</AnimatePresence>
     </motion.div>
   )
 }
@@ -302,6 +286,7 @@ export default function Admin() {
   const [adding, setAdding] = useState(false)
   const [announce, setAnnounce] = useState('')
   const [peek, setPeek] = useState(false)
+  const [peekQr, setPeekQr] = useState(false)
   // Each new photo on the Photo background template suggests blurring it (text reads better on blur).
   const [blurTip, setBlurTip] = useState(false)
   const lastPhoto = useRef(null)
@@ -346,7 +331,7 @@ export default function Admin() {
         occupation: m.occupation || '', location: m.location || '', bg_blur: m.bg_blur === 0 || m.bg_blur === false ? 0 : 1,
       } })
       setSaved(true)
-      setTimeout(() => setSaved(false), 1500)
+      setTimeout(() => setSaved(false), 2000)
     } catch (err) {
       setProfileError(err.message)
     }
@@ -606,7 +591,7 @@ export default function Admin() {
       </button>
       <AnimatePresence>
         {peek && (
-          <TemplatePreview username={me.username} title="Your page" onClose={() => setPeek(false)}
+          <TemplatePreview title="Your page" onClose={() => setPeek(false)}
             footer={<div className="flex w-full flex-col items-center gap-2">
               {/* Switch between the templates you can already use (free or bought); each tap saves. */}
               <div role="radiogroup" aria-label="Your templates" className="flex w-full gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
@@ -621,13 +606,18 @@ export default function Admin() {
                   )
                 })}
               </div>
-              <a href={profileUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-black hover:bg-white/90"><ExternalLink className="size-4" aria-hidden="true" /> Open my page</a>
+              <div className="flex flex-wrap justify-center gap-2">
+                <a href={profileUrl} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-black hover:bg-white/90"><ExternalLink className="size-4" aria-hidden="true" /> Open my page</a>
+                {has(me, 'qr_code') && <button type="button" onClick={() => setPeekQr(true)}
+                  className="inline-flex h-10 items-center gap-2 rounded-md bg-white/15 px-4 text-sm font-semibold text-white hover:bg-white/25"><QrCode className="size-4" aria-hidden="true" /> View QR</button>}
+              </div>
             </div>}>
             <ProfileView data={me} layout={me.layout || 'classic'} theme={me.theme || 'light'} embed />
           </TemplatePreview>
         )}
       </AnimatePresence>
+      <AnimatePresence>{peekQr && <QrDialog url={profileUrl} username={me.username} onClose={() => setPeekQr(false)} />}</AnimatePresence>
 
       {/* Desktop only: sticky preview column. */}
       <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:block">

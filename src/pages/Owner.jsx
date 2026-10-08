@@ -57,7 +57,7 @@ function PricingEditor() {
       }
       load(await api('/owner/pricing', { method: 'PUT', body }))
       setState('saved')
-      setTimeout(() => setState('idle'), 1500)
+      setTimeout(() => setState('idle'), 2000)
     } catch (e) {
       setError(e.message)
       setState('idle')

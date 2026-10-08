@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import QRCode from 'qrcode'
-import { Download, QrCode } from 'lucide-react'
+import { Download, QrCode, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SITE } from '@/config'
@@ -28,7 +29,7 @@ function drawLogo(ctx, x, y, size) {
 
 // A printable card: the code with the logo in its centre, the site's wordmark under it and the
 // username small and quiet. High error correction keeps it scannable with the logo covering the middle.
-async function renderCard(url, username) {
+export async function renderCard(url, username) {
   await document.fonts?.ready
   const W = 1080, H = 1320, pad = 90, qr = W - pad * 2
   const canvas = document.createElement('canvas')
@@ -64,13 +65,43 @@ async function renderCard(url, username) {
   return canvas.toDataURL('image/png')
 }
 
+// ?src=qr lets analytics count scans separately from other visits.
+function useQrImage(url, username) {
+  const [src, setSrc] = useState('')
+  useEffect(() => { renderCard(`${url}?src=qr`, username).then(setSrc).catch(() => setSrc('')) }, [url, username])
+  return src
+}
+
+// The QR image full size in a dialog, with Download (the dashboard's QR buttons open this).
+export function QrDialog({ url, username, onClose }) {
+  const src = useQrImage(url, username)
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <motion.div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+      <motion.div role="dialog" aria-modal="true" aria-label="Your QR code" onClick={(e) => e.stopPropagation()}
+        initial={{ y: 24, scale: 0.96 }} animate={{ y: 0, scale: 1 }} exit={{ y: 24, scale: 0.96 }} transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        className="flex w-full max-w-xs flex-col items-center gap-3">
+        <div className="flex w-full items-center justify-between text-white">
+          <p className="font-display text-lg font-semibold !text-white">Your QR code</p>
+          <button type="button" onClick={onClose} aria-label="Close" className="grid size-9 place-items-center rounded-full bg-white/15 hover:bg-white/25"><X className="size-4" /></button>
+        </div>
+        <div className="grid aspect-[1080/1320] w-full place-items-center overflow-hidden rounded-3xl bg-[#FCFAF8] shadow-2xl">
+          {src ? <img src={src} alt={`QR code linking to ${url}`} className="size-full" /> : <QrCode className="size-10 animate-pulse text-black/20" aria-hidden="true" />}
+        </div>
+        <a href={src || undefined} download={`${username}-qr.png`} aria-disabled={!src}
+          className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-black hover:bg-white/90 aria-disabled:pointer-events-none aria-disabled:opacity-60"><Download className="size-4" aria-hidden="true" /> Download PNG</a>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 // "Scan to connect" code for flyers, business cards and story posts.
 export default function QrCard({ url, username }) {
-  const [src, setSrc] = useState('')
-  useEffect(() => {
-    // ?src=qr lets analytics count scans separately from other visits.
-    renderCard(`${url}?src=qr`, username).then(setSrc).catch(() => setSrc(''))
-  }, [url, username])
+  const src = useQrImage(url, username)
 
   return (
     <Card>

@@ -510,7 +510,7 @@ app.post('/api/password/reset', authLimiter, async (req, res) => {
 // ---- Admin (authenticated) ----
 app.get('/api/me', auth, async (req, res) => {
   const [[user]] = await pool.query(
-    `SELECT id, username, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
+    `SELECT username, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
   const [links] = await pool.query(
     'SELECT id, title, url, type, clicks FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [req.userId])
   res.json({ ...user, is_owner: ownsSite(user), testimonials: parseList(user.testimonials),
@@ -704,7 +704,8 @@ app.get('/api/u/:username', async (req, res) => {
     await pool.query('UPDATE users SET views = views + 1 WHERE id = ?', [user.id])
   const [links] = await pool.query(
     'SELECT id, title, url, type FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [user.id])
-  res.json({ ...user, testimonials: parseList(user.testimonials), links })
+  const { id: _id, ...pub } = user // internal ids never leave the server; links keep theirs for click counting
+  res.json({ ...pub, testimonials: parseList(user.testimonials), links })
 })
 
 app.post('/api/click/:id', clickLimiter, async (req, res) => {

@@ -3,13 +3,16 @@ import { Routes, Route } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import StageBadge from '@/components/StageBadge'
 import { IS_ADMIN_HOST } from '@/lib/stage'
-import Home from '@/pages/Home'
-import Auth from '@/pages/Auth'
-import Contact from '@/pages/Contact'
-import Terms from '@/pages/Terms'
-import Privacy from '@/pages/Privacy'
 import NotFound from '@/pages/NotFound'
 import Profile from '@/pages/Profile'
+
+// Public profile pages are most of the traffic, so only they (and 404) ship in the main bundle;
+// the marketing and account pages load when someone opens them.
+const Home = lazy(() => import('@/pages/Home'))
+const Auth = lazy(() => import('@/pages/Auth'))
+const Contact = lazy(() => import('@/pages/Contact'))
+const Terms = lazy(() => import('@/pages/Terms'))
+const Privacy = lazy(() => import('@/pages/Privacy'))
 import PageLoader from '@/components/PageLoader'
 
 // Admin pulls in drag-and-drop code that visitors to public pages never need.

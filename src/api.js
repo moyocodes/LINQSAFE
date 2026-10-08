@@ -16,7 +16,16 @@ export async function api(path, { method = 'GET', body } = {}) {
     body: body && JSON.stringify(body),
   })
   const data = await res.json().catch(() => ({}))
-  if (res.status === 401) setSignedIn(false)
+  if (res.status === 401) {
+    const wasSignedIn = isSignedIn()
+    setSignedIn(false)
+    // Session expired or was signed out elsewhere: send them to log in, then back to where they were.
+    // (A wrong password on the login form is also a 401, but there nobody was signed in.)
+    if (wasSignedIn && !/^\/(login|register|password)/.test(path) && !/^\/(login|signup|forgot-password|reset-password)/.test(location.pathname)) {
+      location.assign(`/login?expired=1&next=${encodeURIComponent(location.pathname + location.search)}`)
+      return new Promise(() => {}) // the page is leaving; don't flash an error first
+    }
+  }
   if (!res.ok) throw new Error(data.error || 'Request failed')
   return data
 }

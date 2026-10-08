@@ -53,8 +53,8 @@ export function BillingProvider({ me, onUnlocked, children }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState('')
-  // "… unlocked." is a quick confirmation, not a banner that stays: gone after a second.
-  useEffect(() => { if (!done) return; const t = setTimeout(() => setDone(''), 1000); return () => clearTimeout(t) }, [done])
+  // "… unlocked." is a quick confirmation, not a banner that stays: gone after 2 seconds.
+  useEffect(() => { if (!done) return; const t = setTimeout(() => setDone(''), 2000); return () => clearTimeout(t) }, [done])
   const [history, setHistory] = useState([])
   const loadHistory = () => api('/billing/history').then(setHistory).catch(() => {})
   useEffect(() => {
@@ -237,10 +237,9 @@ function MiniPreview({ id }) {
   return <div aria-hidden="true" className={`h-14 overflow-hidden rounded-md p-2 ${id === 'search' ? 'bg-gradient-to-b from-rose to-lilac' : id === 'backdrop' ? 'bg-[linear-gradient(135deg,#F2A07E,#6CC3BA_55%,#2B4FAF)]' : 'bg-muted'}`}>{map[id]}</div>
 }
 
-// Full-size preview of the user's own page in a template, in a phone frame (not saved).
-// Phone-frame preview modal. Template tiles pass a template (with Use / Add); the dashboard's floating
-// Preview button passes `children` (your page rendered in place, no loading), `title` and `footer`.
-export function TemplatePreview({ username, template, onClose, onUse, locked, src, title, footer, children }) {
+// Phone-frame preview modal showing `children` (the page drawn in place, no loading). Template tiles
+// pass a template (with Use / Add); the dashboard's floating Preview button passes `title` and `footer`.
+export function TemplatePreview({ template, onClose, onUse, locked, title, footer, children }) {
   const name = title || template.name
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -257,8 +256,8 @@ export function TemplatePreview({ username, template, onClose, onUse, locked, sr
           <button type="button" onClick={onClose} aria-label="Close preview" className="grid size-9 place-items-center rounded-full bg-white/15 hover:bg-white/25"><X className="size-4" /></button>
         </div>
         {/* translateZ(0) makes the frame the containing block for the page's position: fixed backgrounds. */}
-        <div className={`h-[min(640px,72vh)] w-full rounded-[2rem] border-[6px] border-black bg-white shadow-2xl ${children ? 'overflow-y-auto overflow-x-hidden overscroll-contain [transform:translateZ(0)]' : 'overflow-hidden'}`}>
-          {children || <iframe title={`${name} preview`} src={src || `/${username}?preview=${template.id}`} className="size-full" />}
+        <div className="h-[min(640px,72vh)] w-full overflow-y-auto overflow-x-hidden overscroll-contain rounded-[2rem] border-[6px] border-black bg-white shadow-2xl [transform:translateZ(0)]">
+          {children}
         </div>
         <div className="flex w-full flex-wrap items-center justify-center gap-2">
           {footer ?? (locked ? <UnlockChip feature={template.feature} /> : <Button onClick={onUse} className="bg-white text-black hover:bg-white/90"><Check /> Use this template</Button>)}
@@ -329,7 +328,7 @@ export function TemplatePicker({ value, onChange, onUse, theme, onTheme, me, cat
       {TEMPLATES.some((t) => t.feature && !has(me, t.feature)) && <p className="text-xs text-muted-foreground"><b>Preview</b> any template with your own details, locked ones too; tap <b>Add</b> on locked ones, then pay for everything you picked at once.</p>}
       <AnimatePresence>
         {previewing && (
-          <TemplatePreview username={me.username} template={previewing} locked={!!previewing.feature && !has(me, previewing.feature)}
+          <TemplatePreview template={previewing} locked={!!previewing.feature && !has(me, previewing.feature)}
             onClose={() => setPreviewing(null)} onUse={() => { (onUse || onChange)(previewing); setPreviewing(null) }}>
             {/* Drawn right here from your own data (locked templates too), so it opens instantly. */}
             <ProfileView data={me} layout={previewing.id} theme={theme || me.theme || 'light'} embed />
@@ -473,7 +472,7 @@ function useSaver(path, body) {
     try {
       await api(path, { method: 'PUT', body: body() })
       setState('saved')
-      setTimeout(() => setState('idle'), 1500)
+      setTimeout(() => setState('idle'), 2000)
     } catch (e) {
       setError(e.message)
       setState('idle')
