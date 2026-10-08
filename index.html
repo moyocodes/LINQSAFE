@@ -3,18 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- The server replaces this block per page (server/seo.js). These defaults are for local dev. -->
+    <!--seo-->
     <title>linqsafe — One link for everything you share</title>
-    <meta name="description" content="Create a beautiful, fast page that holds all your links. Share it anywhere with a single URL." />
-    <meta name="theme-color" content="#f6f1ea" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content="Create a beautiful, fast page that holds all your links: socials, shop, WhatsApp and more. Share it anywhere with a single URL." />
+    <meta property="og:site_name" content="linqsafe" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="linqsafe — One link for everything you share" />
     <meta property="og:description" content="Create a beautiful, fast page that holds all your links." />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content="/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!--/seo-->
+    <meta name="theme-color" content="#f6f3ee" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   </head>
   <body>
     <div id="root"></div>
-    <noscript>This app needs JavaScript to run.</noscript>
+    <noscript>linqsafe needs JavaScript to run. One link for everything you share: socials, shop, WhatsApp and more.</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

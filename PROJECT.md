@@ -98,6 +98,7 @@ server/db.js            MySQL connection, runs migrations
 server/migrations.js    versioned schema changes (append-only)
 server/schema.sql       readable snapshot of the full schema
 server/env.js           loads .env.local (your computer) then .env (servers)
+server/seo.js           per-page titles, previews, structured data, robots.txt, sitemap.xml
 app.cjs                 cPanel startup file
 scripts/package.sh      builds linqsafe-dev.zip / linqsafe-prod.zip
 docs/DEPLOY.md          step-by-step deployment for local, dev, prod
@@ -184,6 +185,21 @@ Full step-by-step instructions: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 | `npm test`                                   | API tests against the running dev server (`API_URL` to point elsewhere; never prod) |
 
 ---
+
+## 7b. SEO and link previews
+
+linqsafe is a single-page app, so the server fills in each page's `<head>` before sending it (`server/seo.js`, between the `<!--seo-->` markers in `index.html`). Crawlers and chat apps that don't run JavaScript (WhatsApp, X, Facebook, LinkedIn, Slack) see the right preview.
+
+| What | Where |
+|---|---|
+| Title, description, canonical URL | every page; profiles use `Name (@username) · linqsafe` and their bio |
+| Share image (Open Graph / Twitter card) | `public/og-image.png` (1200×630); profiles use their own picture (uploaded pictures are served from `/api/u/:username/avatar`) |
+| Structured data (JSON-LD) | home: `WebSite` + `Organization`; profiles: `ProfilePage` with a `Person` or `Organization` (business accounts) and their social links as `sameAs` |
+| `robots.txt` | generated; blocks `/admin`, `/owner`, `/api/`, `/billing/`, password and verify pages; points to the sitemap |
+| `sitemap.xml` | generated live: the public pages plus every profile with at least one link |
+| No indexing on dev and admin | `dev.*` and `admin.*` hosts get `Disallow: /` and an `X-Robots-Tag: noindex` header |
+| Private pages | `noindex, nofollow`; unknown usernames return a real 404 |
+| Icons | `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192/512.png`, `site.webmanifest` |
 
 ## 8. Security notes
 

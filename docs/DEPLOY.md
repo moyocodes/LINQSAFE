@@ -339,6 +339,17 @@ Your `.env` is never in the zip, so extracting over the folder keeps your settin
 
 Without a key, emails (verify, reset password) are written to `stderr.log` instead of sent.
 
+### Search engines and link previews
+
+After prod is live:
+1. Check `https://linqsafe.com/robots.txt` and `https://linqsafe.com/sitemap.xml` open.
+2. **Google Search Console** (search.google.com/search-console) → *Add property* → **Domain** → `linqsafe.com` → it gives a `TXT` record: add it in cPanel → **Zone Editor** → *Add Record* (TXT, name `linqsafe.com.`) → **Verify**.
+3. Search Console → **Sitemaps** → enter `sitemap.xml` → **Submit**. New profiles are added to the sitemap automatically.
+4. Optional: **Bing Webmaster Tools** → *Import from Google Search Console*.
+5. Check previews: paste a profile link into the [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) or the [LinkedIn Post Inspector](https://www.linkedin.com/post-inspector/). They also refresh cached previews after you change a profile.
+
+dev.linqsafe.com and admin.linqsafe.com tell search engines not to index them; don't add them to Search Console.
+
 ---
 
 ## 7. Backups and rollback

@@ -13,6 +13,7 @@ import ct from 'countries-and-timezones'
 import './env.js'
 import { pool } from './db.js'
 import { actionEmail, sendMail } from './mailer.js'
+import { createSeo, indexable } from './seo.js'
 import { DURATIONS, FEATURES, FEATURE_KEYS, LAYOUT_FEATURE, featureByKey, pricing } from './features.js'
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -823,6 +824,16 @@ app.put('/api/owner/pricing', auth, ownerOnly, async (req, res) => {
   res.json({ ok: true, discounts: p.discounts, features: p.catalog() })
 })
 
+// ---- SEO: robots.txt, sitemap.xml, profile pictures for link previews ----
+const seo = createSeo({ pool, dist: path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist') })
+app.use((req, res, next) => {
+  if (!indexable(req.hostname)) res.set('X-Robots-Tag', 'noindex, nofollow') // dev.* and admin.* stay out of search
+  next()
+})
+app.get('/robots.txt', seo.robots)
+app.get('/sitemap.xml', seo.sitemap)
+app.get('/api/u/:username/avatar', seo.avatar)
+
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }))
 
 // ---- Serve the built frontend (production) ----
@@ -830,10 +841,9 @@ const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist
 app.use(express.static(dist, { maxAge: '1h', index: false, setHeaders: (res, file) => {
   if (file.includes(`${path.sep}assets${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
 } }))
-// SPA fallback: any non-API GET returns the app so client-side routes like /contact and /:username work on refresh.
-app.get('*', (req, res, next) => {
-  res.sendFile(path.join(dist, 'index.html'), (err) => err && next())
-})
+// SPA fallback: any non-API GET returns the app (so /contact and /:username work on refresh), with that
+// page's title, description, share image and structured data filled in (server/seo.js).
+app.get('*', seo.page)
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {

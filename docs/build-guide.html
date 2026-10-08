@@ -620,7 +620,11 @@ docker run -p 3001:3001 --env-file .env linqsafe   # app only, hosted DB</pre
       </p>
     </div>
 
-    <h2 class="page-break">5. Going live: local, dev and prod</h2>
+    <div class="step"><h3>SEO and link previews</h3>
+<p>A single-page app sends the same empty page for every URL, so WhatsApp, X and Facebook previews (and some crawlers) see nothing useful. Fix it on the server: before sending <code>index.html</code>, fill a marked block in its <code>&lt;head&gt;</code> with that URL's title, description, canonical link, share image and JSON-LD structured data, including each user's profile (their name, bio and picture). Generate <code>robots.txt</code> and <code>sitemap.xml</code> from the database, keep dev and admin out of search with <code>Disallow: /</code> and an <code>X-Robots-Tag</code> header, and return a real 404 for unknown usernames. Then submit the sitemap in Google Search Console.</p>
+<p class="prompt"><b>Prompt:</b> "Add server-side SEO for the SPA: per-page titles, descriptions, Open Graph/Twitter tags and JSON-LD (ProfilePage for user pages), a generated robots.txt and sitemap.xml with every public profile, noindex on dev and admin, a 1200×630 share image and app icons."</p></div>
+
+<h2 class="page-break">5. Going live: local, dev and prod</h2>
 <p>Three stages, each with its own database and settings, so testing never touches real users or money.</p>
 <table>
   <tr><th>Stage</th><th>Address</th><th>Database</th><th>Settings</th><th>Branch</th><th>Paystack</th></tr>
