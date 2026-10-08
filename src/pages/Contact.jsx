@@ -36,7 +36,7 @@ export default function Contact() {
   return (
     <div className="container grid max-w-6xl items-start gap-10 py-16 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} className="lg:sticky lg:top-24">
-        <Photo src="/media/contact.jpg" alt="" className="aspect-[4/5] rounded-[1.75rem] shadow-[0_40px_80px_-40px_hsl(20_35%_18%/.5)] max-lg:aspect-[16/10]">
+        <Photo src={['/media/contact.jpg', '/media/contact.svg']} alt="" className="aspect-[4/5] rounded-[1.75rem] shadow-[0_40px_80px_-40px_hsl(20_35%_18%/.5)] max-lg:aspect-[16/10]">
           <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 p-6 text-paper">
             <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-paper/70">We read every message</p>

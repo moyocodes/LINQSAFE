@@ -4,11 +4,13 @@ import { useReducedMotion } from 'framer-motion'
 // Optional brand media from /public/media. Anything missing falls back to a brand gradient, so the page
 // never shows a broken image. See public/media/README.md for the files and the prompts used to make them.
 
+// src can be a list: each one is tried in turn (e.g. a real photo first, then a bundled illustration).
 export function Photo({ src, alt = '', className = '', fallback = 'bg-[linear-gradient(135deg,#F2A07E,#E5D2BD_45%,#93ACCF)]', children }) {
-  const [failed, setFailed] = useState(false)
+  const list = [].concat(src)
+  const [i, setI] = useState(0)
   return (
     <div className={`relative overflow-hidden ${fallback} ${className}`}>
-      {!failed && <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} className="absolute inset-0 size-full object-cover" />}
+      {i < list.length && <img key={list[i]} src={list[i]} alt={alt} loading="lazy" decoding="async" onError={() => setI(i + 1)} className="absolute inset-0 size-full object-cover" />}
       {children}
     </div>
   )

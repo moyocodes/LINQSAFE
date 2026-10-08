@@ -27,26 +27,29 @@ function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDra
       className="relative overflow-hidden rounded-lg border bg-card"
       whileDrag={{ scale: 1.02, boxShadow: '0 10px 30px rgba(0,0,0,.12)', zIndex: 10 }}
     >
-      <div className="flex items-center gap-2 p-3">
-        <button
-          type="button" aria-label="Drag to reorder" onPointerDown={(e) => controls.start(e)}
-          className="cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing"
-        >
-          <GripVertical className="size-5" aria-hidden="true" />
-        </button>
-        <TypeBadge type={link.type} url={link.url} />
-        <div className="grid flex-1 gap-2">
+      {/* Phones: handle + icon + fields on top, controls in a row underneath. Wider: controls on the right. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-2 p-3 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto]">
+        <div className="flex flex-col items-center gap-2 sm:contents">
+          <button
+            type="button" aria-label="Drag to reorder" onPointerDown={(e) => controls.start(e)}
+            className="cursor-grab touch-none rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing"
+          >
+            <GripVertical className="size-5" aria-hidden="true" />
+          </button>
+          <TypeBadge type={link.type} url={link.url} className="size-8 sm:size-9" />
+        </div>
+        <div className="grid min-w-0 gap-2">
           <Input placeholder="Link title" aria-label={`Title for link ${index + 1}`} value={link.title} onChange={(e) => onChange({ title: e.target.value })} onBlur={onSave} />
           <Input placeholder="https://instagram.com/moyosore" aria-label={`URL for link ${index + 1}`} value={link.url} onChange={(e) => onChange({ url: e.target.value })}
             onBlur={() => { const t = detectType(link.url); if (t && t !== link.type) { onChange({ type: t }); onSave({ type: t }) } else onSave() }} />
           <TypeSelect aria-label={`Type for link ${index + 1}`} value={link.type || 'website'} onChange={(type) => { onChange({ type }); onSave({ type }) }} />
         </div>
-        <div className="flex flex-col items-center gap-1">
+        <div className="col-span-2 flex items-center justify-between gap-1 border-t pt-2 sm:col-span-1 sm:flex-col sm:justify-center sm:border-0 sm:pt-0">
           <Badge variant="secondary"><BarChart3 className="mr-1 size-3" aria-hidden="true" />{link.clicks}<span className="sr-only"> clicks</span></Badge>
           <div className="flex">
-            <Button variant="ghost" size="icon" className="size-8" aria-label={`Move ${link.title || 'link'} up`} disabled={index === 0} onClick={() => onMove(-1)}><ChevronUp /></Button>
-            <Button variant="ghost" size="icon" className="size-8" aria-label={`Move ${link.title || 'link'} down`} disabled={index === total - 1} onClick={() => onMove(1)}><ChevronDown /></Button>
-            <Button variant="ghost" size="icon" className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete ${link.title || 'link'}`} onClick={onRemove}>
+            <Button variant="ghost" size="icon" className="size-9 sm:size-8" aria-label={`Move ${link.title || 'link'} up`} disabled={index === 0} onClick={() => onMove(-1)}><ChevronUp /></Button>
+            <Button variant="ghost" size="icon" className="size-9 sm:size-8" aria-label={`Move ${link.title || 'link'} down`} disabled={index === total - 1} onClick={() => onMove(1)}><ChevronDown /></Button>
+            <Button variant="ghost" size="icon" className="size-9 text-destructive hover:bg-destructive/10 hover:text-destructive sm:size-8" aria-label={`Delete ${link.title || 'link'}`} onClick={onRemove}>
               <Trash2 />
             </Button>
           </div>
@@ -335,7 +338,7 @@ export default function Admin() {
   return (
     <BillingProvider me={me} onUnlocked={loadMe}>
     <AmbientVideo src="/media/dashboard-loop.mp4" poster="/media/dashboard-poster.jpg" />
-    <div className="container relative grid gap-8 py-10 pb-40 lg:grid-cols-[1fr_300px]">
+    <div className="container relative grid grid-cols-1 gap-8 py-10 pb-40 lg:grid-cols-[minmax(0,1fr)_300px] [&>*]:min-w-0">
       <p role="status" aria-live="polite" className="sr-only">{announce}</p>
       {!me.onboarded_at && <Onboarding me={me} onDone={() => loadMe()} />}
       <div className="space-y-6">

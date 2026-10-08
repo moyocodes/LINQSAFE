@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
-import { ArrowRight, ArrowUpRight, BarChart3, Check, GripVertical, Palette, QrCode, Share2, Sparkles, Zap } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, BarChart3, Check, GripVertical, Palette, QrCode, Share2, Zap } from 'lucide-react'
 import { fadeUp, stagger } from '@/lib/motion'
 import { TypeBadge } from '@/lib/linkTypes'
 import { LogoMark } from '@/components/Logo'
@@ -26,7 +26,7 @@ function Slide({ bg, title, text, chip, bare, children, i }) {
           <motion.span initial={{ opacity: 0, y: 12, scale: 0.9 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true }}
             transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 18 }}
             className="theme-light absolute bottom-5 right-5 flex items-center gap-2 rounded-xl bg-card px-3.5 py-2.5 text-sm font-medium text-foreground shadow-xl sm:bottom-8 sm:right-8">
-            <Sparkles className="size-4 text-accent" /> {chip}
+            {chip}
           </motion.span>
         )}
       </div>
