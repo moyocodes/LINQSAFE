@@ -9,6 +9,7 @@ import { CATEGORIES, TEMPLATES, categoryLabel, channelName, methodLabel, naira }
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useTitle } from '@/lib/useTitle'
+import OwnerTraffic from '@/components/OwnerTraffic'
 import { IS_ADMIN_HOST, STAGE } from '@/lib/stage'
 
 const SIGNUPS = '#2a78d6'
@@ -271,6 +272,8 @@ export default function Owner() {
           </Card>
         </div>
 
+        <OwnerTraffic />
+
         <PricingEditor />
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -317,16 +320,6 @@ export default function Owner() {
             <CardHeader><CardTitle>Signups per day</CardTitle><CardDescription>{d.totals.verified} of {d.totals.users} users have verified their email.</CardDescription></CardHeader>
             <CardContent><SignupBars series={d.series} /></CardContent>
           </Card>
-          <Card>
-            <CardHeader><CardTitle>Traffic across all pages</CardTitle>
-              <CardDescription className="flex gap-4"><span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[#2a78d6]" />Views</span><span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[#eb6834]" />Clicks</span></CardDescription>
-            </CardHeader>
-            <CardContent><LineChart series={d.series} /></CardContent>
-          </Card>
-          <Card><CardHeader><CardTitle>Top pages</CardTitle></CardHeader>
-            <CardContent><BarList empty="No visits yet." rows={d.topPages.map((p) => ({ key: p.name, label: `/${p.name}`, n: p.n }))} /></CardContent></Card>
-          <Card><CardHeader><CardTitle>Countries</CardTitle></CardHeader>
-            <CardContent><BarList empty="No visits yet." rows={d.countries.map((c) => ({ key: c.name || 'xx', label: c.name ? regionName(c.name) : 'Unknown', n: c.n, icon: <span aria-hidden="true">{c.name ? flag(c.name) : '🌐'}</span> }))} /></CardContent></Card>
           <Card><CardHeader><CardTitle>Business categories</CardTitle></CardHeader>
             <CardContent><BarList empty="No business accounts yet." rows={d.categories.map((c) => ({ key: c.name, label: categoryLabel(c.name), n: c.n }))} /></CardContent></Card>
           <Card><CardHeader><CardTitle>Templates in use</CardTitle></CardHeader>

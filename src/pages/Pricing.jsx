@@ -33,7 +33,7 @@ export default function Pricing() {
             <Button asChild variant="outline" className="mt-8 w-full"><Link to={isSignedIn() ? '/admin' : '/signup'}>{isSignedIn() ? 'Go to dashboard' : 'Start free'}</Link></Button>
           </motion.div>
 
-          <motion.div variants={fadeUp} className="relative overflow-hidden rounded-3xl bg-cta p-7 text-primary-foreground shadow-xl">
+          <motion.div variants={fadeUp} className="relative overflow-hidden rounded-3xl bg-cta p-7 text-paper shadow-xl">
             <h2 className="flex items-center gap-2 text-xl font-bold"><Crown className="size-5" aria-hidden="true" /> Add-on features</h2>
             {cfg && (
               <div role="radiogroup" aria-label="How long" className="mt-4 grid grid-cols-4 rounded-xl bg-white/10 p-1">

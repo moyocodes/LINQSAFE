@@ -398,7 +398,7 @@ export default function TreeStory() {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         defaults: { ease: 'none' },
-        scrollTrigger: { trigger: section.current, start: 'top 65px', end: '+=450%', scrub: 0.8, pin: true, anticipatePin: 1 },
+        scrollTrigger: { trigger: section.current, start: 'top 65px', end: '+=250%', scrub: 0.8, pin: true, anticipatePin: 1 },
       })
 
       if (world) {
@@ -435,7 +435,7 @@ export default function TreeStory() {
     <div
       key={s.q}
       ref={(el) => (panels.current[i] = el)}
-      className={reduced ? 'rounded-2xl border border-white/10 bg-white/5 p-6' : 'col-start-1 row-start-1 rounded-2xl border border-white/10 bg-night/75 p-6 backdrop-blur-md'}
+      className={reduced ? 'rounded-2xl border border-white/10 bg-white/5 p-6' : 'col-start-1 row-start-1 rounded-2xl border border-white/10 bg-ink/75 p-6 backdrop-blur-md'}
       style={!reduced && i > 0 ? { opacity: 0 } : undefined}
     >
       <p className="text-xs font-semibold uppercase tracking-widest text-sand">
@@ -445,7 +445,7 @@ export default function TreeStory() {
       <p className="mt-3 text-base leading-7 text-sand/80">{s.text}</p>
       {i === STEPS.length - 1 && (
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button asChild size="lg" className="bg-sand text-night hover:bg-sand/90"><Link to="/signup">Create your page</Link></Button>
+          <Button asChild size="lg" className="bg-sand text-ink hover:bg-sand/90"><Link to="/signup">Create your page</Link></Button>
           <Button asChild size="lg" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"><Link to="/login">Log in</Link></Button>
         </div>
       )}
@@ -456,8 +456,11 @@ export default function TreeStory() {
     <section
       ref={section}
       aria-label="How a link tree grows"
-      className={`relative overflow-hidden bg-transparent text-white ${reduced ? '' : 'h-[calc(100svh-65px)]'}`}
+      className={`relative px-3 py-3 text-white sm:px-5 ${reduced ? '' : 'h-[calc(100svh-65px)]'}`}
     >
+      {/* An inset espresso panel, rounded like the paper cards, rather than a full-bleed dark slab. */}
+      <div className={`relative overflow-hidden rounded-[1.75rem] bg-ink shadow-[0_40px_80px_-40px_hsl(20_35%_18%/.6)] ring-1 ring-white/5 ${reduced ? '' : 'h-full'}`}>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(50rem_30rem_at_85%_0%,hsl(16_60%_55%/.18),transparent_70%),radial-gradient(40rem_30rem_at_0%_100%,hsl(224_60%_50%/.16),transparent_70%)]" />
       <div ref={host} className={reduced ? 'h-[70vh] w-full' : 'absolute inset-0'} />
 
       {reduced ? (
@@ -469,7 +472,7 @@ export default function TreeStory() {
               <div className="pointer-events-none grid max-w-md">{STEPS.map(stepCard)}</div>
             </div>
           </div>
-          <p ref={hint} className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-xs font-medium uppercase tracking-widest text-lime-100/80">
+          <p ref={hint} className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-xs font-medium uppercase tracking-widest text-sand/80">
             Scroll to grow your tree ↓
           </p>
           <div className="absolute inset-x-0 bottom-0 h-1 bg-white/10">
@@ -477,6 +480,7 @@ export default function TreeStory() {
           </div>
         </>
       )}
+      </div>
     </section>
   )
 }

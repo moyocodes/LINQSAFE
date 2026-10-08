@@ -9,7 +9,6 @@ import {
 } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import ClipShowcase from "@/components/ClipShowcase";
 import FeatureBento from "@/components/FeatureBento";
 import HeroHeadline from "@/components/HeroHeadline";
 import HeroPhoneStory from "@/components/HeroPhoneStory";
@@ -47,7 +46,7 @@ function PhoneDemo() {
       style={{ rotateX, rotateY, transformPerspective: 900 }}
       animate={{ y: [0, -8, 0] }}
       transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-      className="mx-auto w-[290px] rounded-[2.5rem] border-[6px] border-foreground/90 bg-gradient-to-br from-rose/40 via-card to-sand/50 p-5 shadow-[0_30px_80px_-20px_hsl(20_16%_13%/.3)]"
+      className="theme-light mx-auto w-[290px] rounded-[2.5rem] text-foreground border-[6px] border-foreground/90 bg-gradient-to-br from-rose/40 via-card to-sand/50 p-5 shadow-[0_30px_80px_-20px_hsl(20_16%_13%/.3)]"
     >
       <span
         aria-hidden="true"
@@ -101,16 +100,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* One continuous dark "workshop": the 3D tree story flows straight into the showcase panel,
-          which slides up into the same space, then the dark fades into the page below. */}
-      <div className="relative bg-night">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(60rem_40rem_at_80%_10%,theme(colors.night.plum),transparent_70%),radial-gradient(50rem_40rem_at_10%_75%,hsl(262_35%_30%/.35),transparent_70%)]" />
-        <Suspense fallback={<div className="h-screen" />}>
-          <TreeStory />
-        </Suspense>
-        <ClipShowcase />
-        <div aria-hidden="true" className="h-24 bg-gradient-to-b from-transparent to-background" />
-      </div>
+      {/* The tree story sits in an inset panel so it reads as one more card on the page. */}
+      <Suspense fallback={<div className="h-screen" />}>
+        <TreeStory />
+      </Suspense>
 
       <FeatureBento />
 
@@ -119,7 +112,7 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.97 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="rounded-3xl bg-cta px-6 py-14 text-center text-primary-foreground"
+          className="rounded-3xl bg-cta px-6 py-14 text-center text-paper"
         >
           <h2 className="text-3xl font-bold tracking-tight">
             Ready to share one link?

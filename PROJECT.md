@@ -23,12 +23,16 @@ This guide explains what the product does, how it's built, how to run it in each
 - Social link suggestions (one tap to start an Instagram, TikTok, … link).
 - Profile picture and cover photo upload (cropped and resized in the browser).
 - Live phone preview with a toolbar (Open, Copy, Share, QR, Stats). On phones it opens as a slide-up sheet.
-- **Analytics** (`/admin/analytics`): views, unique visitors, clicks, click-through rate, daily chart, top links, countries, referrers, devices.
+- **Analytics** (`/admin/analytics`): week-on-week summary, views, unique visitors, clicks, click-through rate, QR scans, daily chart (or table), best time to post (day × hour), new vs returning visitors, links by conversion, countries, sources, devices. **Export CSV** downloads every view and click in the chosen range (time, type, link, source, device, country).
+- **Light / dark / system** appearance toggle in the navbar (remembered per browser). Public profiles always keep the owner's chosen theme.
 - Email verification, forgot/reset password, log in with username or email.
 
 ### For the founder (`/owner`, or the `admin.` subdomain)
 
-- Whole-site numbers: users, signups per day, paying users, revenue, business counts, traffic, top pages, countries, business categories, templates in use, latest signups with last login, contact messages.
+- Whole-site numbers: users, activation funnel, onboarding drop-off, revenue (run-rate, by month, by feature), expiries and renewals, payments, pricing editor, signups per day, business categories, templates in use, latest signups with last login, contact messages.
+- **Traffic, the users' analytics for the whole site**, plus more: week summary, views, visitors, clicks, CTR, QR scans, pages visited, daily chart, best time to post, new vs returning (across all pages), a pages table (views, visitors, clicks, CTR), top links, clicks by platform, countries, sources, devices, views by account type and template.
+- **Filters** (kept in the URL, so a filtered view can be bookmarked): date range (7/30/90/180/365 days), account type, business category, template, plan (paid/free), visitor country, device, source (incl. direct and QR) and a single page by username. Clicking a page in the table filters to it.
+- **CSV exports**, using the same filters: visits & clicks (one row per event), pages (totals per page), users (account, plan, paid features, total paid, signup and last login) and payments.
 - Only the `OWNER_EMAIL` account can open it, and only after that email is verified.
 
 ### Free and paid features
@@ -83,7 +87,8 @@ Express app  (server/app.js)
   ├─ auth: register, login, logout, verify email, forgot/reset password
   ├─ owner API: /api/me, /api/profile, /api/links, /api/note, /api/testimonials, /api/onboarding
   ├─ public API: /api/u/:username (records a view), /api/click/:id (records a click)
-  ├─ analytics: /api/analytics (per user), /api/owner/stats (founder only)
+  ├─ analytics: /api/analytics + /api/analytics/export.csv (per user)
+  ├─ founder: /api/owner/stats, /api/owner/traffic (filters), /api/owner/export/{events,pages,users,payments}.csv, /api/owner/pricing
   └─ MySQL (server/db.js → migrations run on start)
 ```
 
@@ -222,12 +227,13 @@ linqsafe is a single-page app, so the server fills in each page's `<head>` befor
   - accent: **cobalt** `#2B4FAF` (buttons, links, highlights)
   - supporting tints: coral `#F2A07E` (`rose`), teal `#6CC3BA` (`lilac`), sand `#E5D2BD`, blue `#93ACCF` (`mist`)
   - contrast pop: **saffron** `#D99A2B`, used sparingly (live indicators, active markers)
-  - night `#170C15` / plum `#3A1C33` for the dark 3D section; maroon `#77313F` as a secondary accent
+  - espresso (`ink`) for the inset 3D tree panel; maroon `#77313F` as a secondary accent
 - **Text hierarchy by ink opacity:** headings 100%, body ~88%, secondary 60%, labels 55% (not separate greys), so it sits right on every surface and theme.
-- **Section moods:** warm paper hero → night "workshop" (3D tree flowing into the scroll-clip showcase) → paper feature cards → cobalt call-to-action → espresso footer.
+- **Section moods:** warm paper hero → the 3D link tree in a rounded espresso panel (inset like the paper cards, pinned for about 2.5 screens) → paper feature cards → cobalt call-to-action → espresso footer.
+- **Dark mode:** `data-theme="dark"` on `<html>` swaps the tokens in `src/styles.css`; pale status chips (green/amber/red) get dark tints there too. Anything that imitates a light page (public profiles, the hero phone) carries `.theme-light` so it stays light.
 - **Fonts (three families, used consistently everywhere):** **Fraunces** for every heading and card title; **IBM Plex Mono** in small caps for every form label, legend, stat label and eyebrow (`.label-form`, `.eyebrow`); **DM Sans** for body text, inputs and buttons. Allura is used only for founder's-note signatures.
 - **Surfaces:** "paper" cards with fine grain, a hairline edge and a long soft shadow; small corners (`--radius: 0.375rem`); inputs warm to the accent on focus.
-- **Motion:** spring hover/press on buttons and cards, scroll reveals, word-by-word hero headline, looping phone story, a GSAP scroll-clip panel, the 3D link tree, live analytics bars. Everything respects `prefers-reduced-motion`.
+- **Motion:** spring hover/press on buttons and cards, scroll reveals, word-by-word hero headline, looping phone story, the 3D link tree, live analytics bars. Everything respects `prefers-reduced-motion`.
 
 ### Prompts for matching animations and images
 
@@ -251,7 +257,7 @@ Use these with an AI video or image tool (Meta AI, Runway, Sora, Midjourney). Ea
 - **admin** https://admin.linqsafe.com founder console (prod database).
 - **CI/CD:** GitHub Actions tests, builds and deploys on every push to `dev` / `prod`; verified via `/version.txt` on all three sites.
 
-**Tested end to end (API tests, run locally and in GitHub Actions):** sign-up, log-in by email, httpOnly sessions, log-out, links with type detection, free limits and paid-feature locks, business profile and WhatsApp validation, onboarding, analytics (views, unique visitors, clicks, country, device, referrer; owner visits, refreshes and bots excluded), founder-dashboard lockout, Paystack refusing unsigned webhooks.
+**Tested end to end (API tests, run locally and in GitHub Actions):** sign-up, log-in by email, httpOnly sessions, log-out, links with type detection, free limits and paid-feature locks, business profile and WhatsApp validation, onboarding, analytics (views, unique visitors, clicks, country, device, referrer; owner visits, refreshes and bots excluded), founder-dashboard lockout (stats, traffic, exports), analytics CSV export, Paystack refusing unsigned webhooks.
 
 **Tested by hand:** Paystack checkout creation against Paystack's test API (real checkout page, `LQS-` reference, abandoned status recorded); the cPanel package starting under Node 22; SEO output (robots, sitemap, per-page and profile meta, noindex on dev/admin).
 

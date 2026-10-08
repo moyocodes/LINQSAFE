@@ -33,7 +33,10 @@ function client(ua = 'Mozilla/5.0 (Macintosh) qa-test') {
       const [k, v] = pair.split('=')
       if (v) jar.set(k, v); else jar.delete(k)
     }
-    return { status: res.status, body: await res.json().catch(() => ({})), jar }
+    const text = await res.text()
+    let json = {}
+    try { json = JSON.parse(text) } catch {}
+    return { status: res.status, body: json, text, type: res.headers.get('content-type') || '', jar }
   }
 }
 
@@ -138,6 +141,14 @@ test('analytics: unique visitors with consent, owner and bots excluded', async (
   assert.equal(s.body.series.length, 7)
   assert.equal(s.body.countries.find((c) => c.name === 'NG')?.n, 1, 'country falls back to the browser time zone')
   assert.equal((await owner('GET', '/analytics?days=90')).status, 402, '90-day analytics is a paid feature')
+  assert.equal(s.body.audience.total, 2)
+  assert.equal(s.body.links[0].n, 1)
+
+  const csv = await owner('GET', '/analytics/export.csv?days=7')
+  assert.equal(csv.status, 200)
+  assert.match(csv.type, /text\/csv/)
+  const lines = csv.text.trim().split('\n')
+  assert.equal(lines.length, 5, 'header + 3 views + 1 click')
 })
 
 test('founder dashboard is closed to normal users', async () => {
@@ -145,6 +156,8 @@ test('founder dashboard is closed to normal users', async () => {
   await signUp(api)
   assert.equal((await api('GET', '/owner/stats')).status, 403)
   assert.equal((await client()('GET', '/owner/stats')).status, 401)
+  assert.equal((await api('GET', '/owner/traffic')).status, 403)
+  assert.equal((await api('GET', '/owner/export/users.csv')).status, 403)
 })
 
 test('paid features: catalog, checkout validation, signed webhooks only', async () => {

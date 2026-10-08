@@ -653,14 +653,15 @@ app.post('/api/click/:id', clickLimiter, async (req, res) => {
   res.json({ ok: true })
 })
 
-app.get('/api/analytics', auth, async (req, res) => {
-  const days = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30
-  if (days === 90 && !(await hasFeature(req.userId, 'analytics_90'))) return locked(res, 'analytics_90')
-  const since = 'created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)'
-  const args = [req.userId, days - 1]
+// ---- Traffic report: the same analytics for one page (owner's dashboard) or the whole site (founder) ----
+// scope: SQL on events e / users u, e.g. "e.user_id = ?" or the founder's filters.
+async function trafficReport({ scope, args, days, siteWide = false }) {
+  const since = 'e.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)'
+  const from = 'FROM events e JOIN users u ON u.id = e.user_id'
+  const where = `WHERE ${scope} AND ${since}`
+  const A = [...args, days - 1]
   const [[{ today }]] = await pool.query("SELECT DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS today")
-  const [rows] = await pool.query(
-    `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS d, kind, COUNT(*) AS n FROM events WHERE user_id = ? AND ${since} GROUP BY d, kind`, args)
+  const [rows] = await pool.query(`SELECT DATE_FORMAT(e.created_at, '%Y-%m-%d') AS d, e.kind, COUNT(*) AS n ${from} ${where} GROUP BY d, e.kind`, A)
   // Fill every day in the range so the chart has no gaps.
   const series = []
   for (let i = days - 1; i >= 0; i--) {
@@ -670,62 +671,89 @@ app.get('/api/analytics', auth, async (req, res) => {
     const at = (k) => Number(rows.find((r) => r.d === key && r.kind === k)?.n || 0)
     series.push({ date: key, views: at('view'), clicks: at('click') })
   }
+  const views = series.reduce((t, x) => t + x.views, 0)
+  const clicks = series.reduce((t, x) => t + x.clicks, 0)
   const group = async (col, kind, limit = 6) => (await pool.query(
-    `SELECT ${col} AS name, COUNT(*) AS n FROM events WHERE user_id = ? AND ${since} AND kind = ? GROUP BY ${col} ORDER BY n DESC LIMIT ${limit}`,
-    [...args, kind]))[0].map((r) => ({ name: r.name, n: Number(r.n) }))
-  const [links] = await pool.query(
-    `SELECT l.id, l.title, l.type, COUNT(e.id) AS n FROM links l
-     LEFT JOIN events e ON e.link_id = l.id AND e.kind = 'click' AND e.${since}
-     WHERE l.user_id = ? GROUP BY l.id ORDER BY n DESC, l.position LIMIT 10`, [days - 1, req.userId])
-  const [[{ visitors }]] = await pool.query(
-    `SELECT COUNT(DISTINCT visitor) AS visitors FROM events WHERE user_id = ? AND ${since} AND kind = 'view' AND visitor <> ''`, args)
-  const views = series.reduce((a, s) => a + s.views, 0)
-  const clicks = series.reduce((a, s) => a + s.clicks, 0)
-
+    `SELECT ${col} AS name, COUNT(*) AS n ${from} ${where} AND e.kind = ? GROUP BY ${col} ORDER BY n DESC LIMIT ${limit}`, [...A, kind]))[0]
+    .map((r) => ({ name: r.name, n: Number(r.n) }))
+  const [[{ visitors }]] = await pool.query(`SELECT COUNT(DISTINCT e.visitor) AS visitors ${from} ${where} AND e.kind = 'view' AND e.visitor <> ''`, A)
   // Best time: views/clicks by weekday × hour, in UTC (the browser shifts it to local time).
   const [heat] = await pool.query(
-    `SELECT WEEKDAY(CONVERT_TZ(created_at, @@session.time_zone, '+00:00')) AS d, HOUR(CONVERT_TZ(created_at, @@session.time_zone, '+00:00')) AS h,
-       SUM(kind = 'view') AS views, SUM(kind = 'click') AS clicks
-     FROM events WHERE user_id = ? AND ${since} GROUP BY d, h`, args)
-
+    `SELECT WEEKDAY(CONVERT_TZ(e.created_at, @@session.time_zone, '+00:00')) AS d, HOUR(CONVERT_TZ(e.created_at, @@session.time_zone, '+00:00')) AS h,
+       SUM(e.kind = 'view') AS views, SUM(e.kind = 'click') AS clicks ${from} ${where} GROUP BY d, h`, A)
   // New vs returning (visitors who accepted the cookie): returning = seen before this range, or on 2+ days in it.
   const [[nr]] = await pool.query(
     `SELECT COUNT(*) AS total, SUM(returning_) AS returning_ FROM (
        SELECT e.visitor, (COUNT(DISTINCT DATE(e.created_at)) > 1 OR EXISTS (
-         SELECT 1 FROM events p WHERE p.user_id = e.user_id AND p.visitor = e.visitor AND p.kind = 'view'
+         SELECT 1 FROM events p WHERE p.visitor = e.visitor AND p.kind = 'view' ${siteWide ? '' : 'AND p.user_id = e.user_id'}
            AND p.created_at < DATE_SUB(CURDATE(), INTERVAL ? DAY))) AS returning_
-       FROM events e WHERE e.user_id = ? AND e.kind = 'view' AND e.visitor <> '' AND e.${since} GROUP BY e.visitor) v`,
-    [days - 1, req.userId, days - 1])
-
+       ${from} ${where} AND e.kind = 'view' AND e.visitor <> '' GROUP BY e.visitor${siteWide ? '' : ', e.user_id'}) v`, [days - 1, ...A])
   // This week vs the week before, for the summary line.
   const [[wk]] = await pool.query(
-    `SELECT SUM(kind = 'view' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS v_now,
-            SUM(kind = 'view' AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)) AS v_prev,
-            SUM(kind = 'click' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS c_now,
-            SUM(kind = 'click' AND created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)) AS c_prev
-     FROM events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 14 DAY)`, [req.userId])
+    `SELECT SUM(e.kind = 'view' AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS v_now,
+            SUM(e.kind = 'view' AND e.created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)) AS v_prev,
+            SUM(e.kind = 'click' AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS c_now,
+            SUM(e.kind = 'click' AND e.created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)) AS c_prev
+     ${from} WHERE ${scope} AND e.created_at >= DATE_SUB(NOW(), INTERVAL 14 DAY)`, args)
   const [[best]] = await pool.query(
-    `SELECT l.title, COUNT(*) AS n FROM events e JOIN links l ON l.id = e.link_id
-     WHERE e.user_id = ? AND e.kind = 'click' AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-     GROUP BY l.id ORDER BY n DESC LIMIT 1`, [req.userId])
+    `SELECT l.title, u.username, COUNT(*) AS n ${from} JOIN links l ON l.id = e.link_id
+     WHERE ${scope} AND e.kind = 'click' AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY l.id, u.id ORDER BY n DESC LIMIT 1`, args)
   const change = (now, prev) => (Number(prev) ? Math.round(((Number(now) - Number(prev)) / Number(prev)) * 100) : null)
-  const [[{ qr }]] = await pool.query(`SELECT COUNT(*) AS qr FROM events WHERE user_id = ? AND ${since} AND kind = 'view' AND referrer = 'qr'`, args)
-
-  res.json({
+  const [[{ qr }]] = await pool.query(`SELECT COUNT(*) AS qr ${from} ${where} AND e.kind = 'view' AND e.referrer = 'qr'`, A)
+  // Links by conversion: clicks on each link / page views.
+  const [links] = await pool.query(
+    `SELECT l.id, l.title, l.type, u.username, COUNT(*) AS n ${from} JOIN links l ON l.id = e.link_id
+     ${where} AND e.kind = 'click' GROUP BY l.id, u.id ORDER BY n DESC LIMIT 10`, A)
+  return {
     days, series, views, clicks, visitors: Number(visitors), qrScans: Number(qr),
     heat: heat.map((h) => ({ d: Number(h.d), h: Number(h.h), views: Number(h.views), clicks: Number(h.clicks) })),
     audience: { total: Number(nr.total || 0), returning: Number(nr.returning_ || 0) },
     week: {
       views: Number(wk.v_now || 0), clicks: Number(wk.c_now || 0),
       viewsChange: change(wk.v_now, wk.v_prev), clicksChange: change(wk.c_now, wk.c_prev),
-      bestLink: best ? { title: best.title, clicks: Number(best.n) } : null,
+      bestLink: best ? { title: siteWide ? `${best.title} (@${best.username})` : best.title, clicks: Number(best.n) } : null,
     },
-    // Conversion: share of page views in this range that clicked each link.
     links: links.map((l) => ({ ...l, n: Number(l.n), rate: views ? Number(l.n) / views : 0 })),
-    referrers: await group('referrer', 'view'),
-    devices: await group('device', 'view', 3),
-    countries: await group('country', 'view', 10),
-  })
+    referrers: await group('e.referrer', 'view'),
+    devices: await group('e.device', 'view', 3),
+    countries: await group('e.country', 'view', 10),
+  }
+}
+
+app.get('/api/analytics', auth, async (req, res) => {
+  const days = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30
+  if (days === 90 && !(await hasFeature(req.userId, 'analytics_90'))) return locked(res, 'analytics_90')
+  const report = await trafficReport({ scope: 'e.user_id = ?', args: [req.userId], days })
+  // Include links that got no clicks yet, so every link shows its conversion.
+  const [all] = await pool.query('SELECT id, title, type FROM links WHERE user_id = ? ORDER BY position, id', [req.userId])
+  report.links = all.map((l) => {
+    const hit = report.links.find((x) => x.id === l.id)
+    return { ...l, n: hit?.n || 0, rate: hit?.rate || 0 }
+  }).sort((x, y) => y.n - x.n).slice(0, 10)
+  res.json(report)
+})
+
+// ---- CSV exports ----
+const csvCell = (v) => {
+  const s = v == null ? '' : v instanceof Date ? v.toISOString() : String(v)
+  return /[",\n\r]/.test(s) || /^[=+\-@]/.test(s) ? `"${s.replace(/"/g, '""').replace(/^([=+\-@])/, "'$1")}"` : s
+}
+function sendCsv(res, name, rows, columns) {
+  const head = columns.join(',')
+  const body = rows.map((r) => columns.map((c) => csvCell(r[c])).join(',')).join('\n')
+  res.set('Content-Type', 'text/csv; charset=utf-8').set('Content-Disposition', `attachment; filename="${name}"`).send(`﻿${head}\n${body}\n`)
+}
+
+// The owner's own page activity.
+app.get('/api/analytics/export.csv', auth, async (req, res) => {
+  const days = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30
+  if (days === 90 && !(await hasFeature(req.userId, 'analytics_90'))) return locked(res, 'analytics_90')
+  const [rows] = await pool.query(
+    `SELECT DATE_FORMAT(e.created_at, '%Y-%m-%d %H:%i') AS time, e.kind AS type, l.title AS link, l.url AS link_url,
+       IF(e.referrer = '', 'direct', e.referrer) AS source, e.device, e.country
+     FROM events e LEFT JOIN links l ON l.id = e.link_id
+     WHERE e.user_id = ? AND e.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) ORDER BY e.id DESC LIMIT 100000`, [req.userId, days - 1])
+  sendCsv(res, `linqsafe-analytics-${days}d.csv`, rows, ['time', 'type', 'link', 'link_url', 'source', 'device', 'country'])
 })
 
 app.post('/api/contact', contactLimiter, async (req, res) => {
@@ -856,6 +884,114 @@ async function ownerOnly(req, res, next) {
   if (!(await isOwner(req.userId))) return res.status(403).json({ error: 'Owner only' })
   next()
 }
+
+// ---- Founder traffic: the users' analytics for the whole site, filterable ----
+const OWNER_DAYS = [7, 30, 90, 180, 365]
+const ownerDays = (q) => (OWNER_DAYS.includes(Number(q.days)) ? Number(q.days) : 30)
+// Filters (all optional): account, category, template, paid, country, device, source, user.
+function trafficFilter(q) {
+  const where = ['1 = 1']
+  const args = []
+  const add = (sql, ...v) => { where.push(sql); args.push(...v) }
+  if (['personal', 'business'].includes(q.account)) add('u.account_type = ?', q.account)
+  if (q.category) add('u.category = ?', String(q.category).slice(0, 80))
+  if (q.template) add('u.layout = ?', String(q.template).slice(0, 16))
+  const paidSql = 'EXISTS (SELECT 1 FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > NOW()))'
+  if (q.paid === 'paid') where.push(paidSql)
+  if (q.paid === 'free') where.push(`NOT ${paidSql}`)
+  if (q.user) add('u.username = ?', String(q.user).toLowerCase().replace(/^@/, '').slice(0, 40))
+  // Visit filters apply to the events themselves.
+  if (/^[A-Za-z]{2}$/.test(q.country || '')) add('e.country = ?', q.country.toUpperCase())
+  if (q.country === 'unknown') where.push("e.country = ''")
+  if (['mobile', 'desktop', 'tablet'].includes(q.device)) add('e.device = ?', q.device)
+  if (q.source === 'direct') where.push("e.referrer = ''")
+  else if (q.source) add('e.referrer = ?', String(q.source).slice(0, 120))
+  return { scope: where.join(' AND '), args }
+}
+
+app.get('/api/owner/traffic', auth, ownerOnly, async (req, res) => {
+  const days = ownerDays(req.query)
+  const { scope, args } = trafficFilter(req.query)
+  const report = await trafficReport({ scope, args, days, siteWide: true })
+  const since = 'e.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)'
+  const from = 'FROM events e JOIN users u ON u.id = e.user_id'
+  const A = [...args, days - 1]
+  const num = (rows) => rows.map((r) => ({ ...r, n: Number(r.n) }))
+  // More than a single page shows: who gets the traffic, and how it converts.
+  const [pages] = await pool.query(
+    `SELECT u.username, u.account_type, SUM(e.kind = 'view') AS views, SUM(e.kind = 'click') AS clicks, COUNT(DISTINCT IF(e.visitor = '', NULL, e.visitor)) AS visitors
+     ${from} WHERE ${scope} AND ${since} GROUP BY u.id ORDER BY views DESC LIMIT 15`, A)
+  const [types] = await pool.query(
+    `SELECT l.type AS name, COUNT(*) AS n ${from} JOIN links l ON l.id = e.link_id WHERE ${scope} AND ${since} AND e.kind = 'click' GROUP BY l.type ORDER BY n DESC LIMIT 8`, A)
+  const [byAccount] = await pool.query(`SELECT u.account_type AS name, COUNT(*) AS n ${from} WHERE ${scope} AND ${since} AND e.kind = 'view' GROUP BY u.account_type`, A)
+  const [byTemplate] = await pool.query(`SELECT u.layout AS name, COUNT(*) AS n ${from} WHERE ${scope} AND ${since} AND e.kind = 'view' GROUP BY u.layout ORDER BY n DESC`, A)
+  const [[{ active }]] = await pool.query(`SELECT COUNT(DISTINCT e.user_id) AS active ${from} WHERE ${scope} AND ${since} AND e.kind = 'view'`, A)
+  // Options for the filter dropdowns.
+  const [categories] = await pool.query("SELECT DISTINCT category AS v FROM users WHERE category <> '' ORDER BY v")
+  const [countries] = await pool.query("SELECT DISTINCT country AS v FROM events WHERE country <> '' ORDER BY v")
+  const [sources] = await pool.query("SELECT referrer AS v, COUNT(*) AS n FROM events WHERE referrer <> '' GROUP BY referrer ORDER BY n DESC LIMIT 30")
+  res.json({
+    ...report,
+    activePages: Number(active),
+    pages: pages.map((p) => ({ ...p, views: Number(p.views), clicks: Number(p.clicks), visitors: Number(p.visitors) })),
+    linkTypes: num(types), byAccount: num(byAccount), byTemplate: num(byTemplate),
+    options: {
+      days: OWNER_DAYS,
+      categories: categories.map((r) => r.v),
+      templates: ['classic', 'cover', 'editorial', 'search', 'idcard', 'backdrop'],
+      countries: countries.map((r) => r.v),
+      sources: sources.map((r) => r.v),
+    },
+  })
+})
+
+// Founder CSV exports. Same filters as the traffic view.
+app.get('/api/owner/export/:what.csv', auth, ownerOnly, async (req, res) => {
+  const days = ownerDays(req.query)
+  const { scope, args } = trafficFilter(req.query)
+  const stamp = new Date().toISOString().slice(0, 10)
+  if (req.params.what === 'events') {
+    const [rows] = await pool.query(
+      `SELECT DATE_FORMAT(e.created_at, '%Y-%m-%d %H:%i') AS time, u.username, u.account_type, e.kind AS type, l.title AS link, l.url AS link_url,
+         IF(e.referrer = '', 'direct', e.referrer) AS source, e.device, e.country
+       FROM events e JOIN users u ON u.id = e.user_id LEFT JOIN links l ON l.id = e.link_id
+       WHERE ${scope} AND e.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) ORDER BY e.id DESC LIMIT 200000`, [...args, days - 1])
+    return sendCsv(res, `linqsafe-traffic-${days}d-${stamp}.csv`, rows, ['time', 'username', 'account_type', 'type', 'link', 'link_url', 'source', 'device', 'country'])
+  }
+  if (req.params.what === 'pages') {
+    const [rows] = await pool.query(
+      `SELECT u.username, u.account_type, u.category, u.layout AS template, SUM(e.kind = 'view') AS views, SUM(e.kind = 'click') AS clicks,
+         COUNT(DISTINCT IF(e.visitor = '', NULL, e.visitor)) AS visitors
+       FROM events e JOIN users u ON u.id = e.user_id WHERE ${scope} AND e.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       GROUP BY u.id ORDER BY views DESC`, [...args, days - 1])
+    return sendCsv(res, `linqsafe-pages-${days}d-${stamp}.csv`, rows, ['username', 'account_type', 'category', 'template', 'views', 'clicks', 'visitors'])
+  }
+  if (req.params.what === 'users') {
+    // User filters only (visit filters don't apply to a list of accounts).
+    const { scope: us, args: ua } = trafficFilter({ ...req.query, country: '', device: '', source: '' })
+    const [rows] = await pool.query(
+      `SELECT u.username, u.email, u.display_name AS name, u.account_type, u.category, u.layout AS template, u.email_verified,
+         u.onboarded_at IS NOT NULL AS onboarded, (SELECT COUNT(*) FROM links l WHERE l.user_id = u.id) AS links,
+         (SELECT GROUP_CONCAT(f.feature) FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > NOW())) AS paid_features,
+         (SELECT COALESCE(SUM(p.amount_kobo), 0) / 100 FROM payments p WHERE p.user_id = u.id AND p.status = 'success') AS total_paid,
+         DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i') AS joined, DATE_FORMAT(u.last_login_at, '%Y-%m-%d %H:%i') AS last_login, u.login_count
+       FROM users u WHERE ${us} ORDER BY u.id DESC`, ua)
+    return sendCsv(res, `linqsafe-users-${stamp}.csv`, rows,
+      ['username', 'email', 'name', 'account_type', 'category', 'template', 'email_verified', 'onboarded', 'links', 'paid_features', 'total_paid', 'joined', 'last_login', 'login_count'])
+  }
+  if (req.params.what === 'payments') {
+    const [rows] = await pool.query(
+      `SELECT DATE_FORMAT(COALESCE(p.paid_at, p.created_at), '%Y-%m-%d %H:%i') AS date, p.reference, u.username, p.customer_email AS email,
+         p.feature, p.items, p.months, p.amount_kobo / 100 AS amount, p.status, p.channel, p.card_type, p.bank
+       FROM payments p JOIN users u ON u.id = p.user_id
+       WHERE p.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) ORDER BY p.id DESC`, [days - 1])
+    const out = rows.map((p) => ({ ...p, item: paymentName(p) }))
+    return sendCsv(res, `linqsafe-payments-${days}d-${stamp}.csv`, out,
+      ['date', 'reference', 'username', 'email', 'item', 'months', 'amount', 'status', 'channel', 'card_type', 'bank'])
+  }
+  res.status(404).json({ error: 'Unknown export' })
+})
+
 app.get('/api/owner/pricing', auth, ownerOnly, async (req, res) => {
   const p = await currentPricing()
   res.json({ durations: DURATIONS, discounts: p.discounts, features: p.catalog() })

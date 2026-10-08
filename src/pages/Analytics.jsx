@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, CalendarClock, Eye, Globe2, Loader2, Lock, QrCode, Repeat, TrendingDown, TrendingUp, MousePointerClick, Percent, Smartphone, Table2, Users } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Download, Eye, Globe2, Loader2, Lock, QrCode, Repeat, TrendingDown, TrendingUp, MousePointerClick, Percent, Smartphone, Table2, Users } from 'lucide-react'
 import { api } from '@/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { TypeBadge } from '@/lib/linkTypes'
 import { useTitle } from '@/lib/useTitle'
 
 // Validated two-series palette (blue / orange, passes CVD + contrast checks on the light surface).
-const VIEWS = '#2a78d6'
-const CLICKS = '#eb6834'
+export const VIEWS = '#2a78d6'
+export const CLICKS = '#eb6834'
 
 export const regionName = (() => {
   try { const d = new Intl.DisplayNames(undefined, { type: 'region' }); return (c) => d.of(c) } catch { return (c) => c }
@@ -116,17 +116,17 @@ const SOURCES = [[/(^|\.)instagram\.com$/, 'Instagram'], [/(^|\.)tiktok\.com$/, 
   [/(^|\.)linkedin\.com$/, 'LinkedIn'], [/(^|\.)google\./, 'Google'], [/(^|\.)snapchat\.com$/, 'Snapchat'], [/(^|\.)pinterest\./, 'Pinterest']]
 export const sourceName = (host) => (host === 'qr' ? 'QR code scans' : !host ? 'Direct / unknown' : SOURCES.find(([re]) => re.test(host))?.[1] || host)
 
-const pct = (x) => `${(x * 100).toFixed(x > 0 && x < 0.1 ? 1 : 0)}%`
+export const pct = (x) => `${(x * 100).toFixed(x > 0 && x < 0.1 ? 1 : 0)}%`
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const hourLabel = (h) => `${((h + 11) % 12) + 1}${h < 12 ? 'am' : 'pm'}`
 
-function WeekSummary({ week }) {
+export function WeekSummary({ week, subject = 'Your page', own = 'your' }) {
   const parts = []
   const trend = (c, what) => (c == null ? null : c === 0 ? `the same ${what} as last week` : `${Math.abs(c)}% ${c > 0 ? 'more' : 'fewer'} ${what} than last week`)
   const t1 = trend(week.clicksChange, 'clicks'), t2 = trend(week.viewsChange, 'views')
-  if (t1 || t2) parts.push(`Your page got ${[t2, t1].filter(Boolean).join(' and ')}.`)
+  if (t1 || t2) parts.push(`${subject} got ${[t2, t1].filter(Boolean).join(' and ')}.`)
   else parts.push(`This week: ${week.views} views and ${week.clicks} clicks.`)
-  if (week.bestLink) parts.push(`${week.bestLink.title} was your best link (${week.bestLink.clicks} click${week.bestLink.clicks === 1 ? '' : 's'}).`)
+  if (week.bestLink) parts.push(`${week.bestLink.title} was ${own} best link (${week.bestLink.clicks} click${week.bestLink.clicks === 1 ? '' : 's'}).`)
   const up = (week.clicksChange ?? week.viewsChange ?? 0) >= 0
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -140,7 +140,7 @@ function WeekSummary({ week }) {
 }
 
 // Day × hour grid of activity (views + clicks), shifted from UTC into the viewer's local time.
-function BestTime({ heat }) {
+export function BestTime({ heat }) {
   const off = Math.round(-new Date().getTimezoneOffset() / 60)
   const grid = Array.from({ length: 7 }, () => Array(24).fill(0))
   for (const c of heat) {
@@ -174,7 +174,7 @@ function BestTime({ heat }) {
   )
 }
 
-function NewVsReturning({ audience }) {
+export function NewVsReturning({ audience }) {
   const { total, returning } = audience
   const fresh = total - returning
   if (!total) return <p className="py-6 text-center text-sm text-muted-foreground">No counted visitors yet. Visitors are counted once they accept the cookie notice.</p>
@@ -215,6 +215,11 @@ export default function Analytics() {
           <Link to="/admin" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" /> Dashboard</Link>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Analytics</h1>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        <a href={`/api/analytics/export.csv?days=${days}`} download
+          className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-sm font-medium hover:bg-muted">
+          <Download className="size-4" aria-hidden="true" /> Export CSV
+        </a>
         <div role="radiogroup" aria-label="Date range" className="inline-flex rounded-lg border bg-card p-1">
           {[7, 30, 90].map((d) => d === 90 && long === false ? (
             <Link key={d} to="/admin#analytics" title="90-day analytics is a paid feature"
@@ -228,6 +233,7 @@ export default function Analytics() {
               <span className="relative">{d} days</span>
             </button>
           ))}
+        </div>
         </div>
       </div>
 

@@ -56,6 +56,21 @@
     --ring: 224 75% 68%;
     color-scheme: dark;
   }
+  /* Pale status chips (green/amber/red-50) were made for light mode; in dark they become tinted glass. */
+  :root[data-theme='dark'] .bg-emerald-50 { background-color: hsl(152 45% 40% / .18); }
+  :root[data-theme='dark'] .bg-amber-50 { background-color: hsl(38 80% 50% / .14); }
+  :root[data-theme='dark'] .bg-red-50 { background-color: hsl(0 70% 55% / .16); }
+  :root[data-theme='dark'] .border-amber-300 { border-color: hsl(38 70% 55% / .4); }
+  :root[data-theme='dark'] :is(.text-emerald-700, .text-emerald-800) { color: hsl(152 50% 68%); }
+  :root[data-theme='dark'] :is(.text-amber-800, .text-amber-900, .text-amber-950) { color: hsl(40 85% 75%); }
+  :root[data-theme='dark'] .text-red-800 { color: hsl(0 80% 78%); }
+  :root[data-theme='dark'] .text-sky-700 { color: hsl(200 80% 70%); }
+  :root[data-theme='dark'] .text-maroon { color: #E3B07A; }
+  /* …but not inside light-themed islands (public profiles, the hero phone). */
+  :root[data-theme='dark'] .theme-light :is(.bg-emerald-50) { background-color: #ecfdf5; }
+  :root[data-theme='dark'] .theme-light :is(.text-emerald-700, .text-emerald-800) { color: #047857; }
+  :root[data-theme='dark'] .theme-light .text-sky-700 { color: #0369a1; }
+  :root[data-theme='dark'] .theme-light .text-maroon { color: #77313F; }
   /* Public profiles keep the owner's chosen theme, whatever the visitor's app setting is. */
   .theme-light {
     --background: 36 33% 95%;
