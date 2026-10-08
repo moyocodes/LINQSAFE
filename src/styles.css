@@ -56,6 +56,10 @@
     --ring: 224 75% 68%;
     color-scheme: dark;
   }
+  /* Set for ~400ms by the appearance toggle so the switch fades instead of snapping. */
+  .theme-fade, .theme-fade *, .theme-fade *::before, .theme-fade *::after {
+    transition: background-color .35s ease, border-color .35s ease, color .35s ease, fill .35s ease, box-shadow .35s ease !important;
+  }
   /* Pale status chips (green/amber/red-50) were made for light mode; in dark they become tinted glass. */
   :root[data-theme='dark'] .bg-emerald-50 { background-color: hsl(152 45% 40% / .18); }
   :root[data-theme='dark'] .bg-amber-50 { background-color: hsl(38 80% 50% / .14); }

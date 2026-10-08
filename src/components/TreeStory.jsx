@@ -431,22 +431,29 @@ export default function TreeStory() {
     }
   }, [reduced])
 
+  // Step card: printed-card style (mono eyebrow, inner hairline frame) in light ink, since the panel is always dark.
   const stepCard = (s, i) => (
     <div
       key={s.q}
       ref={(el) => (panels.current[i] = el)}
-      className={reduced ? 'rounded-2xl border border-white/10 bg-white/5 p-6' : 'col-start-1 row-start-1 rounded-2xl border border-white/10 bg-ink/75 p-6 backdrop-blur-md'}
+      className={`relative rounded-2xl border border-white/10 p-7 text-paper shadow-[0_30px_60px_-30px_rgb(0_0_0/.6)] after:pointer-events-none after:absolute after:inset-[7px] after:rounded-[calc(1rem-3px)] after:border after:border-white/[.07] ${
+        reduced ? 'bg-white/5' : 'col-start-1 row-start-1 bg-ink/80 backdrop-blur-md'}`}
       style={!reduced && i > 0 ? { opacity: 0 } : undefined}
     >
-      <p className="text-xs font-semibold uppercase tracking-widest text-sand">
-        {String(i + 1).padStart(2, '0')} / {String(STEPS.length).padStart(2, '0')} · {s.q}
+      <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-sand/70">
+        <span className="font-semibold text-saffron">{String(i + 1).padStart(2, '0')}</span>
+        <span className="h-px w-6 bg-sand/30" aria-hidden="true" />
+        {s.q}
       </p>
-      <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">{s.title}</h2>
-      <p className="mt-3 text-base leading-7 text-sand/80">{s.text}</p>
+      <h2 className="mt-4 text-3xl font-semibold leading-[1.1] tracking-tight text-paper sm:text-4xl">{s.title}</h2>
+      <p className="mt-3 text-base leading-7 text-paper/70">{s.text}</p>
+      <div className="mt-6 flex gap-1.5" aria-hidden="true">
+        {STEPS.map((_, j) => <span key={j} className={`h-1 rounded-full ${j === i ? 'w-6 bg-saffron' : 'w-2 bg-white/15'}`} />)}
+      </div>
       {i === STEPS.length - 1 && (
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button asChild size="lg" className="bg-sand text-ink hover:bg-sand/90"><Link to="/signup">Create your page</Link></Button>
-          <Button asChild size="lg" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"><Link to="/login">Log in</Link></Button>
+          <Button asChild size="lg" className="bg-paper text-ink hover:bg-paper/90"><Link to="/signup">Create your page</Link></Button>
+          <Button asChild size="lg" variant="outline" className="border-white/30 bg-transparent text-paper hover:bg-white/10 hover:text-paper"><Link to="/login">Log in</Link></Button>
         </div>
       )}
     </div>

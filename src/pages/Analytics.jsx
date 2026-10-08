@@ -164,7 +164,7 @@ export function BestTime({ heat }) {
             ...row.map((v, h) => (
               <motion.span key={`${d}-${h}`} title={`${DAYS[d]} ${hourLabel(h)}: ${v}`}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: (d * 24 + h) * 0.002 }}
-                className="h-4 rounded-[2px]" style={{ background: v ? `hsl(348 42% 33% / ${0.15 + 0.85 * (v / max)})` : 'hsl(var(--foreground) / 0.05)' }} />
+                className="h-4 rounded-[2px]" style={{ background: v ? `hsl(var(--accent) / ${0.15 + 0.85 * (v / max)})` : 'hsl(var(--foreground) / 0.05)' }} />
             )),
           ])}
         </div>
