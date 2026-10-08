@@ -100,6 +100,7 @@ Each app: Node.js **22**, mode Production, startup file **`app.cjs`**, `DB_HOST=
 | `npm run owner` | Verify `OWNER_EMAIL` and unlock every feature for it |
 | `npm run set-plan -- <username> <free\|pro>` | `pro` unlocks every feature for a user, no expiry |
 | `npm run reminders` | Send "ends soon" / "has ended" emails (daily cPanel cron on prod) |
+| `npm run email:test -- you@example.com` | Send one real test email to check Resend on this stage (cPanel: *Run JS script → `email:test`*, parameter: your email) |
 | `npm run emails:preview` | Write every email template to `email-previews/` to view in a browser |
 | `npm run package` / `package:dev` / `package:admin` | Build a deploy zip (manual fallback) |
 

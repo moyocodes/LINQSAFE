@@ -403,7 +403,13 @@ Replies to any email go to `SUPPORT_EMAIL` (default `support@linqsafe.com`). Pre
    SUPPORT_EMAIL=support@linqsafe.com
    ```
    → **Restart** each app.
-6. Test: sign up on dev with your own address; the confirm email should arrive within a minute. Resend → **Emails** shows every send and its status.
+6. Test each stage: *Setup Node.js App* → the app → **Run JS script → `email:test`**, parameter: your email address. It prints `OK sent` or the exact problem (domain not verified, wrong key…). Then sign up on dev with your own address; the confirm email should arrive within a minute. Resend → **Emails** shows every send and its status.
+
+   | Stage | `RESEND_API_KEY` in | Emails |
+   |---|---|---|
+   | local | `.env.local` (optional) | printed in the terminal if left out |
+   | dev | `linqsafe-dev/.env` | sent (use your own address when testing) |
+   | prod | `linqsafe/.env` and `linqsafe-admin/.env` | sent |
 7. Make sure `support@linqsafe.com` exists (cPanel → **Email Accounts**, or a forwarder to your Gmail) so replies reach you.
 
 Without `RESEND_API_KEY` nothing is sent: each email is written to `stderr.log` instead.
