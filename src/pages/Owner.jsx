@@ -12,6 +12,7 @@ import { useTitle } from '@/lib/useTitle'
 import { InfoTip } from '@/components/ui/info-tip'
 import OwnerTraffic from '@/components/OwnerTraffic'
 import { IS_ADMIN_HOST, STAGE } from '@/lib/stage'
+import PageLoader from '@/components/PageLoader'
 
 const SIGNUPS = '#2a78d6'
 const tplName = Object.fromEntries(TEMPLATES.map((t) => [t.id, t.name]))
@@ -195,14 +196,14 @@ export default function Owner() {
         </div>
       </div>
 
-      {!d ? <div className="grid h-64 place-items-center"><Loader2 className="animate-spin text-muted-foreground" role="status" aria-label="Loading" /></div> : (<>
+      {!d ? <PageLoader label="Loading numbers" className="h-64" /> : (<>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi icon={Users} label="Total users" info="Every account ever created, verified or not." value={d.totals.users.toLocaleString()} />
           <Kpi icon={UserPlus} label={`New in ${days} days`} info="Accounts created in the selected range (today counts as day 1)." value={d.totals.newUsers.toLocaleString()} />
           <Kpi icon={Crown} label="Paying users" info="Users with at least one paid feature active right now (not expired). The % is out of all users." value={`${d.totals.pro} (${d.totals.users ? Math.round((d.totals.pro / d.totals.users) * 100) : 0}%)`} />
           <Kpi icon={Store} label="Business accounts" info="Accounts set to Business during onboarding or in Account type." value={d.totals.business.toLocaleString()} />
           <Kpi icon={Eye} label="Page views" info="Profile page loads in the range, across all pages. Your own visits while signed in, bots, and refreshes within 30 minutes aren't counted." value={d.totals.views.toLocaleString()} />
-          <Kpi icon={Users} label="Unique visitors" info="Distinct visitor cookies. Only visitors who accepted the cookie notice can be counted, so this is a floor, not the full number." value={d.totals.visitors.toLocaleString()} />
+          <Kpi icon={Users} label="Unique visitors" info="Distinct visitors per day, counted without cookies." value={d.totals.visitors.toLocaleString()} />
           <Kpi icon={MousePointerClick} label="Link clicks" info="Taps on links (and social icons) on profile pages in the range." value={d.totals.clicks.toLocaleString()} />
           <Kpi icon={Link2} label="Links created" info="All links on all pages right now." value={d.totals.links.toLocaleString()} />
           <Kpi icon={Banknote} label={`Revenue, ${days} days`} info="Sum of successful Paystack payments in the range. Started or failed payments are left out." value={naira(d.totals.revenue || 0)} />

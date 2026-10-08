@@ -85,7 +85,7 @@ export function CoverTemplate({ data, name, onLinkClick }) {
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/65" aria-hidden="true" />
         <div className="absolute inset-x-0 bottom-0 px-6 pb-8 text-white">
-          <motion.h1 variants={fadeUp} className="font-serif text-5xl font-medium leading-none">Hi, I'm <em>{firstName(name)}</em></motion.h1>
+          <motion.h1 variants={fadeUp} className="font-serif text-4xl font-medium leading-none sm:text-5xl">Hi, I'm <em>{firstName(name)}</em></motion.h1>
           {data.bio && <motion.p variants={fadeUp} className="mx-auto mt-3 max-w-xs text-sm text-white/85">{data.bio}</motion.p>}
           <motion.div variants={fadeUp} className="mt-5 flex justify-center gap-6">
             {socialsOf(data.links).map((l) => {
@@ -123,7 +123,7 @@ export function EditorialTemplate({ data, name, onLinkClick }) {
         {data.avatar_url && (
           <motion.img variants={fadeUp} src={data.avatar_url} alt="" referrerPolicy="no-referrer" className="mx-auto mt-6 size-24 rounded-full object-cover grayscale" />
         )}
-        <motion.h1 variants={fadeUp} className="mt-5 font-serif text-5xl font-medium leading-none">{name}</motion.h1>
+        <motion.h1 variants={fadeUp} className="mt-5 font-serif text-4xl font-medium leading-none sm:text-5xl">{name}</motion.h1>
         {(data.occupation || data.bio) && <motion.p variants={fadeUp} className="mt-2 font-serif text-lg italic">{data.occupation || data.bio}</motion.p>}
         <motion.div variants={fadeUp} className="mx-auto my-8 h-px w-16 bg-accent/60" aria-hidden="true" />
         <ul className="text-left">
@@ -375,7 +375,7 @@ export function MinimalTemplate({ data, name, onLinkClick }) {
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{data.location || data.occupation || 'Links'}</p>
         {data.avatar_url && <img src={data.avatar_url} alt="" referrerPolicy="no-referrer" className="size-12 rounded-full object-cover grayscale" />}
       </motion.div>
-      <motion.h1 variants={fadeUp} className="mt-6 font-serif text-6xl font-medium leading-[0.95] tracking-tight">{name}</motion.h1>
+      <motion.h1 variants={fadeUp} className="mt-6 font-serif text-5xl font-medium sm:text-6xl leading-[0.95] tracking-tight">{name}</motion.h1>
       {data.bio && <motion.p variants={fadeUp} className="mt-4 max-w-xs text-muted-foreground">{data.bio}</motion.p>}
       {socials.length > 0 && (
         <motion.p variants={fadeUp} className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium">

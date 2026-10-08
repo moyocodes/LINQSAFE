@@ -52,7 +52,7 @@ export default function Contact() {
       <h1 className="text-4xl font-bold tracking-tight">Contact us</h1>
       <p className="mt-3 text-muted-foreground">Questions, feedback or a problem with your page? Send a message and we will get back to you.</p>
       <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-        <Mail className="size-4" aria-hidden="true" /> Or email <a className="font-medium text-foreground underline" href={`mailto:${SITE.email}`}>{SITE.email}</a>
+        <Mail className="size-4 shrink-0" aria-hidden="true" /> <span className="min-w-0">Or email <a className="font-medium text-foreground underline" href={`mailto:${SITE.email}`}>{SITE.email}</a></span>
       </p>
 
       <Card className="mt-8">

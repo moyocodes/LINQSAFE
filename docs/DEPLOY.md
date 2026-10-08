@@ -420,7 +420,7 @@ Without `RESEND_API_KEY` nothing is sent: each email is written to `stderr.log` 
 ```
 cd /home/linqqkto/linqsafe && /home/linqqkto/nodevenv/linqsafe/22/bin/node server/scripts/reminders.js >> reminders.log 2>&1
 ```
-Only on prod (one job is enough; admin shares the database). It emails each purchase at most once before and once after it ends; renewing resets that. Run it by hand with *Run JS script* → `reminders`.
+Only on prod (one job is enough; admin shares the database). It emails each purchase at most once before and once after it ends; renewing resets that. The same job also emails the founder (moyosorejames@gmail.com) a summary of yesterday: sign-ups, views, visitors, clicks, payments and the busiest pages. Run it by hand with *Run JS script* → `reminders`.
 
 ### Search engines and link previews
 

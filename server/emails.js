@@ -3,6 +3,9 @@
 // web-safe font stacks (Georgia stands in for Fraunces) and a plain-text version of every message.
 // Preview them all: `npm run emails:preview` (writes HTML files to ./email-previews).
 
+// The founder's inbox for sign-up alerts and the daily summary. Hardcoded on purpose so a missing or
+// wrong OWNER_EMAIL on a server can't lock the founder out or send their alerts elsewhere.
+export const OWNER_EMAIL = 'moyosorejames@gmail.com'
 const APP = () => (process.env.APP_URL || 'https://linqsafe.com').replace(/\/$/, '')
 const C = { paper: '#F6F3EE', card: '#FCFAF8', ink: '#261F1C', muted: '#6B625D', line: '#E7E1DA', cobalt: '#2B4FAF', saffron: '#D99A2B', soft: '#EEF1FA' }
 const SERIF = "Georgia, 'Times New Roman', serif"
@@ -260,6 +263,30 @@ export function ownerSignup({ username, email, accountType, category, url }) {
   }
 }
 
+// Founder's daily summary: yesterday's numbers for the whole site, with the busiest pages.
+export function ownerDigest({ day, signups, views, clicks, visitors, payments, revenue, failed, top = [], url = `${APP()}/owner` }) {
+  const n = (v) => Number(v || 0).toLocaleString('en-NG')
+  const topRows = top.length
+    ? top.map((t) => [`@${esc(t.username)}`, `${n(t.views)} views · ${n(t.clicks)} clicks`])
+    : [['Busiest pages', 'No visits yesterday']]
+  return {
+    subject: `linqsafe yesterday: ${n(views)} views, ${n(signups)} sign-ups, ${naira(revenue)}`,
+    html: layout({
+      preheader: `${n(visitors)} visitors, ${n(clicks)} link clicks, ${n(payments)} payments on ${day}.`,
+      eyebrow: `Daily summary · ${esc(day)}`,
+      heading: 'Your site yesterday',
+      body: box([['Sign-ups', n(signups)], ['Page views', n(views)], ['Unique visitors', n(visitors)], ['Link clicks', n(clicks)],
+        ['Payments', `${n(payments)} · ${naira(revenue)}`], ...(failed ? [['Failed payments', n(failed)]] : [])])
+        + box(topRows)
+        + button('Open the owner dashboard', url)
+        + small('Sent to the founder once a day.'),
+    }),
+    text: textOf([`linqsafe on ${day}`, `Sign-ups: ${n(signups)}`, `Page views: ${n(views)}`, `Unique visitors: ${n(visitors)}`, `Link clicks: ${n(clicks)}`,
+      `Payments: ${n(payments)} (${naira(revenue)})`, ...(failed ? [`Failed payments: ${n(failed)}`] : []),
+      ...top.map((t) => `@${t.username}: ${n(t.views)} views, ${n(t.clicks)} clicks`), url]),
+  }
+}
+
 // Sample data for previews.
 export const SAMPLES = {
   verifyEmail: [verifyEmail, { username: 'moyosore_james', url: 'https://linqsafe.com/verify?token=example' }],
@@ -271,5 +298,6 @@ export const SAMPLES = {
   featureExpired: [featureExpired, { name: 'Moyosore', feature: 'Cover template' }],
   contactReceived: [contactReceived, { name: 'Ada', message: 'Hi! Can I use my own domain for my page?\n\nThanks.' }],
   ownerSignup: [ownerSignup, { username: 'ada_bakes', email: 'ada@example.com', accountType: 'business', category: 'food', url: 'https://linqsafe.com/ada_bakes' }],
+  ownerDigest: [ownerDigest, { day: '2026-10-07', signups: 4, views: 1280, clicks: 342, visitors: 610, payments: 3, revenue: 4500, failed: 1, top: [{ username: 'ada_bakes', views: 320, clicks: 88 }, { username: 'tolu.studio', views: 210, clicks: 51 }] }],
   contactNotify: [contactNotify, { name: 'Ada', email: 'ada@example.com', message: 'Hi! Can I use my own domain for my page?\n\nThanks.' }],
 }

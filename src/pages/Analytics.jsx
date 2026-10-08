@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, CalendarClock, Download, Eye, Globe2, Loader2, Lock, QrCode, Repeat, TrendingDown, TrendingUp, MousePointerClick, Percent, Smartphone, Table2, Users } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Download, Eye, Globe2, Lock, QrCode, Repeat, TrendingDown, TrendingUp, MousePointerClick, Percent, Smartphone, Table2, Users } from 'lucide-react'
 import { api } from '@/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { TypeBadge } from '@/lib/linkTypes'
 import { InfoTip } from '@/components/ui/info-tip'
 import { useTitle } from '@/lib/useTitle'
+import PageLoader from '@/components/PageLoader'
 
 // Validated two-series palette (blue / orange, passes CVD + contrast checks on the light surface).
 export const VIEWS = '#2a78d6'
@@ -178,7 +179,7 @@ export function BestTime({ heat }) {
 export function NewVsReturning({ audience }) {
   const { total, returning } = audience
   const fresh = total - returning
-  if (!total) return <p className="py-6 text-center text-sm text-muted-foreground">No counted visitors yet. Visitors are counted once they accept the cookie notice.</p>
+  if (!total) return <p className="py-6 text-center text-sm text-muted-foreground">No visitors counted yet.</p>
   return (
     <div>
       <div className="flex h-3 overflow-hidden rounded-full bg-foreground/5" role="img" aria-label={`${fresh} new, ${returning} returning`}>
@@ -239,7 +240,7 @@ export default function Analytics() {
       </div>
 
       {!data ? (
-        <div className="grid h-64 place-items-center"><Loader2 className="animate-spin text-muted-foreground" role="status" aria-label="Loading" /></div>
+        <PageLoader label="Loading analytics" className="h-64" />
       ) : (<>
         <WeekSummary week={data.week} />
 

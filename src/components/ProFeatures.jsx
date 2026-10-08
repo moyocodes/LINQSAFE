@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, CircleCheck, Crown, Eye, Image, Lock, Loader2, Plus, Sparkles, Trash2, UserRound, X } from 'lucide-react'
 import { api } from '@/api'
+import { ProfileView } from '@/pages/Profile'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -52,6 +53,8 @@ export function BillingProvider({ me, onUnlocked, children }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState('')
+  // "… unlocked." is a quick confirmation, not a banner that stays: gone after a second.
+  useEffect(() => { if (!done) return; const t = setTimeout(() => setDone(''), 1000); return () => clearTimeout(t) }, [done])
   const [history, setHistory] = useState([])
   const loadHistory = () => api('/billing/history').then(setHistory).catch(() => {})
   useEffect(() => {
@@ -323,11 +326,14 @@ export function TemplatePicker({ value, onChange, onUse, theme, onTheme, me, cat
           )
         })}
       </div>
-      {TEMPLATES.some((t) => t.feature && !has(me, t.feature)) && <p className="text-xs text-muted-foreground"><b>Preview</b> any template on your own page; tap <b>Add</b> on locked ones, then pay for everything you picked at once.</p>}
+      {TEMPLATES.some((t) => t.feature && !has(me, t.feature)) && <p className="text-xs text-muted-foreground"><b>Preview</b> any template with your own details, locked ones too; tap <b>Add</b> on locked ones, then pay for everything you picked at once.</p>}
       <AnimatePresence>
         {previewing && (
           <TemplatePreview username={me.username} template={previewing} locked={!!previewing.feature && !has(me, previewing.feature)}
-            onClose={() => setPreviewing(null)} onUse={() => { (onUse || onChange)(previewing); setPreviewing(null) }} />
+            onClose={() => setPreviewing(null)} onUse={() => { (onUse || onChange)(previewing); setPreviewing(null) }}>
+            {/* Drawn right here from your own data (locked templates too), so it opens instantly. */}
+            <ProfileView data={me} layout={previewing.id} theme={theme || me.theme || 'light'} embed />
+          </TemplatePreview>
         )}
       </AnimatePresence>
     </fieldset>
@@ -417,17 +423,29 @@ export function SocialSuggestions({ links, onPick }) {
 // own, but only the section crossing the middle of the screen shows it, so it saves what you're editing.
 export function StickySave({ children, hint }) {
   const marker = useRef(null)
+  const enterSave = useRef(null)
   const [active, setActive] = useState(false)
   useEffect(() => {
     const section = marker.current?.closest('.scroll-mt-24[id]') || marker.current?.parentElement
     if (!section) return
     const io = new IntersectionObserver(([e]) => setActive(e.isIntersecting), { rootMargin: '-45% 0px -45% 0px' })
     io.observe(section)
-    return () => io.disconnect()
+    // Enter in a one-line field saves the section (textareas keep Enter for new lines; real forms submit themselves).
+    const onKey = (e) => {
+      const t = e.target
+      if (e.key !== 'Enter' || e.isComposing || e.shiftKey || t.tagName !== 'INPUT' || t.closest('form')) return
+      if (/^(checkbox|radio|file|button|submit|color|range)$/.test(t.type)) return
+      e.preventDefault()
+      enterSave.current?.querySelector('button')?.click()
+    }
+    section.addEventListener('keydown', onKey)
+    return () => { io.disconnect(); section.removeEventListener('keydown', onKey) }
   }, [])
   return (
     <>
       <span ref={marker} hidden />
+      {/* A hidden copy of the Save button for Enter, there even while the floating one is off screen. */}
+      <div ref={enterSave} hidden>{children}</div>
       {createPortal(
         <AnimatePresence>
           {active && (

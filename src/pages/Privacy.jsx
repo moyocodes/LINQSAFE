@@ -23,8 +23,8 @@ export default function Privacy() {
       <h2>Cookies and local storage</h2>
       <ul>
         <li><strong>Sign-in (necessary):</strong> a secure, httpOnly cookie keeps you logged in.</li>
-        <li><strong>Visitor count (optional):</strong> with your consent, an anonymous random ID cookie lets us count unique visitors and avoid counting a refresh twice. Decline in the cookie notice and pages still work; you just aren't counted as unique.</li>
-        <li><strong>Preferences:</strong> your browser's local storage remembers your cookie choice and whether you're signed in.</li>
+        <li><strong>Visitor counts (no cookie):</strong> public pages set no cookies. To count unique visitors we use a one-way code made from your IP address and browser that changes every day. The IP address itself is never stored.</li>
+        <li><strong>Preferences:</strong> your browser's local storage remembers settings such as light or dark mode.</li>
       </ul>
       <p>We do not use advertising or cross-site tracking cookies. Our host may also collect anonymous, cookie-free site traffic statistics.</p>
 

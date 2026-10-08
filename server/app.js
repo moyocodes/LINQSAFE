@@ -256,8 +256,7 @@ async function sessionUserId(req) {
 
 // Founder dashboard access: only the configured owner email, and only once that email is verified
 // (otherwise anyone could sign up with the address first and inherit owner access).
-// Hardcoded on purpose so a missing or wrong OWNER_EMAIL on a server can't lock the founder out.
-const OWNER_EMAIL = 'moyosorejames@gmail.com'
+const { OWNER_EMAIL } = Email // hardcoded in emails.js so a wrong server setting can't lock the founder out
 const ownsSite = (u) => !!u && String(u.email || '').trim().toLowerCase() === OWNER_EMAIL && !!u.email_verified
 async function isOwner(userId) {
   const [[u]] = await pool.query('SELECT email, email_verified FROM users WHERE id = ?', [userId])
@@ -307,17 +306,13 @@ function refHost(req, ref) {
     return ''
   }
 }
-// Anonymous visitor cookie: a random id, so repeat visits by the same browser count once.
-const VISITOR = 'lh_vid'
-// Only set once the visitor has accepted the cookie notice (consent=1); otherwise views are still
-// counted, just without a visitor id (so they can't be de-duplicated or counted as unique).
-function visitorId(req, res, consent) {
-  if (!consent) return ''
-  const m = (req.headers.cookie || '').match(new RegExp(`(?:^|;\\s*)${VISITOR}=([a-f0-9]{16})`))
-  if (m) return m[1]
-  const id = crypto.randomBytes(8).toString('hex')
-  res.cookie(VISITOR, id, { httpOnly: true, secure: isProd, sameSite: 'lax', path: '/', maxAge: 365 * 24 * 3600 * 1000 })
-  return id
+// Cookie-free visitor id: a hash of the IP and browser that changes every day, so repeat visits on the
+// same day count once without storing anything on the visitor's device (no cookie, no consent prompt).
+// The IP is never stored, and yesterday's ids can't be linked to today's.
+function visitorId(req) {
+  const day = new Date().toISOString().slice(0, 10)
+  const ip = String(req.ip || '').replace(/^::ffff:/, '')
+  return crypto.createHmac('sha256', SECRET).update(`${day}|${ip}|${req.get('user-agent') || ''}`).digest('hex').slice(0, 16)
 }
 
 // Offline IP → country lookup. Optional: if the package isn't installed yet (cPanel needs Run JS script → deps),
@@ -326,10 +321,10 @@ let ip3country = null
 try { ip3country = (await import('ip3country')).default; ip3country.init() } catch { console.warn('ip3country not installed: country falls back to time zone') }
 
 // Returns true when the event was recorded (false for bots and for a repeat view within 30 minutes).
-async function track(req, res, { userId, kind, linkId = null, ref = '', consent = false, tz = '' }) {
+async function track(req, res, { userId, kind, linkId = null, ref = '', tz = '' }) {
   const ua = req.get('user-agent') || ''
   if (BOT.test(ua)) return false
-  const visitor = visitorId(req, res, consent)
+  const visitor = visitorId(req)
   if (kind === 'view' && visitor) {
     const [[recent]] = await pool.query(
       "SELECT 1 FROM events WHERE user_id = ? AND visitor = ? AND kind = 'view' AND created_at > DATE_SUB(NOW(), INTERVAL 30 MINUTE) LIMIT 1",
@@ -705,7 +700,7 @@ app.get('/api/u/:username', async (req, res) => {
   if (user.account_type !== 'business') user.whatsapp = ''
   delete user.plan
   // The owner looking at their own page isn't a visitor.
-  if ((await sessionUserId(req)) !== user.id && (await track(req, res, { userId: user.id, kind: 'view', ref: req.query.src === 'qr' ? 'qr' : String(req.query.ref || ''), consent: req.query.consent === '1', tz: String(req.query.tz || '') })))
+  if ((await sessionUserId(req)) !== user.id && (await track(req, res, { userId: user.id, kind: 'view', ref: req.query.src === 'qr' ? 'qr' : String(req.query.ref || ''), tz: String(req.query.tz || '') })))
     await pool.query('UPDATE users SET views = views + 1 WHERE id = ?', [user.id])
   const [links] = await pool.query(
     'SELECT id, title, url, type FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [user.id])
@@ -714,7 +709,7 @@ app.get('/api/u/:username', async (req, res) => {
 
 app.post('/api/click/:id', clickLimiter, async (req, res) => {
   const [[link]] = await pool.query('SELECT id, user_id FROM links WHERE id = ? AND deleted_at IS NULL', [req.params.id])
-  if (link && (await sessionUserId(req)) !== link.user_id && (await track(req, res, { userId: link.user_id, kind: 'click', linkId: link.id, ref: String(req.body?.ref || ''), consent: req.body?.consent === true, tz: String(req.body?.tz || '') })))
+  if (link && (await sessionUserId(req)) !== link.user_id && (await track(req, res, { userId: link.user_id, kind: 'click', linkId: link.id, ref: String(req.body?.ref || ''), tz: String(req.body?.tz || '') })))
     await pool.query('UPDATE links SET clicks = clicks + 1 WHERE id = ?', [link.id])
   res.json({ ok: true })
 })

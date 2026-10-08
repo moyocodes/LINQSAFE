@@ -118,7 +118,7 @@ test('onboarding completes once', async () => {
   assert.ok((await api('GET', '/me')).body.onboarded_at)
 })
 
-test('analytics: unique visitors with consent, owner and bots excluded', async () => {
+test('analytics: cookie-free unique visitors, owner and bots excluded', async () => {
   const owner = client()
   const username = await signUp(owner)
   const link = await owner('POST', '/links', { title: 'Site', url: 'https://example.com' })
@@ -126,22 +126,22 @@ test('analytics: unique visitors with consent, owner and bots excluded', async (
   await owner('GET', `/u/${username}`) // owner's own view: not counted
   await client('Googlebot/2.1')('GET', `/u/${username}`) // bot: not counted
   const a = client('Mozilla/5.0 (iPhone)')
-  await a('GET', `/u/${username}?consent=1&ref=${encodeURIComponent('https://www.instagram.com/')}`)
-  await a('GET', `/u/${username}?consent=1`) // refresh within 30 min: not counted again
-  await client('Mozilla/5.0 (iPhone)')('GET', `/u/${username}?consent=1&tz=Africa%2FLagos`) // second visitor, in Nigeria
-  await client('Mozilla/5.0 (Macintosh)')('GET', `/u/${username}`) // no consent: counted, but not as unique
-  await a('POST', `/click/${link.body.id}`, { ref: '', consent: true })
+  await a('GET', `/u/${username}?ref=${encodeURIComponent('https://www.instagram.com/')}`)
+  await a('GET', `/u/${username}`) // refresh within 30 min: not counted again
+  await client('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)')('GET', `/u/${username}?tz=Africa%2FLagos`) // second visitor, in Nigeria
+  await client('Mozilla/5.0 (Macintosh)')('GET', `/u/${username}`) // third visitor: no cookie or consent needed
+  await a('POST', `/click/${link.body.id}`, { ref: '' })
 
   const s = await owner('GET', '/analytics?days=7')
   assert.equal(s.status, 200)
   assert.equal(s.body.views, 3)
-  assert.equal(s.body.visitors, 2)
+  assert.equal(s.body.visitors, 3)
   assert.equal(s.body.clicks, 1)
   assert.deepEqual(s.body.referrers.find((r) => r.name === 'instagram.com')?.n, 1)
   assert.equal(s.body.series.length, 7)
   assert.equal(s.body.countries.find((c) => c.name === 'NG')?.n, 1, 'country falls back to the browser time zone')
   assert.equal((await owner('GET', '/analytics?days=90')).status, 402, '90-day analytics is a paid feature')
-  assert.equal(s.body.audience.total, 2)
+  assert.equal(s.body.audience.total, 3)
   assert.equal(s.body.links[0].n, 1)
 
   const csv = await owner('GET', '/analytics/export.csv?days=7')

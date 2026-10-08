@@ -18,6 +18,7 @@ import Onboarding from '@/components/Onboarding'
 import { AccountFields, BillingProvider, StickySave, FeatureCard, TemplatePreview, FounderNoteEditor, PaymentHistory, SocialSuggestions, TemplatePicker, TestimonialsEditor, UnlockChip } from '@/components/ProFeatures'
 import { FREE_LINK_LIMIT, TEMPLATES, has } from '@/lib/plans'
 import { LINK_TYPES, TypeBadge, TypeSelect, detectType } from '@/lib/linkTypes'
+import PageLoader from '@/components/PageLoader'
 
 function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDragEnd }) {
   const controls = useDragControls()
@@ -277,7 +278,7 @@ function VerifyBanner({ email, onChanged }) {
         </form>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="flex items-center gap-2"><MailWarning className="size-4 shrink-0" aria-hidden="true" />Confirm <strong>{email}</strong> so you can pay and reset your password.</span>
+          <span className="flex min-w-0 items-start gap-2"><MailWarning className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">Confirm <strong className="break-all">{email}</strong> so you can pay and reset your password.</span></span>
           <span className="flex gap-2">
             <Button size="sm" variant="outline" onClick={resend} disabled={state === 'sending' || state === 'sent'}>
               {state === 'sent' ? 'Email sent, check your inbox' : state === 'error' ? 'Try again' : 'Resend email'}
@@ -325,7 +326,7 @@ export default function Admin() {
   }, [navigate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!me)
-    return <div className="grid min-h-[60vh] place-items-center"><Loader2 className="animate-spin text-muted-foreground" role="status" aria-label="Loading" /></div>
+    return <PageLoader label="Loading your dashboard" />
 
   const profileUrl = `${location.origin}/${me.username}`
   const patchLink = (id, patch) =>
@@ -600,14 +601,29 @@ export default function Admin() {
       {/* Phones & tablets: floating Preview button (bottom-left, clear of Save). It opens the preview over
           the page, so closing it leaves you exactly where you were editing. */}
       <button type="button" onClick={() => setPeek(true)} aria-haspopup="dialog"
-        className="fixed bottom-5 left-4 z-40 flex h-12 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold text-paper shadow-[0_12px_30px_-8px_hsl(20_30%_15%/.5)] transition-transform active:scale-95 lg:hidden [body[data-cart]_&]:bottom-44">
+        className="fixed bottom-5 left-4 z-40 flex h-12 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold text-paper ring-1 ring-white/20 shadow-[0_12px_30px_-8px_hsl(20_30%_15%/.5)] transition-transform active:scale-95 lg:hidden [body[data-cart]_&]:bottom-44">
         <Smartphone className="size-4" aria-hidden="true" /> Preview
       </button>
       <AnimatePresence>
         {peek && (
           <TemplatePreview username={me.username} title="Your page" onClose={() => setPeek(false)}
-            footer={<a href={profileUrl} target="_blank" rel="noopener noreferrer"
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-black hover:bg-white/90"><ExternalLink className="size-4" aria-hidden="true" /> Open my page</a>}>
+            footer={<div className="flex w-full flex-col items-center gap-2">
+              {/* Switch between the templates you can already use (free or bought); each tap saves. */}
+              <div role="radiogroup" aria-label="Your templates" className="flex w-full gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
+                {TEMPLATES.filter((t) => !t.feature || has(me, t.feature)).map((t) => {
+                  const on = (me.layout || 'classic') === t.id
+                  return (
+                    <button key={t.id} type="button" role="radio" aria-checked={on}
+                      onClick={() => { if (on) return; const next = { ...me, layout: t.id }; setMe(next); saveProfile(next) }}
+                      className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${on ? 'bg-white text-black' : 'bg-white/15 text-white hover:bg-white/25'}`}>
+                      {on && <Check className="-ml-0.5 mr-1 inline size-3" aria-hidden="true" />}{t.name}
+                    </button>
+                  )
+                })}
+              </div>
+              <a href={profileUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-black hover:bg-white/90"><ExternalLink className="size-4" aria-hidden="true" /> Open my page</a>
+            </div>}>
             <ProfileView data={me} layout={me.layout || 'classic'} theme={me.theme || 'light'} embed />
           </TemplatePreview>
         )}

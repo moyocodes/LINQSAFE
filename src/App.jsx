@@ -2,7 +2,6 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import StageBadge from '@/components/StageBadge'
-import CookieNotice from '@/components/CookieNotice'
 import { IS_ADMIN_HOST } from '@/lib/stage'
 import Home from '@/pages/Home'
 import Auth from '@/pages/Auth'
@@ -11,6 +10,7 @@ import Terms from '@/pages/Terms'
 import Privacy from '@/pages/Privacy'
 import NotFound from '@/pages/NotFound'
 import Profile from '@/pages/Profile'
+import PageLoader from '@/components/PageLoader'
 
 // Admin pulls in drag-and-drop code that visitors to public pages never need.
 const Admin = lazy(() => import('@/pages/Admin'))
@@ -36,14 +36,13 @@ function AdminHostApp() {
   )
 }
 
-// ?embed=1 is the dashboard's live preview inside an iframe: no stage badge or cookie notice there.
+// ?embed=1 is the dashboard's live preview inside an iframe: no stage badge there.
 const EMBED = new URLSearchParams(window.location.search).get('embed') === '1'
 
 export default function App() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoader className="min-h-screen" />}>
       {!EMBED && <StageBadge />}
-      {!IS_ADMIN_HOST && !EMBED && <CookieNotice />}
       {IS_ADMIN_HOST ? <AdminHostApp /> : (
       <Routes>
         <Route element={<Layout />}>

@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CalendarClock, Download, Eye, FileText, Filter, Globe2, LayoutTemplate, Loader2, MousePointerClick, Percent, QrCode, Repeat, Search, Smartphone, Users, X } from 'lucide-react'
+import { CalendarClock, Download, Eye, FileText, Filter, Globe2, LayoutTemplate, MousePointerClick, Percent, QrCode, Repeat, Search, Smartphone, Users, X } from 'lucide-react'
 import { api } from '@/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { BarList, BestTime, CLICKS, Kpi, LineChart, NewVsReturning, VIEWS, WeekSummary, flag, pct, regionName, sourceName } from '@/pages/Analytics'
 import { CATEGORIES, TEMPLATES, categoryLabel } from '@/lib/plans'
 import { TypeBadge } from '@/lib/linkTypes'
 import { InfoTip } from '@/components/ui/info-tip'
+import PageLoader from '@/components/PageLoader'
 
 const tplName = Object.fromEntries(TEMPLATES.map((t) => [t.id, t.name]))
 // Every filter the founder traffic view understands; they live in the URL so a view can be bookmarked or shared.
@@ -130,13 +131,13 @@ export default function OwnerTraffic() {
       </Card>
 
       {error ? <p className="rounded-md border border-destructive/40 p-4 text-sm text-destructive">{error}</p>
-        : !data ? <div className="grid h-48 place-items-center"><Loader2 className="animate-spin text-muted-foreground" role="status" aria-label="Loading" /></div>
+        : !data ? <PageLoader label="Loading traffic" className="h-48" />
         : (<>
           <WeekSummary week={data.week} subject={filters.user ? `/${filters.user}` : active.length ? 'These pages' : 'linqsafe pages'} own="the" />
 
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
             <Kpi icon={Eye} label="Page views" info="Profile page loads matching the filters. Your own visits while signed in, bots, and refreshes within 30 minutes aren't counted." value={data.views.toLocaleString()} />
-            <Kpi icon={Users} label="Unique visitors" info="Distinct visitor cookies matching the filters. Only visitors who accepted the cookie notice are counted." value={data.visitors.toLocaleString()} />
+            <Kpi icon={Users} label="Unique visitors" info="Distinct visitors per day matching the filters, counted without cookies." value={data.visitors.toLocaleString()} />
             <Kpi icon={MousePointerClick} label="Link clicks" info="Taps on links and social icons on the filtered pages." value={data.clicks.toLocaleString()} />
             <Kpi icon={Percent} label="Click-through rate" info="Link clicks ÷ page views. 20% means one click for every five views." value={ctr} />
             <Kpi icon={QrCode} label="QR code scans" info="Views that came from a downloaded QR code (its link carries ?src=qr)." value={data.qrScans.toLocaleString()} />
@@ -160,7 +161,7 @@ export default function OwnerTraffic() {
               <CardContent><BestTime heat={data.heat} /></CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><Repeat className="size-5" aria-hidden="true" /> New vs returning <InfoTip>Counted visitors only (cookie accepted). Returning = seen on any page before this range, or on 2+ different days inside it. Everyone else is new.</InfoTip></CardTitle>
+              <CardHeader><CardTitle className="flex items-center gap-2"><Repeat className="size-5" aria-hidden="true" /> New vs returning <InfoTip>Visitors are identified per day without cookies, so someone coming back on another day can show up as new. Everyone else is new.</InfoTip></CardTitle>
                 <CardDescription>Across the whole site: a visitor seen on another day, on any page, is returning.</CardDescription></CardHeader>
               <CardContent><NewVsReturning audience={data.audience} /></CardContent>
             </Card>

@@ -121,6 +121,10 @@
   ::selection { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
   /* No sideways scrolling from decorative glows; `clip` (unlike `hidden`) keeps position: sticky working. */
   html, body { overflow-x: clip; }
+  /* Long emails, URLs and usernames wrap instead of pushing past the edge on phones. */
+  body { overflow-wrap: break-word; }
+  h1, h2, h3 { text-wrap: balance; }
+  p, li { text-wrap: pretty; }
   html { scroll-behavior: smooth; }
 }
 

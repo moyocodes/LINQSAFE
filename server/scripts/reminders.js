@@ -1,4 +1,4 @@
-// Daily email job: "ends in 3 days" and "has ended" notices for paid features.
+// Daily email job: "ends in 3 days" and "has ended" notices for paid features, then the founder's daily summary.
 // Run once a day from cPanel → Cron Jobs (see docs/DEPLOY.md), or by hand: npm run reminders
 // Each purchase gets at most one of each email; renewing resets them.
 import { pool } from '../db.js'
@@ -29,4 +29,19 @@ for (const r of ended) {
   } catch (e) { console.error(`expired ${r.username}/${r.feature}:`, e.message) }
 }
 console.log(`reminders: ${soon.length} ending soon, ${ended.length} ended, ${sent} emails sent`)
+
+// Founder's daily summary: yesterday (server time), whole site.
+try {
+  const Y = 'BETWEEN DATE_SUB(CURDATE(), INTERVAL 1 DAY) AND CURDATE() - INTERVAL 1 SECOND'
+  const [[u]] = await pool.query(`SELECT COUNT(*) AS signups FROM users WHERE created_at ${Y}`)
+  const [[e]] = await pool.query(`SELECT SUM(kind = 'view') AS views, SUM(kind = 'click') AS clicks,
+    COUNT(DISTINCT IF(kind = 'view' AND visitor <> '', visitor, NULL)) AS visitors FROM events WHERE created_at ${Y}`)
+  const [[pay]] = await pool.query(`SELECT SUM(status = 'success') AS payments, COALESCE(SUM(IF(status = 'success', amount_kobo, 0)), 0) / 100 AS revenue,
+    SUM(status NOT IN ('success', 'pending')) AS failed FROM payments WHERE created_at ${Y}`)
+  const [top] = await pool.query(`SELECT u.username, SUM(e.kind = 'view') AS views, SUM(e.kind = 'click') AS clicks FROM events e JOIN users u ON u.id = e.user_id
+    WHERE e.created_at ${Y} GROUP BY e.user_id ORDER BY views DESC LIMIT 5`)
+  const [[{ day }]] = await pool.query("SELECT DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '%Y-%m-%d') AS day")
+  await sendMail({ to: Email.OWNER_EMAIL, tag: 'owner-digest', ...Email.ownerDigest({ day, ...u, ...e, ...pay, top }) })
+  console.log(`owner digest for ${day} sent`)
+} catch (err) { console.error('owner digest:', err.message) }
 await pool.end()

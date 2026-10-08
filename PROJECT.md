@@ -81,7 +81,7 @@ Limits are enforced on the server (`server/app.js`) as well as in the UI.
 
 ```
 Browser (React SPA)
-  │  fetch /api/*  (cookie: lh_session, lh_vid)
+  │  fetch /api/*  (cookie: lh_session)
   ▼
 Express app  (server/app.js)
   ├─ auth: register, login, logout, verify email, forgot/reset password
@@ -214,7 +214,7 @@ linqsafe is a single-page app, so the server fills in each page's `<head>` befor
 - A password reset signs out every other session (`token_version`).
 - Signing up with an email that an _unverified_ account holds releases it to the new signup, so nobody can squat someone else's email.
 - Social badges must match the URL's real domain (no "Instagram" badge on a phishing page).
-- The anonymous visitor cookie (`lh_vid`) is only set after a visitor accepts the cookie notice. Without consent, views are still counted, just not as unique visitors.
+- Public pages set no cookies and show no cookie notice. Unique visitors come from a daily-rotating hash of IP + browser (HMAC with JWT_SECRET); the IP is never stored, and ids can't be linked across days.
 - Rate limits: auth 30 per 15 minutes, clicks 30 per minute, contact 5 per hour, API 300 per minute.
 - The security policy (CSP) allows images from `https:` and `data:` only, plus the site's own scripts.
 

@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ExternalLink, Loader2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { api, isSignedIn } from '@/api'
-import { hasConsent } from '@/lib/consent'
 import MotionBackdrop from '@/components/MotionBackdrop'
 import ShareButton from '@/ShareButton'
 import NotFound from '@/pages/NotFound'
@@ -13,6 +12,7 @@ import { SITE } from '@/config'
 import { SOCIAL_KEYS, TypeBadge } from '@/lib/linkTypes'
 import { LogoMark, Wordmark } from '@/components/Logo'
 import { FounderNote, KindWords, PROFILE_TEMPLATES, WhatsAppButton } from '@/components/ProfileTemplates'
+import PageLoader from '@/components/PageLoader'
 
 const visitorTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch { return '' } })()
 
@@ -20,7 +20,7 @@ const visitorTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().
 const trackClick = (id) =>
   fetch(`/api/click/${id}`, {
     method: 'POST', keepalive: true, credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: document.referrer, consent: hasConsent(), tz: visitorTz }),
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: document.referrer, tz: visitorTz }),
   }).catch(() => {})
 
 function useMedia(query) {
@@ -50,7 +50,7 @@ export default function Profile() {
     loaded.current = username
     setData(null)
     setError('')
-    api(`/u/${username}?ref=${encodeURIComponent(document.referrer)}${hasConsent() ? '&consent=1' : ''}&tz=${encodeURIComponent(visitorTz)}${params.get('src') === 'qr' ? '&src=qr' : ''}`).then(setData).catch((e) => setError(e.message))
+    api(`/u/${username}?ref=${encodeURIComponent(document.referrer)}&tz=${encodeURIComponent(visitorTz)}${params.get('src') === 'qr' ? '&src=qr' : ''}`).then(setData).catch((e) => setError(e.message))
   }, [username])
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export default function Profile() {
   const themeParam = ['light', 'sage', 'blush', 'midnight', 'auto'].includes(params.get('theme')) ? params.get('theme') : null
   if (error) return <NotFound message="This profile doesn't exist." />
   if (!data)
-    return <div className="grid min-h-screen place-items-center"><Loader2 className="animate-spin text-muted-foreground" role="status" aria-label="Loading" /></div>
+    return <PageLoader className="min-h-screen" />
 
   return <ProfileView data={data} layout={layout} theme={themeParam || data.theme} preview={preview} embed={embed} onLinkClick={trackClick} />
 }
