@@ -68,7 +68,7 @@ Limits are enforced on the server (`server/app.js`) as well as in the UI.
 | QR codes              | `qrcode`                                                                                     | Generated in the browser                                                                         |
 | Hosting               | **Vercel** (frontend + serverless API)                                                       | Main deployment path                                                                             |
 | Containers (optional) | **Docker** + Docker Compose                                                                  | Alternative for Docker hosts or running app + MySQL together; not used in local dev or on Vercel |
-| Site analytics        | **Vercel Web Analytics** + in-house `events` table                                           | Vercel for site traffic; in-house for each user's page                                           |
+| Site analytics | In-house `events` table (no third-party trackers) | Each user's page analytics and the founder dashboard |
 
 ---
 
