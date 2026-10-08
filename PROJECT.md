@@ -145,7 +145,7 @@ Full step-by-step instructions: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 | Stage | Where | Address | Database | Settings | Branch | Paystack |
 |---|---|---|---|---|---|---|
 | **local** | your computer | `localhost:5173` | `linqsafe_local` | `.env.local` | any (usually `dev`) | test |
-| **dev** | Namecheap cPanel | `dev.linqsafe.com` | `linqqkto_linqsafe_dev` | `.env` on the server | `dev` | test |
+| **dev** | Namecheap cPanel | `dev.linqsafe.com` | `linqqkto_linqsafedev` | `.env` on the server | `dev` | test |
 | **prod** | Namecheap cPanel | `linqsafe.com`, `admin.linqsafe.com` | `linqqkto_linqsafe` | `.env` on the server | `prod` | live |
 
 - Each stage has its own database and settings; the server reads `.env.local` first, then `.env` (`server/env.js`). Only your computer has `.env.local`.

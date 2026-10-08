@@ -1,92 +1,141 @@
 # linqsafe
 
-Live at **https://linqsafe.com**. Link-in-bio pages for creators and small businesses. Sign up, add your links, pick a template, and share one URL (`/yourname`). Extra features (unlimited links, premium templates, a founder's note, testimonials, a QR code) are each bought on their own for 1, 3, 6 or 12 months, paid in naira through Paystack. The founder sets prices from the founder dashboard.
+**One link for everything you share.** Link-in-bio pages for creators and small businesses: one page (`linqsafe.com/yourname`) for your socials, shop, WhatsApp and more, with templates, themes, built-in analytics and pay-per-feature upgrades in naira.
 
-**Stack:** React 18 · Vite · Tailwind CSS · Framer Motion · GSAP · three.js · Express · MySQL 8 · Resend (email) · Paystack (payments) · Namecheap cPanel (hosting) · GitHub Actions (deploys)
+| | |
+|---|---|
+| Live site | https://linqsafe.com |
+| Founder console | https://admin.linqsafe.com |
+| Test site | https://dev.linqsafe.com |
+| Repo | https://github.com/moyocodes/LINQSAFE |
 
-For the full picture (features, architecture, database, stages, security, design system), see **[PROJECT.md](PROJECT.md)**. For a step-by-step guide to rebuilding a project like this, see **[docs/linqsafe-Build-Guide.pdf](docs/linqsafe-Build-Guide.pdf)**.
+**Stack:** React 18 · Vite · Tailwind CSS · Framer Motion · GSAP · three.js · Node 22 · Express · MySQL 8 · Paystack · Resend · Namecheap cPanel · GitHub Actions
+
+**Docs:** [PROJECT.md](PROJECT.md) (features, architecture, database, design system) · [docs/DEPLOY.md](docs/DEPLOY.md) (step-by-step hosting, deploys, troubleshooting) · [docs/linqsafe-Build-Guide.pdf](docs/linqsafe-Build-Guide.pdf) (how to build a project like this)
+
+---
+
+## Features
+
+- **Public profile** (`/:username`): photo, bio, topics, social badges, links, WhatsApp button for businesses. 7 templates, 5 themes (incl. auto dark).
+- **Dashboard** (`/admin`): onboarding wizard, drag-to-reorder links with platform detection, live phone preview, analytics (views, unique visitors, clicks, countries, sources, devices, best time to post).
+- **Paid features**, each bought for 1, 3, 6 or 12 months via **Paystack** (no subscription): unlimited links, premium templates, founder's note, testimonials, QR code, 90-day analytics. The free plan holds 3 links.
+- **Founder console** (admin.linqsafe.com): users, activation funnel, revenue, payments, expiries, and a pricing editor.
+- **Emails** via **Resend**: confirm, welcome, password reset/changed, receipts, expiry reminders, contact form.
+- **SEO**: per-page titles, link previews and structured data (including each profile), generated `robots.txt` and `sitemap.xml`; dev and admin are never indexed.
 
 ## Stages
 
-| Stage | Address | Database | Settings | Branch |
-|---|---|---|---|---|
-| local | `localhost:5173` | `linqsafe_local` | `.env.local` | usually `dev` |
-| dev | `dev.linqsafe.com` | `linqqkto_linqsafe_dev` (cPanel) | `.env` on server | `dev` |
-| prod | `linqsafe.com` + `admin.linqsafe.com` | `linqqkto_linqsafe` (cPanel) | `.env` on server | `prod` |
+| Stage | Address | Database | Settings file | Branch | Paystack |
+|---|---|---|---|---|---|
+| **local** | `localhost:5173` | `linqsafe_local` (your computer) | `.env.local` | usually `dev` | test |
+| **dev** | dev.linqsafe.com | `linqqkto_linqsafedev` (cPanel) | `.env` in `/home/linqqkto/linqsafe-dev` | `dev` | test |
+| **prod** | linqsafe.com + admin.linqsafe.com | `linqqkto_linqsafe` (cPanel) | `.env` in `/home/linqqkto/linqsafe` and `…/linqsafe-admin` (same file) | `prod` | live |
 
-Work on `dev`, check it on dev.linqsafe.com, then merge `dev` into `prod` and deploy. **Full instructions: [docs/DEPLOY.md](docs/DEPLOY.md).**
+Each stage has its own database and settings, so testing never touches real users or money. The server reads `.env.local` first, then `.env` (`server/env.js`). Templates: [`.env.dev.example`](.env.dev.example), [`.env.prod.example`](.env.prod.example), [`.env.example`](.env.example).
 
 ## Run locally
 
-Requires Node 22 and MySQL 8.
+Needs Node 22 and MySQL 8.
 
 ```bash
+git clone https://github.com/moyocodes/LINQSAFE.git linqsafe && cd linqsafe
 git switch dev
-cp .env.example .env.local   # DB_* for your local MySQL, DB_NAME=linqsafe_local
+cp .env.example .env.local     # set DB_* for your local MySQL, DB_NAME=linqsafe_local
 npm install
-npm run dev                  # API :3001, site :5173, founder console admin.localhost:5173
-npm run owner                # after signing up with OWNER_EMAIL: verifies it and unlocks every feature
-npm test                     # API tests (they clean up after themselves)
+npm run dev                    # API on :3001, site on :5173, founder console on admin.localhost:5173
 ```
 
-## Deploy (Namecheap cPanel)
+Then sign up with your `OWNER_EMAIL` and run `npm run owner` to verify it and unlock every feature. Tables are created automatically on start (`server/migrations.js`). Without `RESEND_API_KEY`, emails are printed in the terminal.
 
-### Automatic (GitHub Actions, free)
+## Deploy
 
-Every push deploys itself: `.github/workflows/deploy.yml`.
+**Deploys are automatic.** GitHub Actions (`.github/workflows/deploy.yml`) runs on every push:
 
-| Push to | What happens | Goes live on |
+| Push to | Runs | Goes live on |
 |---|---|---|
-| `dev` | tests (throwaway MySQL) → build with DEV badge → FTPS upload → restart | dev.linqsafe.com |
-| `prod` | tests → build → FTPS upload to both prod apps → restart | linqsafe.com + admin.linqsafe.com |
+| `dev` | tests → build (DEV badge) → FTPS upload → restart | dev.linqsafe.com |
+| `prod` | tests → build → FTPS upload → restart | linqsafe.com + admin.linqsafe.com |
 
 ```bash
-git switch dev && git push                                          # deploy dev
-git switch prod && git merge dev && git push && git switch dev       # deploy prod
+# day to day
+git switch dev
+# …edit, test locally…
+git commit -am "Describe the change" && git push            # → dev.linqsafe.com
+
+# release to the live site
+git switch prod && git merge dev && git push && git switch dev   # → linqsafe.com + admin
 ```
 
-- A failing test stops the deploy. Only changed files are uploaded; `.env`, `node_modules` and logs on the server are never touched.
-- After each upload the app restarts (`tmp/restart.txt`) and the run checks `/api/health`.
-- Watch runs in the repo's **Actions** tab; **Run workflow** redeploys by hand.
-- One-time setup: a cPanel FTP account for `/home/linqqkto`, and three repository secrets `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`. Steps: [DEPLOY.md → Automatic deploys](docs/DEPLOY.md#5b-automatic-deploys-github-actions).
-- If `package.json` dependencies change, click **Run NPM Install** (or Run JS script → `deps`) once in cPanel; FTP can't install packages.
+- **Check a deploy landed:** open `/version.txt` on the site; it shows the deployed commit.
+- A failing test stops the deploy. Server `.env` files, `node_modules` and logs are never touched.
+- **New or upgraded packages** (`package.json` dependencies): after the deploy, cPanel → *Setup Node.js App* → each app → **Run JS script → `deps`** → **Restart**. FTP can't install packages.
+- GitHub secrets: `FTP_SERVER=server144.web-hosting.com`, `FTP_USERNAME=linqqkto` (the main cPanel FTP account, path `/home/linqqkto`), `FTP_PASSWORD`.
+- Manual fallback: `npm run package` / `package:dev` / `package:admin` builds a zip to upload and extract in the app folder.
 
-### Manual fallback (zip upload)
+### Server layout (cPanel, Node.js App)
 
-```bash
-npm run package:dev   # dev branch  → linqsafe-dev.zip
-npm run package       # prod branch → linqsafe-prod.zip
-npm run package:admin # prod branch → linqsafe-admin.zip (admin.linqsafe.com)
+```
+/home/linqqkto/
+├── linqsafe/            app for linqsafe.com            (.env = prod)
+├── linqsafe-admin/      app for admin.linqsafe.com      (.env = same as prod)
+├── linqsafe-dev/        app for dev.linqsafe.com        (.env = dev)
+├── admin.linqsafe.com/  subdomain folder: only .htaccess (cPanel's Node block)
+├── dev.linqsafe.com/    subdomain folder: only .htaccess
+└── public_html/         main domain folder: only .htaccess
 ```
 
-Upload and extract the zip into the app folder, then *Setup Node.js App* → **Restart**.
-
-### Server rules
-
-Node.js **20+** on every cPanel app, `DB_HOST=localhost`, the database user added to its database with all privileges, and each server keeps its own `.env`. If anything fails, *Run JS script* → `check`. First-time setup, DNS, SSL, Paystack, email, SEO, backups and troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).
-
-## Email
-
-Transactional email through **Resend**, with branded templates (`server/emails.js`): confirm email, welcome, password reset, password changed, payment receipt, feature ending soon / ended (daily cron: `npm run reminders`), and contact-form notice + auto-reply. Preview them with `npm run emails:preview`. Without `RESEND_API_KEY`, emails print to the server log. Setup: [DEPLOY.md → Email](docs/DEPLOY.md#email-resend).
-
-## SEO
-
-Every page is sent with its own title, description, share image and structured data, including each user's profile (`server/seo.js`). `robots.txt` and `sitemap.xml` are generated by the server, and dev/admin are never indexed. Details in [PROJECT.md](PROJECT.md#7b-seo-and-link-previews); Google setup in [docs/DEPLOY.md](docs/DEPLOY.md#6-going-live-with-payments-and-email).
+Each app: Node.js **22**, mode Production, startup file **`app.cjs`**, `DB_HOST=localhost`, database user added to its database with **all privileges**. **Don't delete these folders.** If a site misbehaves: *Run JS script → `check`* prints what's wrong. Full setup and troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Scripts
 
-| Command                                      | Does                                                    |
-| -------------------------------------------- | ------------------------------------------------------- |
-| `npm run dev`                                | API + site with live reload                             |
-| `npm run build`                              | Build the frontend into `dist/`                         |
-| `npm start`                                  | Production server (API + `dist/`)                       |
-| `npm test`                                   | API tests against the running dev server                |
-| `npm run owner`                              | Verify the owner email and unlock every feature (local) |
-| `npm run set-plan -- <username> <free\|pro>` | `pro` unlocks every feature by hand (no expiry)         |
+| Command | Does |
+|---|---|
+| `npm run dev` | API + site with live reload (local) |
+| `npm test` | API tests against the running local server; they delete the test accounts they create |
+| `npm run build` | Build the site into `dist/` |
+| `npm start` | Production server (API + `dist/`) |
+| `npm run check` | Self-check: settings found and database login (on cPanel: *Run JS script → `check`*) |
+| `npm run deps` | Install server packages (on cPanel: *Run JS script → `deps`*) |
+| `npm run owner` | Verify `OWNER_EMAIL` and unlock every feature for it |
+| `npm run set-plan -- <username> <free\|pro>` | `pro` unlocks every feature for a user, no expiry |
+| `npm run reminders` | Send "ends soon" / "has ended" emails (daily cPanel cron on prod) |
+| `npm run emails:preview` | Write every email template to `email-previews/` to view in a browser |
+| `npm run package` / `package:dev` / `package:admin` | Build a deploy zip (manual fallback) |
 
 ## Environment variables
 
-See [`.env.example`](.env.example) for the full list with comments: database, `JWT_SECRET`, `APP_URL`, Resend, `OWNER_EMAIL` / `ADMIN_HOST`, Paystack (`PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`), default feature prices (`PRICE_*`, `DISCOUNT_*`), `APP_STAGE`.
+Full list with comments in [`.env.example`](.env.example); ready-to-fill versions in [`.env.prod.example`](.env.prod.example) and [`.env.dev.example`](.env.dev.example).
+
+| Setting | Purpose |
+|---|---|
+| `NODE_ENV=production` | on every server (secure cookies) |
+| `DB_HOST` `DB_PORT` `DB_USER` `DB_PASSWORD` `DB_NAME` | MySQL; `DB_HOST=localhost` on cPanel |
+| `JWT_SECRET` | login sessions; long random, different per stage |
+| `APP_URL` | the site's address (links in emails) |
+| `OWNER_EMAIL` | the founder account (needs a verified email) |
+| `ADMIN_HOST` | prod only: founder console only on `admin.linqsafe.com` |
+| `PAYSTACK_SECRET_KEY` `PAYSTACK_PUBLIC_KEY` | test keys on local/dev, live keys on prod (always a matching pair) |
+| `RESEND_API_KEY` `MAIL_FROM` `SUPPORT_EMAIL` | sending email and where replies go |
+| `PRICE_*` `DISCOUNT_*` | optional default prices; the founder console overrides them |
+
+Never commit real values: `.env` and every `.env.*` file are git-ignored except the examples.
+
+## Project structure
+
+```
+src/                 React app (pages, components, lib)
+server/app.js        all API routes
+server/migrations.js database schema, applied automatically on start
+server/seo.js        per-page meta, robots.txt, sitemap.xml
+server/emails.js     email templates;  server/mailer.js sends them (Resend)
+server/features.js   paid features and pricing
+server/scripts/      check, owner, set-plan, reminders, email-preview
+app.cjs              cPanel startup file
+tests/api.test.js    API tests
+.github/workflows/   deploy.yml (GitHub Actions)
+docs/                DEPLOY.md, build guide
+```
 
 ## Accessibility
 
