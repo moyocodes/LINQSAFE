@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Check, CircleCheck, Crown, Lock, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { api } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, IconChip } from '@/components/ui/card'
 import { LINK_TYPES, TypeBadge } from '@/lib/linkTypes'
 import { CATEGORIES, TEMPLATES, customCategoryText, has, isCustomCategory, makeCustomCategory, methodLabel, naira } from '@/lib/plans'
 
@@ -16,37 +16,6 @@ export const PaidBadge = ({ unlocked }) => (
   </span>
 )
 
-// Jumps to the feature checklist on the dashboard, where each feature can be bought.
-export function UnlockLink({ children = 'Unlock', className = '' }) {
-  return (
-    <Button asChild size="sm" className={`bg-accent text-accent-foreground hover:bg-accent/90 ${className}`}>
-      <a href="#features"><Sparkles /> {children}</a>
-    </Button>
-  )
-}
-
-// Wraps a paid card: until the feature is unlocked, show what it does and a link to unlock it.
-export function FeatureCard({ id, unlocked, title, description, icon: Icon, children }) {
-  return (
-    <Card id={id} className="scroll-mt-24">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">{Icon && <Icon className="size-5" aria-hidden="true" />}{title} <PaidBadge unlocked={unlocked} /></CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {unlocked ? children : (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed bg-accent/[0.04] p-4">
-            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="size-4" aria-hidden="true" /> Locked. Unlock it for 1, 3, 6 or 12 months.</p>
-            <UnlockLink />
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-// Checklist of every paid feature: unlocked ones are ticked with their expiry; locked ones are struck
-// through with a price and an Unlock button that starts Paystack checkout for the chosen period.
 // Opens Paystack's inline popup for a checkout our server already created (so price and verification
 // stay server-side). Resolves with the reference on success, null if the buyer closes it.
 async function payInline(accessCode) {
@@ -60,116 +29,180 @@ async function payInline(accessCode) {
   })
 }
 
-export function FeatureChecklist({ me, onUnlocked }) {
+// ---- Billing: a cart of paid features, shared by every place a feature appears on the dashboard ----
+// Each feature shows its own price and an Add button (UnlockChip); the CartBar at the bottom sums them up,
+// lets the buyer pick 1/3/6/12 months and pays for all of them in one Paystack payment.
+const BillingCtx = createContext(null)
+export const useBilling = () => useContext(BillingCtx)
+
+export function BillingProvider({ me, onUnlocked, children }) {
   const [cfg, setCfg] = useState(null)
   const [months, setMonths] = useState(1)
-  const [busy, setBusy] = useState('')
+  const [cart, setCart] = useState([]) // feature keys
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [history, setHistory] = useState([])
-  useEffect(() => { api('/billing/config').then(setCfg).catch(() => setCfg({ enabled: false, features: [], durations: [1, 3, 6, 12] })) }, [])
-  useEffect(() => { api('/billing/history').then(setHistory).catch(() => {}) }, [])
-
   const [done, setDone] = useState('')
-  async function unlock(feature) {
-    setBusy(feature)
+  const [history, setHistory] = useState([])
+  const loadHistory = () => api('/billing/history').then(setHistory).catch(() => {})
+  useEffect(() => {
+    api('/billing/config').then(setCfg).catch(() => setCfg({ enabled: false, features: [], durations: [1, 3, 6, 12] }))
+    loadHistory()
+  }, [])
+  // Lets other fixed elements (the mobile Preview button) move up while the cart bar is showing.
+  useEffect(() => {
+    if (cart.length) document.body.dataset.cart = '1'
+    else delete document.body.dataset.cart
+    return () => { delete document.body.dataset.cart }
+  }, [cart.length])
+
+  const feature = (key) => cfg?.features.find((f) => f.key === key)
+  const price = (key, m = months) => feature(key)?.prices?.[m] || 0
+  const total = cart.reduce((t, k) => t + price(k), 0)
+  const toggle = (key) => { setDone(''); setError(''); setCart((c) => (c.includes(key) ? c.filter((k) => k !== key) : [...c, key])) }
+
+  async function pay() {
+    setBusy(true)
     setError('')
     setDone('')
     let checkout
     try {
-      checkout = await api('/billing/checkout', { method: 'POST', body: { feature, months } })
+      checkout = await api('/billing/checkout', { method: 'POST', body: { items: cart.map((feature) => ({ feature, months })) } })
     } catch (e) {
       setError(e.message)
-      setBusy('')
+      setBusy(false)
       return
     }
     try {
       const reference = await payInline(checkout.accessCode)
-      if (!reference) { setBusy(''); return } // closed the popup
+      if (!reference) return // closed the popup; keep the cart
       const r = await api('/billing/verify', { method: 'POST', body: { reference } })
-      setDone(`${r.name} unlocked${r.until ? ` until ${new Date(r.until).toLocaleDateString()}` : ''}.`)
+      setDone(`${r.name} unlocked.`)
+      setCart([])
       onUnlocked?.()
-      api('/billing/history').then(setHistory).catch(() => {})
+      loadHistory()
     } catch (e) {
       // Popup couldn't open (blocked script, old browser): fall back to Paystack's full page.
       if (/could not open|load|network/i.test(e.message) && checkout.url) return window.location.assign(checkout.url)
-      setError(`${e.message}. If you were charged, the feature switches on automatically within a few minutes.`)
+      setError(`${e.message}. If you were charged, your features switch on automatically within a few minutes.`)
     } finally {
-      setBusy('')
+      setBusy(false)
     }
   }
-  const count = cfg ? cfg.features.filter((f) => has(me, f.key)).length : 0
 
+  const value = { cfg, me, months, setMonths, cart, toggle, price, feature, total, pay, busy, error, done, history }
   return (
-    <Card id="features" className="scroll-mt-24">
-      <CardHeader>
-        <CardTitle className="flex flex-wrap items-center justify-between gap-2">
-          <span className="flex items-center gap-2"><Crown className="size-5 text-saffron-deep" aria-hidden="true" /> Features</span>
-          {cfg && <span className="text-xs font-medium text-muted-foreground">{count} of {cfg.features.length} unlocked</span>}
-        </CardTitle>
-        <CardDescription>Pay once for the features you want, for as long as you need them. No subscription.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {!cfg ? <Loader2 className="mx-auto animate-spin text-muted-foreground" aria-label="Loading" /> : (<>
-          <div role="radiogroup" aria-label="How long" className="grid grid-cols-4 rounded-xl bg-muted p-1">
-            {cfg.durations.map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={months === m} onClick={() => setMonths(m)}
-                className={`relative rounded-lg py-1.5 text-xs font-semibold sm:text-sm ${months === m ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-                {months === m && <motion.span layoutId="dur" className="absolute inset-0 rounded-lg bg-card shadow-sm" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
-                <span className="relative">{m} {m === 1 ? 'month' : 'months'}</span>
-                {cfg.discounts?.[m] > 0 && <span className="relative block text-[10px] font-medium text-accent">−{cfg.discounts[m]}%</span>}
-              </button>
-            ))}
-          </div>
+    <BillingCtx.Provider value={value}>
+      {children}
+      <CartBar />
+    </BillingCtx.Provider>
+  )
+}
 
-          <ul className="divide-y rounded-xl border">
-            {cfg.features.map((f, i) => {
-              const on = has(me, f.key)
-              const until = me.features?.[f.key]
-              return (
-                <motion.li key={f.key} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
-                  className="flex flex-wrap items-center gap-3 px-4 py-3">
-                  {on
-                    ? <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }}><CircleCheck className="size-5 text-emerald-700" aria-hidden="true" /></motion.span>
-                    : <Lock className="size-5 text-muted-foreground/70" aria-hidden="true" />}
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-sm font-semibold ${on ? '' : 'text-muted-foreground line-through decoration-accent/60 decoration-2'}`}>
-                      {f.name}<span className="sr-only">{on ? ' (unlocked)' : ' (locked)'}</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">{on ? (until ? `Active until ${new Date(until).toLocaleDateString()}` : 'Active, no expiry') : f.detail}</p>
-                  </div>
-                  {on && !until ? null : !cfg.enabled ? (
-                    <span className="text-xs text-muted-foreground">Payments coming soon</span>
-                  ) : !f.forSale ? (
-                    <span className="text-xs text-muted-foreground">Coming soon</span>
-                  ) : (
-                    <Button size="sm" variant={on ? 'outline' : 'default'} disabled={!!busy} onClick={() => unlock(f.key)}
-                      className={on ? '' : 'bg-accent text-accent-foreground hover:bg-accent/90'}>
-                      {busy === f.key && <Loader2 className="animate-spin" aria-hidden="true" />}
-                      {on ? 'Extend' : 'Unlock'} · {naira(f.prices[months])}
-                    </Button>
-                  )}
-                </motion.li>
-              )
-            })}
-          </ul>
-          {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
-          {done && <motion.p role="status" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 text-sm font-medium text-emerald-800"><CircleCheck className="size-4" aria-hidden="true" />{done}</motion.p>}
-          <p className="text-xs text-muted-foreground">Secure payment by Paystack: card, bank transfer or USSD. Buying more time adds to what's left.</p>
-          {history.length > 0 && (
-            <details className="group rounded-md border border-foreground/10 px-4 py-3">
-              <summary className="cursor-pointer text-sm font-semibold">Your payments ({history.length})</summary>
-              <ul className="mt-3 divide-y text-sm">
-                {history.map((p) => (
-                  <li key={p.reference} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2">
-                    <span className="font-medium">{p.name} · {p.months} mo</span>
-                    <span className="tabular-nums">{naira(p.amount)}</span>
-                    <span className="w-full text-xs text-muted-foreground">{p.date} · {methodLabel(p)} · Ref <code>{p.reference}</code>{p.status !== 'success' && ` · ${p.status}`}</span>
-                  </li>
+// Price + Add button for one feature, shown wherever that feature lives on the dashboard.
+export function UnlockChip({ feature: key, label = 'Add' }) {
+  const b = useBilling()
+  if (!b?.cfg) return null
+  const f = b.feature(key)
+  const until = b.me?.features?.[key]
+  const owned = !!b.me?.features && key in b.me.features
+  if (owned && !until) return <PaidBadge unlocked />
+  if (!b.cfg.enabled || !f?.forSale) return <span className="text-xs text-muted-foreground">{owned ? `Active until ${new Date(until).toLocaleDateString()}` : 'Coming soon'}</span>
+  const added = b.cart.includes(key)
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      {owned && <span className="text-xs text-emerald-800">Active until {new Date(until).toLocaleDateString()}</span>}
+      <span className="text-sm font-semibold tabular-nums">{naira(b.price(key))}<span className="text-xs font-normal text-muted-foreground"> / {b.months} mo</span></span>
+      <motion.button type="button" whileTap={{ scale: 0.94 }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); b.toggle(key) }}
+        aria-pressed={added}
+        className={`inline-flex h-8 items-center gap-1 rounded-[3px] px-3 text-xs font-semibold transition-colors ${added ? 'bg-accent text-accent-foreground' : 'border border-accent/40 text-accent hover:bg-accent/10'}`}>
+        {added ? <><Check className="size-3.5" aria-hidden="true" /> Added</> : <><Plus className="size-3.5" aria-hidden="true" /> {owned ? 'Extend' : label}</>}
+      </motion.button>
+    </span>
+  )
+}
+
+// Sticky bar with everything selected: pick the period, see the total, pay once.
+function CartBar() {
+  const b = useBilling()
+  const show = b.cart.length > 0 || b.done || (b.error && b.cart.length > 0)
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div role="region" aria-label="Selected features"
+          initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+          className="paper fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-md p-3 shadow-2xl sm:p-4">
+          {b.cart.length > 0 ? (<>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="min-w-0 flex-1 text-sm">
+                <b>{b.cart.length} selected:</b> <span className="text-muted-foreground">{b.cart.map((k) => b.feature(k)?.name).join(', ')}</span>
+              </p>
+              <button type="button" onClick={() => b.cart.forEach(b.toggle)} className="text-xs text-muted-foreground underline-offset-4 hover:underline">Clear</button>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <div role="radiogroup" aria-label="How long" className="grid flex-1 grid-cols-4 rounded-[4px] bg-muted p-1">
+                {b.cfg.durations.map((m) => (
+                  <button key={m} type="button" role="radio" aria-checked={b.months === m} onClick={() => b.setMonths(m)}
+                    className={`relative rounded-[3px] py-1 text-xs font-semibold ${b.months === m ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                    {b.months === m && <motion.span layoutId="cart-dur" className="absolute inset-0 rounded-[3px] bg-card shadow-sm" />}
+                    <span className="relative">{m} mo{b.cfg.discounts?.[m] > 0 ? ` −${b.cfg.discounts[m]}%` : ''}</span>
+                  </button>
                 ))}
-              </ul>
-            </details>
+              </div>
+              <Button onClick={b.pay} disabled={b.busy} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                {b.busy && <Loader2 className="animate-spin" aria-hidden="true" />} Pay {naira(b.total)}
+              </Button>
+            </div>
+            {b.error && <p role="alert" className="mt-2 text-sm font-medium text-destructive">{b.error}</p>}
+            <p className="mt-2 text-[11px] text-muted-foreground">One secure Paystack payment for everything selected. Buying more time adds to what's left.</p>
+          </>) : (
+            <p role="status" className="flex items-center gap-2 text-sm font-medium text-emerald-800"><CircleCheck className="size-4" aria-hidden="true" />{b.done}</p>
           )}
-        </>)}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+// A paid card: until the feature is unlocked, show what it does with its own price and Add button.
+export function FeatureCard({ id, feature, unlocked, title, description, icon, tone = 'saffron', children }) {
+  return (
+    <Card id={id} accent={tone} className="scroll-mt-24">
+      <CardHeader>
+        <CardTitle className="flex flex-wrap items-center gap-2.5">{icon && <IconChip icon={icon} tone={tone} />}{title} <PaidBadge unlocked={unlocked} /></CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {unlocked ? (<>
+          {children}
+          {feature && <div className="mt-4 flex justify-end"><UnlockChip feature={feature} /></div>}
+        </>) : (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-accent/30 bg-accent/[0.04] p-4">
+            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="size-4" aria-hidden="true" /> Add it to your page for 1, 3, 6 or 12 months.</p>
+            {feature && <UnlockChip feature={feature} />}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// Receipts for this account.
+export function PaymentHistory({ id = 'payments' }) {
+  const b = useBilling()
+  if (!b?.history?.length) return null
+  return (
+    <Card id={id} accent="saffron" className="scroll-mt-24">
+      <CardHeader><CardTitle className="flex items-center gap-2.5"><IconChip icon={Crown} tone="saffron" /> Your payments</CardTitle></CardHeader>
+      <CardContent>
+        <ul className="divide-y text-sm">
+          {b.history.map((p) => (
+            <li key={p.reference} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2">
+              <span className="font-medium">{p.name}{p.months ? ` · ${p.months} mo` : ''}</span>
+              <span className="tabular-nums">{naira(p.amount)}</span>
+              <span className="w-full text-xs text-muted-foreground">{p.date} · {methodLabel(p)} · Ref <code>{p.reference}</code>{p.status !== 'success' && ` · ${p.status}`}</span>
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   )
@@ -186,8 +219,9 @@ function MiniPreview({ id }) {
     editorial: <div className="border border-foreground/30 p-1"><div className="mx-auto h-1.5 w-8 bg-foreground/40" /><div className="mt-1.5 h-px bg-foreground/30" /><div className="mt-1.5 h-px bg-foreground/30" /></div>,
     search: <><div className="mx-auto h-2 w-10 rounded-full bg-white shadow" /><div className="mt-2 flex justify-center gap-1"><div className="h-2.5 w-4 -rotate-6 rounded bg-white shadow" /><div className="h-2.5 w-4 rotate-6 rounded bg-white shadow" /></div></>,
     idcard: <><div className="h-6 w-8 border border-dashed border-foreground/40 p-0.5"><div className="size-full bg-foreground/30" /></div><div className="mt-1 border border-foreground/40"><div className="h-1.5 border-b border-foreground/40" /><div className="h-1.5" /></div></>,
+    backdrop: <div className="flex h-full flex-col items-center justify-center gap-1"><div className="size-3 rounded-full bg-white/90" /><div className="h-2 w-12 rounded bg-white/70 backdrop-blur" /><div className="h-2 w-12 rounded bg-white/70" /></div>,
   }
-  return <div aria-hidden="true" className={`h-14 overflow-hidden rounded-md p-2 ${id === 'search' ? 'bg-gradient-to-b from-rose to-lilac' : 'bg-muted'}`}>{map[id]}</div>
+  return <div aria-hidden="true" className={`h-14 overflow-hidden rounded-md p-2 ${id === 'search' ? 'bg-gradient-to-b from-rose to-lilac' : id === 'backdrop' ? 'bg-[linear-gradient(135deg,#F2A07E,#6CC3BA_55%,#2B4FAF)]' : 'bg-muted'}`}>{map[id]}</div>
 }
 
 export function TemplatePicker({ value, onChange, me, category, accountType }) {
@@ -200,21 +234,22 @@ export function TemplatePicker({ value, onChange, me, category, accountType }) {
           const locked = !!t.feature && !has(me, t.feature)
           const recommended = t.for.includes(fit)
           return (
-            <label key={t.id} className={locked ? 'cursor-not-allowed' : 'cursor-pointer'}>
+            <label key={t.id} className={locked ? 'cursor-default' : 'cursor-pointer'}>
               <input type="radio" name="layout" value={t.id} checked={value === t.id} disabled={locked}
                 onChange={() => onChange(t)} className="peer sr-only" />
               <motion.span whileHover={locked ? {} : { y: -2 }}
-                className={`relative block rounded-lg border p-2 transition-colors peer-checked:border-foreground peer-checked:bg-muted peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-[hsl(var(--ring))] ${locked ? 'opacity-70' : ''}`}>
+                className={`relative block rounded-lg border p-2 transition-colors peer-checked:border-foreground peer-checked:bg-muted peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-[hsl(var(--ring))] ${locked ? 'border-dashed' : ''}`}>
                 <MiniPreview id={t.id} />
                 <span className="mt-2 flex items-center justify-between gap-1 text-sm font-semibold">{t.name}{t.feature && <PaidBadge unlocked={!locked} />}</span>
                 <span className="block text-xs text-muted-foreground">{t.hint}</span>
                 {recommended && <span className="mt-1 block text-[10px] font-semibold uppercase tracking-wider text-accent">Suits you</span>}
+                {locked && t.feature && <span className="mt-2 block border-t border-foreground/10 pt-2"><UnlockChip feature={t.feature} /></span>}
               </motion.span>
             </label>
           )
         })}
       </div>
-      {TEMPLATES.some((t) => t.feature && !has(me, t.feature)) && <p className="text-xs text-muted-foreground">Locked templates can be unlocked in <a href="#features" className="font-medium text-accent underline">Features</a>.</p>}
+      {TEMPLATES.some((t) => t.feature && !has(me, t.feature)) && <p className="text-xs text-muted-foreground">Tap <b>Add</b> on any locked template, then pay for everything you picked at once.</p>}
     </fieldset>
   )
 }
@@ -298,6 +333,16 @@ export function SocialSuggestions({ links, onPick }) {
   )
 }
 
+// Keeps a section's Save button in view while you scroll through that section (and above the cart bar).
+export function StickySave({ children, hint }) {
+  return (
+    <div className="sticky bottom-3 z-20 -mx-3 mt-2 flex items-center justify-end gap-3 rounded-md border border-foreground/10 bg-card/90 px-3 py-2 shadow-[0_10px_30px_-12px_hsl(20_30%_15%/.35)] backdrop-blur [body[data-cart]_&]:bottom-44">
+      {hint && <span className="mr-auto text-xs text-muted-foreground">{hint}</span>}
+      {children}
+    </div>
+  )
+}
+
 function useSaver(path, body) {
   const [state, setState] = useState('idle')
   const [error, setError] = useState('')
@@ -314,10 +359,12 @@ function useSaver(path, body) {
     }
   }
   const button = (
-    <Button variant="secondary" onClick={save} disabled={state === 'saving'}>
-      {state === 'saving' ? <Loader2 className="animate-spin" /> : state === 'saved' ? <Check /> : null}
-      {state === 'saved' ? 'Saved' : 'Save'}
-    </Button>
+    <StickySave>
+      <Button onClick={save} disabled={state === 'saving'}>
+        {state === 'saving' ? <Loader2 className="animate-spin" /> : state === 'saved' ? <Check /> : null}
+        {state === 'saved' ? 'Saved' : 'Save'}
+      </Button>
+    </StickySave>
   )
   return { button, error }
 }

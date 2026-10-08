@@ -8,12 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, IconChip } from '@/components/ui/card'
 import { useTitle } from '@/lib/useTitle'
 import AvatarPicker from '@/components/AvatarPicker'
 import QrCard from '@/components/QrCard'
 import Onboarding from '@/components/Onboarding'
-import { AccountFields, FeatureCard, FeatureChecklist, FounderNoteEditor, SocialSuggestions, TemplatePicker, TestimonialsEditor, UnlockLink } from '@/components/ProFeatures'
+import { AccountFields, BillingProvider, StickySave, FeatureCard, FounderNoteEditor, PaymentHistory, SocialSuggestions, TemplatePicker, TestimonialsEditor, UnlockChip } from '@/components/ProFeatures'
 import { FREE_LINK_LIMIT, has } from '@/lib/plans'
 import { LINK_TYPES, TypeBadge, TypeSelect, detectType } from '@/lib/linkTypes'
 
@@ -115,7 +115,7 @@ function PreviewToolbar({ me, url, canQr }) {
     { label: 'Open', icon: ExternalLink, as: 'link', to: `/${me.username}` },
     { label: copied ? 'Copied' : 'Copy', icon: copied ? Check : Copy, onClick: copy },
     { label: 'Share', icon: Share2, onClick: share },
-    canQr ? { label: qr ? 'Saved' : 'QR', icon: qr ? Check : QrCode, onClick: downloadQr } : { label: 'QR', icon: QrCode, as: 'link', to: '#features', pro: true },
+    canQr ? { label: qr ? 'Saved' : 'QR', icon: qr ? Check : QrCode, onClick: downloadQr } : { label: 'QR', icon: QrCode, as: 'link', to: '#qr', pro: true },
     { label: 'Stats', icon: BarChart3, as: 'link', to: '/admin/analytics' },
   ]
   return (
@@ -153,8 +153,8 @@ function PreviewToolbar({ me, url, canQr }) {
 
 const SECTIONS = [
   ['overview', 'Overview', Eye], ['share', 'Share & QR', Share2], ['profile', 'Profile', UserRound], ['account', 'Account type', Briefcase],
-  ['template', 'Template & theme', LayoutTemplate], ['links', 'Links', Link2], ['features', 'Features', Crown],
-  ['note', "Founder's note", Feather], ['testimonials', 'Kind words', MessageSquareQuote],
+  ['template', 'Template & theme', LayoutTemplate], ['links', 'Links', Link2],
+  ['note', "Founder's note", Feather], ['testimonials', 'Kind words', MessageSquareQuote], ['payments', 'Payments', Crown],
 ]
 
 // Jump-to menu for the dashboard: highlights the section currently on screen.
@@ -269,7 +269,7 @@ export default function Admin() {
         display_name: me.display_name, bio: me.bio, layout: me.layout || 'classic', theme: me.theme || 'light',
         avatar_url: me.avatar_url || '', cover_url: me.cover_url || '', tags: me.tags || '',
         account_type: me.account_type || 'personal', category: me.category || '', whatsapp: me.whatsapp || '',
-        occupation: me.occupation || '', location: me.location || '',
+        occupation: me.occupation || '', location: me.location || '', bg_blur: me.bg_blur === 0 || me.bg_blur === false ? 0 : 1,
       } })
       setSaved(true)
       setTimeout(() => setSaved(false), 1500)
@@ -325,7 +325,8 @@ export default function Admin() {
     api('/links-order', { method: 'PUT', body: { ids: latest.current.links.map((l) => l.id) } }).catch((e) => setError(e.message))
 
   return (
-    <div className="container grid gap-8 py-10 lg:grid-cols-[1fr_300px]">
+    <BillingProvider me={me} onUnlocked={loadMe}>
+    <div className="container grid gap-8 py-10 pb-40 lg:grid-cols-[1fr_300px]">
       <p role="status" aria-live="polite" className="sr-only">{announce}</p>
       {!me.onboarded_at && <Onboarding me={me} onDone={() => loadMe()} />}
       <div className="space-y-6">
@@ -340,12 +341,12 @@ export default function Admin() {
 
         <div id="overview" className="grid scroll-mt-24 grid-cols-2 gap-4">
           {[
-            [Eye, 'Page views', me.views ?? 0],
-            [MousePointerClick, 'Link clicks', me.links.reduce((n, l) => n + (l.clicks || 0), 0)],
-          ].map(([Icon, label, n]) => (
-            <Card key={label}>
+            [Eye, 'Page views', me.views ?? 0, 'cobalt'],
+            [MousePointerClick, 'Link clicks', me.links.reduce((n, l) => n + (l.clicks || 0), 0), 'rose'],
+          ].map(([Icon, label, n, tone]) => (
+            <Card key={label} accent={tone} whileHover={{ y: -3 }}>
               <CardContent className="flex items-center gap-3 p-4">
-                <span className="grid size-10 place-items-center rounded-xl bg-muted"><Icon className="size-5" aria-hidden="true" /></span>
+                <IconChip icon={Icon} tone={tone} />
                 <div>
                   <motion.p key={n} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-2xl font-bold tabular-nums">{n.toLocaleString()}</motion.p>
                   <p className="text-xs text-muted-foreground">{label}</p>
@@ -364,9 +365,15 @@ export default function Admin() {
             <span className="flex items-center gap-2"><BarChart3 className="size-4" aria-hidden="true" /> Full analytics: countries, sources, devices</span>
             <ExternalLink className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </Link>
+          {!has(me, 'analytics_90') && (
+            <div id="analytics" className="col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-accent/30 bg-accent/[0.04] px-4 py-2.5 text-sm">
+              <span><b>90-day analytics</b> <span className="text-muted-foreground">· free covers 30 days</span></span>
+              <UnlockChip feature="analytics_90" />
+            </div>
+          )}
         </div>
 
-        <Card id="share" className="scroll-mt-24">
+        <Card id="share" accent="mist" className="scroll-mt-24">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
             <Link className="break-all text-sm font-semibold text-foreground underline underline-offset-4" to={`/${me.username}`}>{profileUrl}</Link>
             <ShareButton url={profileUrl} title={me.display_name || me.username} />
@@ -374,14 +381,13 @@ export default function Admin() {
         </Card>
 
         {has(me, 'qr_code') ? <div id="qr" className="scroll-mt-24"><QrCard url={profileUrl} username={me.username} /></div> : (
-          <FeatureCard id="qr" unlocked={false} icon={QrCode} title="QR code" description="A printable code that opens your page, for flyers, packaging and story posts." />
+          <FeatureCard id="qr" feature="qr_code" tone="saffron" unlocked={false} icon={QrCode} title="QR code" description="A printable code that opens your page, for flyers, packaging and story posts." />
         )}
 
-        <FeatureChecklist me={me} onUnlocked={loadMe} />
 
-        <Card id="profile" className="scroll-mt-24">
+        <Card id="profile" accent="rose" className="scroll-mt-24">
           <CardHeader>
-            <CardTitle>Profile</CardTitle>
+            <CardTitle className="flex items-center gap-2.5"><IconChip icon={UserRound} tone="rose" /> Profile</CardTitle>
             <CardDescription>How your page introduces you.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -414,15 +420,31 @@ export default function Admin() {
             </fieldset>
             <TemplatePicker value={me.layout || 'classic'} me={me} category={me.category} accountType={me.account_type}
               onChange={(t) => setMe({ ...me, layout: t.id })} />
+            <AnimatePresence initial={false}>
+              {me.layout === 'backdrop' && (
+                <motion.label initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                  className="flex cursor-pointer items-center justify-between gap-3 overflow-hidden rounded-md border border-foreground/10 bg-gradient-to-r from-rose/30 via-sand/30 to-lilac/30 px-4 py-3">
+                  <span>
+                    <span className="block text-sm font-semibold">Blur the background photo</span>
+                    <span className="block text-xs text-muted-foreground">Uses your cover photo (or profile picture). Off shows it sharp.</span>
+                  </span>
+                  <input type="checkbox" className="peer sr-only" checked={me.bg_blur !== 0 && me.bg_blur !== false}
+                    onChange={(e) => setMe({ ...me, bg_blur: e.target.checked ? 1 : 0 })} />
+                  <span aria-hidden="true" className="relative h-6 w-11 shrink-0 rounded-full bg-foreground/20 transition-colors peer-checked:bg-accent peer-focus-visible:outline peer-focus-visible:outline-2 after:absolute after:left-0.5 after:top-0.5 after:size-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5" />
+                </motion.label>
+              )}
+            </AnimatePresence>
             {profileError && <p role="alert" className="text-sm font-medium text-destructive">{profileError}</p>}
-            <Button variant="secondary" onClick={saveProfile}>{saved ? <><Check aria-hidden="true" /> Saved</> : 'Save profile'}</Button>
+            <StickySave hint="Changes show on your page after saving.">
+              <Button onClick={saveProfile}>{saved ? <><Check aria-hidden="true" /> Saved</> : 'Save profile'}</Button>
+            </StickySave>
             <span role="status" className="sr-only">{saved ? 'Profile saved' : ''}</span>
           </CardContent>
         </Card>
 
-        <Card id="links" className="scroll-mt-24">
+        <Card id="links" accent="lilac" className="scroll-mt-24">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">Links
+            <CardTitle className="flex items-center justify-between"><span className="flex items-center gap-2.5"><IconChip icon={Link2} tone="lilac" /> Links</span>
               {!unlimited && <span className="text-xs font-medium text-muted-foreground">{me.links.length} of {FREE_LINK_LIMIT} free links</span>}
             </CardTitle>
             <CardDescription>Drag the handle to reorder. Changes save automatically.</CardDescription>
@@ -445,8 +467,8 @@ export default function Admin() {
 
             {atLimit ? (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed bg-accent/[0.04] p-4">
-                <p className="text-sm">You've used all {FREE_LINK_LIMIT} free links. <span className="text-muted-foreground">Unlock unlimited links to add more.</span></p>
-                <UnlockLink />
+                <p className="text-sm">You've used all {FREE_LINK_LIMIT} free links. <span className="text-muted-foreground">Add unlimited links:</span></p>
+                <UnlockChip feature="unlimited_links" />
               </div>
             ) : (
             <form onSubmit={addLink} className="grid gap-2 rounded-lg border border-dashed p-3 sm:grid-cols-[1fr_1.4fr]">
@@ -477,13 +499,15 @@ export default function Admin() {
           </CardContent>
         </Card>
 
-        <FeatureCard id="note" unlocked={has(me, 'founder_note')} icon={Feather} title="Founder's note" description="A personal letter on your page, set like paper with your signature.">
+        <FeatureCard id="note" feature="founder_note" tone="sand" unlocked={has(me, 'founder_note')} icon={Feather} title="Founder's note" description="A personal letter on your page, set like paper with your signature.">
           <FounderNoteEditor me={me} setMe={setMe} />
         </FeatureCard>
 
-        <FeatureCard id="testimonials" unlocked={has(me, 'testimonials')} icon={MessageSquareQuote} title="Kind words" description="Messages from happy clients, shown as chat bubbles around your page.">
+        <FeatureCard id="testimonials" feature="testimonials" tone="rose" unlocked={has(me, 'testimonials')} icon={MessageSquareQuote} title="Kind words" description="Messages from happy clients, shown as chat bubbles around your page.">
           <TestimonialsEditor me={me} setMe={setMe} />
         </FeatureCard>
+
+        <PaymentHistory />
       </div>
 
       <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:block">
@@ -498,7 +522,7 @@ export default function Admin() {
       {/* Phones & tablets: the preview lives in a slide-up sheet. */}
       <motion.button
         type="button" onClick={() => setSheet(true)} initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.92 }}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-xl lg:hidden"
+        className="fixed bottom-5 right-5 z-40 flex [body[data-cart]_&]:bottom-44 items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-xl lg:hidden"
       >
         <Smartphone className="size-4" aria-hidden="true" /> Preview
       </motion.button>
@@ -522,5 +546,6 @@ export default function Admin() {
         )}
       </AnimatePresence>
     </div>
+    </BillingProvider>
   )
 }

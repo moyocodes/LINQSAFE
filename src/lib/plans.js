@@ -26,6 +26,7 @@ export const TEMPLATES = [
   { id: 'cover', name: 'Cover', hint: 'Full photo header', theme: 'light', feature: 'tpl_cover', for: ['coaching', 'beauty', 'health', 'events'] },
   { id: 'editorial', name: 'Editorial', hint: 'Paper & serif type', theme: 'light', feature: 'tpl_editorial', for: ['fashion', 'coaching', 'creative'] },
   { id: 'search', name: 'Search & solve', hint: 'Problem → your answers', theme: 'light', feature: 'tpl_search', for: ['beauty', 'health', 'retail', 'coaching'] },
+  { id: 'backdrop', name: 'Photo background', hint: 'Your photo behind everything', theme: 'light', feature: 'tpl_backdrop', for: ['beauty', 'fashion', 'food', 'events', 'creative', 'personal'] },
   { id: 'idcard', name: 'Profile card', hint: 'Polaroid + fact sheet', theme: 'light', feature: 'tpl_idcard', for: ['fashion', 'beauty', 'creative', 'personal'] },
 ]
 

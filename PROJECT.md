@@ -11,7 +11,7 @@ This guide explains what the product does, how it's built, how to run it in each
 ### For visitors (public profile, `/:username`)
 
 - A profile page with photo, name, bio, topics, social badges and links.
-- **7 templates**: Classic, Grid, Minimal (free); Cover, Editorial, Search & solve, Profile card (paid).
+- **8 templates**: Classic, Grid, Minimal (free); Cover, Editorial, Search & solve, Photo background (blurred or sharp), Profile card (paid).
 - **5 themes**: Light, Sage, Blush, Midnight, Auto (follows the visitor's light/dark setting).
 - Business pages can show a **Chat on WhatsApp** button.
 - Pages can show a **Founder's note** (paid) (paper-style letter with signature) and **Kind words** (client testimonials as chat bubbles).
@@ -41,7 +41,7 @@ Everyone gets a free page. On top of that, each extra feature is **bought separa
 | Classic, Grid, Minimal templates                                 | Cover, Editorial, Search & solve, Profile card templates (one purchase each)     |
 | All themes, WhatsApp button, analytics for the last 7 or 30 days | Founder's note · Kind words (testimonials) · QR code download · 90-day analytics |
 
-The dashboard has a **Features** checklist. Unlocked features are ticked and show their expiry. Locked ones are struck through, with a price for the chosen period and an **Unlock** button.
+Each paid feature shows its own price and an **Add** button right where it lives on the dashboard (template cards, Founder's note, Kind words, QR code, the links limit, analytics). Added features collect in a cart bar at the bottom: pick 1/3/6/12 months, see the total, and pay for all of them in **one Paystack payment** (`payments.items` records each feature, months and price). Receipts list every feature bought.
 
 **Prices:** each feature has a monthly price in naira, plus optional discounts for 3, 6 and 12 months. The founder sets them in the founder dashboard (_Pricing_), and saved values are stored in `app_settings`. `.env` values (`PRICE_<FEATURE>`, `DISCOUNT_3M/6M/12M`) are the fallback. A feature with no price isn't for sale. The list of features lives in `server/features.js`.
 

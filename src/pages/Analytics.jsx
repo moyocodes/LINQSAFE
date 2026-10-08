@@ -217,7 +217,7 @@ export default function Analytics() {
         </div>
         <div role="radiogroup" aria-label="Date range" className="inline-flex rounded-lg border bg-card p-1">
           {[7, 30, 90].map((d) => d === 90 && long === false ? (
-            <Link key={d} to="/admin#features" title="90-day analytics is a paid feature"
+            <Link key={d} to="/admin#analytics" title="90-day analytics is a paid feature"
               className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground line-through decoration-accent/50 hover:text-foreground">
               <Lock className="size-3.5" aria-hidden="true" /> 90 days<span className="sr-only"> (locked, unlock in Features)</span>
             </Link>

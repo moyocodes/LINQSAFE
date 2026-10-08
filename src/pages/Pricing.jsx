@@ -55,7 +55,7 @@ export default function Pricing() {
               ))}
             </ul>
             <Button asChild className="mt-6 w-full bg-background text-foreground hover:bg-background/90">
-              <Link to={isSignedIn() ? '/admin#features' : '/signup'}>{isSignedIn() ? 'Unlock features' : 'Create your page'}</Link>
+              <Link to={isSignedIn() ? '/admin#template' : '/signup'}>{isSignedIn() ? 'Unlock features' : 'Create your page'}</Link>
             </Button>
             <p className="mt-3 text-center text-xs opacity-75">Secure payment by Paystack: card, bank transfer or USSD.</p>
           </motion.div>

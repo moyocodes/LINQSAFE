@@ -260,4 +260,52 @@ export function KindWords({ data }) {
   )
 }
 
-export const PROFILE_TEMPLATES = { cover: CoverTemplate, editorial: EditorialTemplate, idcard: IdCardTemplate, search: SearchTemplate }
+// Your photo fills the whole page behind everything, softly blurred or sharp (data.bg_blur), with a dark
+// gradient so text stays readable. Links sit on frosted glass.
+export function BackdropTemplate({ data, name, onLinkClick }) {
+  const img = data.cover_url || data.avatar_url
+  const blur = data.bg_blur !== 0 && data.bg_blur !== false
+  return (
+    <>
+      <div aria-hidden="true" className="fixed inset-0 -z-10 overflow-hidden bg-[linear-gradient(135deg,#F2A07E,#6CC3BA_55%,#2B4FAF)]">
+        {img && (
+          <motion.img src={img} alt="" referrerPolicy="no-referrer"
+            initial={{ scale: 1.15, opacity: 0 }} animate={{ scale: blur ? 1.12 : 1.02, opacity: 1 }} transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+            className={`size-full object-cover ${blur ? 'blur-2xl saturate-150' : ''}`} />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/35 to-black/70" />
+      </div>
+      <motion.div variants={stagger(0.08)} initial="hidden" animate="show" className="relative pt-8 text-center text-white">
+        <motion.div variants={fadeUp} className="mx-auto size-28 overflow-hidden rounded-full ring-4 ring-white/70 shadow-2xl">
+          {data.avatar_url
+            ? <img src={data.avatar_url} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
+            : <div className="grid size-full place-items-center bg-white/20 font-display text-4xl backdrop-blur">{name[0]}</div>}
+        </motion.div>
+        <motion.h1 variants={fadeUp} className="mt-4 text-3xl font-semibold tracking-tight !text-white drop-shadow">{name}</motion.h1>
+        {data.bio && <motion.p variants={fadeUp} className="mx-auto mt-2 max-w-xs text-white/85 drop-shadow">{data.bio}</motion.p>}
+        <motion.div variants={fadeUp} className="mt-5 flex flex-wrap justify-center gap-3">
+          {socialsOf(data.links).map((l) => {
+            const Icon = LINK_TYPES[l.type].icon
+            return (
+              <motion.a key={l.id} {...linkProps(l, onLinkClick)} whileHover={{ y: -3, scale: 1.08 }} whileTap={{ scale: 0.92 }}
+                className="grid size-11 place-items-center rounded-full bg-white/15 text-white ring-1 ring-white/30 backdrop-blur-md">
+                <Icon className="size-5" /><span className="sr-only">{l.title}</span><NewTab />
+              </motion.a>
+            )
+          })}
+        </motion.div>
+        <div className="mt-8 space-y-3 text-left">
+          <WhatsAppButton number={data.whatsapp} name={name} />
+          {data.links.filter((l) => !SOCIAL_KEYS.includes(l.type)).map((l) => (
+            <motion.a key={l.id} variants={fadeUp} {...linkProps(l, onLinkClick)} whileHover={{ y: -2, scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              className="flex items-center justify-between rounded-2xl bg-white/15 px-5 py-4 font-semibold text-white ring-1 ring-white/25 backdrop-blur-xl transition-colors hover:bg-white/25">
+              <span>{l.title}</span><ArrowUpRight className="size-4 opacity-80" aria-hidden="true" /><NewTab />
+            </motion.a>
+          ))}
+        </div>
+      </motion.div>
+    </>
+  )
+}
+
+export const PROFILE_TEMPLATES = { cover: CoverTemplate, editorial: EditorialTemplate, idcard: IdCardTemplate, search: SearchTemplate, backdrop: BackdropTemplate }

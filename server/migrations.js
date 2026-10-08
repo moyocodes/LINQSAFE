@@ -201,6 +201,14 @@ const MIGRATIONS = [
     await addColumn(db, 'user_features', 'reminded_at DATETIME NULL')
     await addColumn(db, 'user_features', 'expired_notice_at DATETIME NULL')
   }],
+  [22, 'photo background blur setting', async (db) => {
+    // For the "Photo background" template: 1 = blur the photo behind the page, 0 = show it sharp.
+    await addColumn(db, 'users', 'bg_blur TINYINT(1) NOT NULL DEFAULT 1')
+  }],
+  [23, 'multi-feature payments', async (db) => {
+    // One payment can unlock several features: items = JSON [{ feature, months, price }]. feature = first key or 'bundle'.
+    await addColumn(db, 'payments', 'items TEXT NULL')
+  }],
 ]
 
 export async function migrate(pool) {

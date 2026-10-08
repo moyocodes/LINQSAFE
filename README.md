@@ -17,9 +17,9 @@
 
 ## Features
 
-- **Public profile** (`/:username`): photo, bio, topics, social badges, links, WhatsApp button for businesses. 7 templates, 5 themes (incl. auto dark).
+- **Public profile** (`/:username`): photo, bio, topics, real brand icons for socials, links, WhatsApp button for businesses. 8 templates (incl. Photo background, blurred or sharp), 5 themes (incl. auto dark).
 - **Dashboard** (`/admin`): onboarding wizard, drag-to-reorder links with platform detection, live phone preview, analytics (views, unique visitors, clicks, countries, sources, devices, best time to post).
-- **Paid features**, each bought for 1, 3, 6 or 12 months via **Paystack** (no subscription): unlimited links, premium templates, founder's note, testimonials, QR code, 90-day analytics. The free plan holds 3 links.
+- **Paid features**, each bought for 1, 3, 6 or 12 months via **Paystack** (no subscription): unlimited links, premium templates, founder's note, testimonials, QR code, 90-day analytics. Each shows its own price where it appears on the dashboard; tick several and pay for them in one payment. The free plan holds 3 links.
 - **Founder console** (admin.linqsafe.com): users, activation funnel, revenue, payments, expiries, and a pricing editor.
 - **Emails** via **Resend**: confirm, welcome, password reset/changed, receipts, expiry reminders, contact form.
 - **SEO**: per-page titles, link previews and structured data (including each profile), generated `robots.txt` and `sitemap.xml`; dev and admin are never indexed.

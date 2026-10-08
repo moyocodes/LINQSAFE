@@ -68,14 +68,15 @@ function methodLabel(d) {
   const head = d.channel === 'card' && d.last4 ? `${(d.card_type || 'Card').replace(/^\w/, (c) => c.toUpperCase())} •••• ${d.last4}` : names[d.channel] || d.channel || 'Paystack'
   return d.bank ? `${head} · ${d.bank}` : head
 }
-async function sendReceipt(userId, feature, months, tx, details) {
-  setTimeout(async () => { // let the grant commit first so the receipt shows the new end date
+async function sendReceipt(userId, items, tx, details) {
+  setTimeout(async () => { // let the grants commit first so the receipt shows the new end dates
     try {
       const [[u]] = await pool.query('SELECT email, username, display_name FROM users WHERE id = ?', [userId])
-      const [[f]] = await pool.query('SELECT expires_at FROM user_features WHERE user_id = ? AND feature = ?', [userId, feature.key])
+      const access = await featureAccess(userId)
       send(u.email, Email.receipt({
-        name: u.display_name || u.username, feature: feature.name, months, amount: tx.amount / 100,
-        until: f?.expires_at, reference: tx.reference, method: methodLabel(details), date: tx.paid_at || new Date(),
+        name: u.display_name || u.username, amount: tx.amount / 100, reference: tx.reference, method: methodLabel(details),
+        date: tx.paid_at || new Date(),
+        items: items.map((i) => ({ feature: featureByKey[i.feature]?.name || i.feature, months: i.months, until: access[i.feature] })),
       }), { tag: 'receipt' })
     } catch (e) { console.error('receipt:', e.message) }
   }, 1500)
@@ -83,13 +84,30 @@ async function sendReceipt(userId, feature, months, tx, details) {
 
 // Records a verified Paystack transaction once (reference is unique) and unlocks the feature it paid for
 // for the months bought, stacked on any time left. Returns the feature key, or null if it doesn't check out.
+// The features a Paystack transaction paid for: [{ feature, months, price }]. Supports one-feature payments made
+// before multi-feature checkout existed (metadata.feature / months / price).
+// "Cover template, QR code download" for a payment row (single feature or a bundle).
+function paymentName(p) {
+  let list = []
+  try { list = p.items ? JSON.parse(p.items) : [] } catch { /* ignore */ }
+  if (!list.length && p.feature) list = [{ feature: p.feature }]
+  return list.map((i) => featureByKey[i.feature]?.name || i.feature).join(', ')
+}
+
+function itemsOf(tx) {
+  const m = tx.metadata || {}
+  const list = Array.isArray(m.items) ? m.items : m.feature ? [{ feature: m.feature, months: m.months, price: m.price }] : []
+  return list.map((i) => ({ feature: String(i.feature), months: Number(i.months), price: Number(i.price) || 0 }))
+    .filter((i) => featureByKey[i.feature] && DURATIONS.includes(i.months))
+}
+
 async function applyPayment(tx) {
   const userId = Number(tx.metadata?.user_id)
-  const feature = featureByKey[tx.metadata?.feature]
-  const months = Number(tx.metadata?.months)
-  if (!userId || !feature || !DURATIONS.includes(months)) return null
-  // Accept what the price was at checkout (stored in metadata) as long as it's what was actually paid.
-  const price = Number(tx.metadata?.price) || (await currentPricing()).priceFor(feature.key, months)
+  const items = itemsOf(tx)
+  if (!userId || !items.length) return null
+  // Prices are fixed at checkout (stored in metadata); fall back to today's price for very old payments.
+  const pricing = await currentPricing()
+  const total = items.reduce((t, i) => t + (i.price || pricing.priceFor(i.feature, i.months)), 0)
   // How they paid, for the founder's payments view and the customer's receipts.
   const a = tx.authorization || {}
   const details = {
@@ -98,35 +116,39 @@ async function applyPayment(tx) {
     bank: String(a.bank || '').slice(0, 80), customer_email: String(tx.customer?.email || '').slice(0, 254),
     gateway_response: String(tx.gateway_response || '').slice(0, 120),
   }
-  const paid = tx.status === 'success' && tx.currency === 'NGN' && price && tx.amount >= price * 100
+  const paid = tx.status === 'success' && tx.currency === 'NGN' && total > 0 && tx.amount >= total * 100
   const status = paid ? 'success' : tx.status === 'success' ? 'underpaid' : String(tx.status || 'unknown').slice(0, 20)
+  const featureCol = items.length === 1 ? items[0].feature : 'bundle'
+  const monthsCol = items.every((i) => i.months === items[0].months) ? items[0].months : 0
   // Record/refresh the payment row. `first` is true only for the one request that marks it successful,
   // so the callback and the webhook can't both grant the time.
   const [upd] = await pool.query(
     `UPDATE payments SET status = ?, amount_kobo = ?, paystack_id = ?, channel = ?, card_type = ?, last4 = ?, bank = ?,
-       customer_email = ?, gateway_response = ?, paid_at = IF(? = 'success', NOW(), paid_at)
+       customer_email = ?, gateway_response = ?, items = ?, paid_at = IF(? = 'success', NOW(), paid_at)
      WHERE reference = ? AND status <> 'success'`,
     [status, tx.amount, details.paystack_id, details.channel, details.card_type, details.last4, details.bank,
-      details.customer_email, details.gateway_response, status, tx.reference])
+      details.customer_email, details.gateway_response, JSON.stringify(items), status, tx.reference])
   let first = upd.affectedRows > 0 && status === 'success'
   if (!upd.affectedRows) {
     const [ins] = await pool.query(
-      `INSERT IGNORE INTO payments (user_id, reference, amount_kobo, currency, status, feature, months, paystack_id, channel, card_type,
-         last4, bank, customer_email, gateway_response, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, IF(? = 'success', NOW(), NULL))`,
-      [userId, tx.reference, tx.amount, tx.currency, status, feature.key, months, details.paystack_id, details.channel, details.card_type,
-        details.last4, details.bank, details.customer_email, details.gateway_response, status])
+      `INSERT IGNORE INTO payments (user_id, reference, amount_kobo, currency, status, feature, months, items, paystack_id, channel, card_type,
+         last4, bank, customer_email, gateway_response, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, IF(? = 'success', NOW(), NULL))`,
+      [userId, tx.reference, tx.amount, tx.currency, status, featureCol, monthsCol, JSON.stringify(items), details.paystack_id, details.channel,
+        details.card_type, details.last4, details.bank, details.customer_email, details.gateway_response, status])
     first = ins.affectedRows > 0 && status === 'success'
   }
   if (!paid) return null
-  if (first) sendReceipt(userId, feature, months, tx, details) // after the grant below has been written
-  if (first) { // first time this payment succeeded: grant/extend once
-    await pool.query(`INSERT INTO user_features (user_id, feature, payment_reference, expires_at)
-        VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MONTH))
-      ON DUPLICATE KEY UPDATE payment_reference = VALUES(payment_reference), reminded_at = NULL, expired_notice_at = NULL,
-        expires_at = IF(expires_at IS NULL, NULL, DATE_ADD(GREATEST(expires_at, NOW()), INTERVAL ? MONTH))`,
-    [userId, feature.key, tx.reference, months, months])
+  if (first) { // first time this payment succeeded: grant/extend each feature once
+    for (const i of items) {
+      await pool.query(`INSERT INTO user_features (user_id, feature, payment_reference, expires_at)
+          VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MONTH))
+        ON DUPLICATE KEY UPDATE payment_reference = VALUES(payment_reference), reminded_at = NULL, expired_notice_at = NULL,
+          expires_at = IF(expires_at IS NULL, NULL, DATE_ADD(GREATEST(expires_at, NOW()), INTERVAL ? MONTH))`,
+      [userId, i.feature, tx.reference, i.months, i.months])
+    }
+    sendReceipt(userId, items, tx, details)
   }
-  return feature.key
+  return items.map((i) => i.feature)
 }
 
 app.post('/api/billing/webhook', express.raw({ type: 'application/json', limit: '100kb' }), async (req, res) => {
@@ -427,7 +449,7 @@ app.post('/api/password/reset', authLimiter, async (req, res) => {
 // ---- Admin (authenticated) ----
 app.get('/api/me', auth, async (req, res) => {
   const [[user]] = await pool.query(
-    `SELECT id, username, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
+    `SELECT id, username, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
   const [links] = await pool.query(
     'SELECT id, title, url, type, clicks FROM links WHERE user_id = ? ORDER BY position, id', [req.userId])
   res.json({ ...user, is_owner: user.email === OWNER_EMAIL && !!user.email_verified, testimonials: parseList(user.testimonials),
@@ -435,7 +457,7 @@ app.get('/api/me', auth, async (req, res) => {
 })
 
 app.put('/api/profile', auth, async (req, res) => {
-  const { display_name = '', bio = '', layout = 'classic', theme = 'light', avatar_url = '', cover_url = '', tags = '', account_type = 'personal', category = '', whatsapp = '', occupation = '', location = '' } = req.body
+  const { display_name = '', bio = '', layout = 'classic', theme = 'light', avatar_url = '', cover_url = '', tags = '', account_type = 'personal', category = '', whatsapp = '', occupation = '', location = '', bg_blur = true } = req.body
   if (!['classic', 'grid', 'minimal', ...PRO_LAYOUTS].includes(layout)) return res.status(400).json({ error: 'Unknown layout' })
   if (LAYOUT_FEATURE[layout] && !(await hasFeature(req.userId, LAYOUT_FEATURE[layout]))) return locked(res, LAYOUT_FEATURE[layout])
   if (!['light', 'sage', 'midnight', 'blush', 'auto'].includes(theme)) return res.status(400).json({ error: 'Unknown theme' })
@@ -454,9 +476,9 @@ app.put('/api/profile', auth, async (req, res) => {
   if (business && category && !cleanCat) return res.status(400).json({ error: 'Unknown industry' })
   const cleanTags = String(tags).split(',').map((t) => t.trim().slice(0, 24)).filter(Boolean).slice(0, 4).join(',')
   await pool.query(`UPDATE users SET display_name = ?, bio = ?, layout = ?, theme = ?, avatar_url = ?, cover_url = ?, tags = ?,
-      account_type = ?, category = ?, whatsapp = ?, occupation = ?, location = ? WHERE id = ?`, [
+      account_type = ?, category = ?, whatsapp = ?, occupation = ?, location = ?, bg_blur = ? WHERE id = ?`, [
     display_name.slice(0, 80), bio.slice(0, 255), layout, theme, avatar_url, cover_url || null, cleanTags,
-    business ? 'business' : 'personal', cleanCat, phone, String(occupation).trim().slice(0, 80), String(location).trim().slice(0, 80), req.userId])
+    business ? 'business' : 'personal', cleanCat, phone, String(occupation).trim().slice(0, 80), String(location).trim().slice(0, 80), bg_blur === false || bg_blur === 0 ? 0 : 1, req.userId])
   res.json({ ok: true })
 })
 
@@ -479,27 +501,38 @@ app.get('/api/billing/config', async (req, res) => {
 
 app.post('/api/billing/checkout', auth, async (req, res) => {
   if (!PAYSTACK_KEY) return res.status(503).json({ error: 'Payments are not set up yet' })
-  const feature = featureByKey[req.body?.feature]
-  const months = Number(req.body?.months)
-  if (!feature) return res.status(400).json({ error: 'Choose a feature to unlock' })
-  if (!DURATIONS.includes(months)) return res.status(400).json({ error: 'Choose 1, 3, 6 or 12 months' })
-  const price = (await currentPricing()).priceFor(feature.key, months)
-  if (!price) return res.status(400).json({ error: `${feature.name} is coming soon` })
+  // One or several features in one payment: { items: [{ feature, months }] } (or the older { feature, months }).
+  const raw = Array.isArray(req.body?.items) ? req.body.items : [{ feature: req.body?.feature, months: req.body?.months }]
+  if (!raw.length || raw.length > 20) return res.status(400).json({ error: 'Choose at least one feature to unlock' })
+  const pricing = await currentPricing()
+  const items = []
+  for (const r of raw) {
+    const feature = featureByKey[r?.feature]
+    const months = Number(r?.months)
+    if (!feature) return res.status(400).json({ error: 'Choose a feature to unlock' })
+    if (!DURATIONS.includes(months)) return res.status(400).json({ error: 'Choose 1, 3, 6 or 12 months' })
+    if (items.some((i) => i.feature === feature.key)) continue
+    const price = pricing.priceFor(feature.key, months)
+    if (!price) return res.status(400).json({ error: `${feature.name} is coming soon` })
+    items.push({ feature: feature.key, months, price })
+  }
+  const total = items.reduce((t, i) => t + i.price, 0)
   const [[user]] = await pool.query('SELECT id, email, username FROM users WHERE id = ?', [req.userId])
   if (!user.email) return res.status(400).json({ error: 'Add an email address to your account first' })
   // Our own reference, sent to Paystack so both sides use the same one: LQS-<time>-<random>.
   const reference = `LQS-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
   await pool.query(
-    "INSERT INTO payments (user_id, reference, amount_kobo, currency, status, feature, months, customer_email) VALUES (?, ?, ?, 'NGN', 'initialized', ?, ?, ?)",
-    [user.id, reference, price * 100, feature.key, months, user.email])
+    "INSERT INTO payments (user_id, reference, amount_kobo, currency, status, feature, months, items, customer_email) VALUES (?, ?, ?, 'NGN', 'initialized', ?, ?, ?, ?)",
+    [user.id, reference, total * 100, items.length === 1 ? items[0].feature : 'bundle', items[0].months, JSON.stringify(items), user.email])
+  const label = items.map((i) => `${featureByKey[i.feature].name} · ${i.months} mo`).join(', ')
   let tx
   try {
     tx = await paystack('/transaction/initialize', { method: 'POST', body: JSON.stringify({
-    reference, email: user.email, amount: price * 100, currency: 'NGN',
-    callback_url: `${appUrl(req)}/billing/callback`,
-    metadata: { user_id: user.id, username: user.username, feature: feature.key, months, price,
-      custom_fields: [{ display_name: 'Feature', variable_name: 'feature', value: `${feature.name} · ${months} month${months > 1 ? 's' : ''}` }] },
-  }) })
+      reference, email: user.email, amount: total * 100, currency: 'NGN',
+      callback_url: `${appUrl(req)}/billing/callback`,
+      metadata: { user_id: user.id, username: user.username, items,
+        custom_fields: [{ display_name: items.length > 1 ? 'Features' : 'Feature', variable_name: 'features', value: label.slice(0, 250) }] },
+    }) })
   } catch (e) {
     // Paystack refused (wrong/mismatched key, live mode not activated, …): say why instead of "Server error".
     console.error('Paystack initialize failed:', e.message)
@@ -507,15 +540,15 @@ app.post('/api/billing/checkout', auth, async (req, res) => {
     return res.status(502).json({ error: `Paystack: ${e.message}` })
   }
   // accessCode lets the browser open Paystack's inline popup; url is the full-page fallback.
-  res.json({ url: tx.authorization_url, accessCode: tx.access_code, reference })
+  res.json({ url: tx.authorization_url, accessCode: tx.access_code, reference, total })
 })
 
 app.get('/api/billing/history', auth, async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT reference, feature, months, amount_kobo / 100 AS amount, status, channel, card_type, last4, bank,
+    `SELECT reference, feature, months, items, amount_kobo / 100 AS amount, status, channel, card_type, last4, bank,
        DATE_FORMAT(COALESCE(paid_at, created_at), '%Y-%m-%d %H:%i') AS date
      FROM payments WHERE user_id = ? AND status <> 'initialized' ORDER BY id DESC LIMIT 50`, [req.userId])
-  res.json(rows.map((p) => ({ ...p, amount: Number(p.amount), name: featureByKey[p.feature]?.name || p.feature })))
+  res.json(rows.map((p) => ({ ...p, amount: Number(p.amount), name: paymentName(p) })))
 })
 
 app.post('/api/billing/verify', auth, async (req, res) => {
@@ -528,9 +561,11 @@ app.post('/api/billing/verify', auth, async (req, res) => {
     return res.status(400).json({ error: e.message || 'Could not find that payment' })
   }
   if (Number(tx.metadata?.user_id) !== req.userId) return res.status(403).json({ error: 'This payment belongs to another account' })
-  const key = await applyPayment(tx)
-  if (!key) return res.status(402).json({ error: `Payment not completed (${tx.status})` })
-  res.json({ ok: true, feature: key, name: featureByKey[key].name, until: (await featureAccess(req.userId))[key] })
+  const keys = await applyPayment(tx)
+  if (!keys) return res.status(402).json({ error: `Payment not completed (${tx.status})` })
+  const access = await featureAccess(req.userId)
+  res.json({ ok: true, features: keys, name: keys.map((k) => featureByKey[k].name).join(', '), until: keys.length === 1 ? access[keys[0]] : null,
+    items: keys.map((k) => ({ feature: k, name: featureByKey[k].name, until: access[k] })) })
 })
 
 app.put('/api/note', auth, async (req, res) => {
@@ -593,7 +628,7 @@ app.put('/api/links-order', auth, async (req, res) => {
 // ---- Public ----
 app.get('/api/u/:username', async (req, res) => {
   const [[user]] = await pool.query(
-    `SELECT id, username, display_name, bio, layout, avatar_url, cover_url, theme, tags, ${PLAN_SQL}, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials FROM users WHERE username = ?`,
+    `SELECT id, username, display_name, bio, layout, avatar_url, cover_url, theme, tags, ${PLAN_SQL}, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur FROM users WHERE username = ?`,
     [req.params.username.toLowerCase()])
   if (!user) return res.status(404).json({ error: 'Profile not found' })
   // Anything not unlocked falls back to the free version instead of breaking the page.
@@ -807,9 +842,9 @@ app.get('/api/owner/stats', auth, async (req, res) => {
       DATE_FORMAT(last_login_at, '%Y-%m-%d %H:%i') AS last_login, login_count, onboarded_at IS NOT NULL AS onboarded
       FROM users ORDER BY id DESC LIMIT 12`),
     messages: await q("SELECT name, email, LEFT(message, 140) AS message, DATE_FORMAT(created_at, '%Y-%m-%d') AS sent FROM contact_messages ORDER BY id DESC LIMIT 8"),
-    payments: (await q(`SELECT p.reference, p.paystack_id, u.username, p.customer_email, p.feature, p.months, p.amount_kobo / 100 AS amount,
+    payments: (await q(`SELECT p.reference, p.paystack_id, u.username, p.customer_email, p.feature, p.items, p.months, p.amount_kobo / 100 AS amount,
         p.status, p.channel, p.card_type, p.last4, p.bank, p.gateway_response, DATE_FORMAT(COALESCE(p.paid_at, p.created_at), '%Y-%m-%d %H:%i') AS date
-      FROM payments p JOIN users u ON u.id = p.user_id ORDER BY p.id DESC LIMIT 30`)).map((p) => ({ ...p, amount: Number(p.amount), name: featureByKey[p.feature]?.name || p.feature })),
+      FROM payments p JOIN users u ON u.id = p.user_id ORDER BY p.id DESC LIMIT 30`)).map((p) => ({ ...p, amount: Number(p.amount), name: paymentName(p) })),
     methods: num(await q(`SELECT channel AS name, COUNT(*) AS n FROM payments WHERE status = 'success'
       AND paid_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) GROUP BY channel ORDER BY n DESC`, [days - 1])),
   })

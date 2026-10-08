@@ -174,7 +174,7 @@ export function BillingCallback() {
             </motion.div>
             <h1 className="mt-4 text-xl font-semibold">{info.name} unlocked</h1>
             <p className="mt-1 text-muted-foreground">Thank you! {info.until ? `It's active until ${new Date(info.until).toLocaleDateString()}.` : "It's active."}</p>
-            <Button asChild className="mt-6"><Link to="/admin#features">Go to dashboard</Link></Button>
+            <Button asChild className="mt-6"><Link to="/admin">Go to dashboard</Link></Button>
           </>)}
           {state === 'error' && (<>
             <XCircle className="mx-auto size-12 text-destructive" aria-hidden="true" />

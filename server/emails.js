@@ -134,33 +134,36 @@ export function passwordChanged({ username, when = new Date() }) {
   }
 }
 
-export function receipt({ name, feature, months, amount, until, reference, method, date = new Date() }) {
+// items: [{ feature, months, until }]; one payment can unlock several features.
+export function receipt({ name, items, amount, reference, method, date = new Date() }) {
   const app = APP()
+  const names = items.map((i) => i.feature)
+  const title = names.length === 1 ? `${names[0]} is unlocked` : `${names.length} features unlocked`
+  const period = (m) => `${m} month${m > 1 ? 's' : ''}`
+  const until = (u) => (u ? fmtDate(u) : 'No expiry')
   return {
-    subject: `Receipt: ${feature} unlocked`,
+    subject: `Receipt: ${names.length === 1 ? names[0] : `${names.length} features`} unlocked`,
     html: layout({
-      preheader: `${feature} is active${until ? ` until ${fmtDate(until)}` : ''}. Thank you!`,
+      preheader: `${names.join(', ')}: active now. Thank you!`,
       eyebrow: 'Payment received',
-      heading: `${esc(feature)} is unlocked`,
-      body: p(`Thank you, ${esc(name)}! Your payment went through and ${esc(feature)} is ready on your page.`)
+      heading: esc(title),
+      body: p(`Thank you, ${esc(name)}! Your payment went through and ${names.length === 1 ? 'it is' : 'they are'} ready on your page.`)
+        + box(items.map((i) => [i.feature, `${esc(period(i.months))} · until ${esc(until(i.until))}`]))
         + box([
-          ['Feature', esc(feature)],
-          ['Period', `${months} month${months > 1 ? 's' : ''}`],
-          ['Active until', until ? esc(fmtDate(until)) : 'No expiry'],
           ['Amount', `<b>${esc(naira(amount))}</b>`],
           ['Paid with', esc(method || 'Paystack')],
           ['Date', esc(fmtDate(date))],
           ['Reference', `<span style="font-family:${MONO};font-size:13px">${esc(reference)}</span>`],
         ])
-        + button('Use it now', `${app}/admin#features`)
+        + button('Use them now', `${app}/admin`)
         + small('Keep this email as your receipt. Questions about a payment? Reply with the reference above.'),
     }),
-    text: textOf([`${feature} is unlocked`, '', `Thank you, ${name}!`, '', `Feature: ${feature}`, `Period: ${months} month(s)`, `Active until: ${until ? fmtDate(until) : 'No expiry'}`, `Amount: ${naira(amount)}`, `Paid with: ${method || 'Paystack'}`, `Date: ${fmtDate(date)}`, `Reference: ${reference}`, '', `Use it now: ${app}/admin#features`]),
+    text: textOf([title, '', `Thank you, ${name}!`, '', ...items.map((i) => `${i.feature}: ${period(i.months)}, until ${until(i.until)}`), '', `Amount: ${naira(amount)}`, `Paid with: ${method || 'Paystack'}`, `Date: ${fmtDate(date)}`, `Reference: ${reference}`, '', `Open your dashboard: ${app}/admin`]),
   }
 }
 
 export function featureExpiring({ name, feature, until }) {
-  const url = `${APP()}/admin#features`
+  const url = `${APP()}/admin`
   return {
     subject: `${feature} ends on ${fmtDate(until)}`,
     html: layout({
@@ -176,7 +179,7 @@ export function featureExpiring({ name, feature, until }) {
 }
 
 export function featureExpired({ name, feature }) {
-  const url = `${APP()}/admin#features`
+  const url = `${APP()}/admin`
   return {
     subject: `${feature} has ended`,
     html: layout({
@@ -223,7 +226,7 @@ export const SAMPLES = {
   welcome: [welcome, { name: 'Moyosore', username: 'moyosore_james' }],
   resetPassword: [resetPassword, { username: 'moyosore_james', url: 'https://linqsafe.com/reset-password?token=example' }],
   passwordChanged: [passwordChanged, { username: 'moyosore_james' }],
-  receipt: [receipt, { name: 'Moyosore', feature: 'Unlimited links', months: 3, amount: 5400, until: new Date(Date.now() + 90 * 864e5), reference: 'LQS-MUYV7SAK-306953', method: 'Visa •••• 4081 · Zenith Bank' }],
+  receipt: [receipt, { name: 'Moyosore', amount: 8400, reference: 'LQS-MUYV7SAK-306953', method: 'Visa •••• 4081 · Zenith Bank', items: [{ feature: 'Unlimited links', months: 3, until: new Date(Date.now() + 90 * 864e5) }, { feature: 'Cover template', months: 3, until: new Date(Date.now() + 90 * 864e5) }] }],
   featureExpiring: [featureExpiring, { name: 'Moyosore', feature: 'Cover template', until: new Date(Date.now() + 3 * 864e5) }],
   featureExpired: [featureExpired, { name: 'Moyosore', feature: 'Cover template' }],
   contactReceived: [contactReceived, { name: 'Ada', message: 'Hi! Can I use my own domain for my page?\n\nThanks.' }],

@@ -9,6 +9,7 @@ export const FEATURES = [
   { key: 'tpl_editorial', name: 'Editorial template', detail: 'Paper and serif type' },
   { key: 'tpl_search', name: 'Search & solve template', detail: 'Problem → your answers' },
   { key: 'tpl_idcard', name: 'Profile card template', detail: 'Polaroid and fact sheet' },
+  { key: 'tpl_backdrop', name: 'Photo background template', detail: 'Your photo behind the whole page, blurred or sharp' },
   { key: 'founder_note', name: "Founder's note", detail: 'A personal letter on your page' },
   { key: 'testimonials', name: 'Kind words', detail: 'Client messages as chat bubbles' },
   { key: 'qr_code', name: 'QR code download', detail: 'For print, packaging and stories' },
@@ -18,7 +19,7 @@ export const DURATIONS = [1, 3, 6, 12] // months
 export const FEATURE_KEYS = FEATURES.map((f) => f.key)
 export const featureByKey = Object.fromEntries(FEATURES.map((f) => [f.key, f]))
 // Which feature each premium template needs.
-export const LAYOUT_FEATURE = { cover: 'tpl_cover', editorial: 'tpl_editorial', search: 'tpl_search', idcard: 'tpl_idcard' }
+export const LAYOUT_FEATURE = { cover: 'tpl_cover', editorial: 'tpl_editorial', search: 'tpl_search', idcard: 'tpl_idcard', backdrop: 'tpl_backdrop' }
 
 const num = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : 0)
 
