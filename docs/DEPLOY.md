@@ -27,7 +27,7 @@ Each stage has its **own database** and **own settings**, so testing never touch
 | Runs on | your computer | Namecheap cPanel | Namecheap cPanel |
 | Address | `localhost:5173` | `dev.linqsafe.com` | `linqsafe.com` |
 | Founder console | `admin.localhost:5173` | `admin-dev.linqsafe.com` (optional) | `admin.linqsafe.com` |
-| Database | `linqsafe_local` (MySQL on your computer) | `linqqkto_linqsafedev` (cPanel) | `linqqkto_linqsafe` (cPanel) |
+| Database | `linqsafe_local` (MySQL on your computer) | `linqqkto_linqsafe_dev` (cPanel) | `linqqkto_linqsafe` (cPanel) |
 | Settings file | `.env.local` | `.env` in `/home/linqqkto/linqsafe-dev` | `.env` in `/home/linqqkto/linqsafe` and `/home/linqqkto/linqsafe-admin` |
 | Git branch | any, usually `dev` | `dev` | `prod` |
 | Deploy package | — | `npm run package:dev` → `linqsafe-dev.zip` | `npm run package` → `linqsafe-prod.zip`; founder console: `npm run package:admin` → `linqsafe-admin.zip` |
@@ -162,7 +162,7 @@ Untick *Share document root*. The folder cPanel suggests doesn't matter: the Nod
 ### 4.3 Create the database
 
 cPanel → **MySQL Databases**:
-1. *Create New Database*: `linqsafe_dev` / `linqsafe` → becomes `linqqkto_linqsafedev` / `linqqkto_linqsafe`.
+1. *Create New Database*: `linqsafe_dev` / `linqsafe` → becomes `linqqkto_linqsafe_dev` / `linqqkto_linqsafe`.
 2. *Add New User*: e.g. `lqdev` / `lqprod`, with a generated password (save it in your password manager).
 3. *Add User To Database*: pick the user and database → **Add** → tick **ALL PRIVILEGES** → *Make Changes*.
    **Don't skip this.** Without it the login works but the database refuses the user (`ER_DBACCESS_DENIED_ERROR`).
@@ -201,7 +201,7 @@ DB_HOST=localhost
 DB_PORT=3306
 DB_USER=linqqkto_lqdev              # prod: linqqkto_lqprod
 DB_PASSWORD=...
-DB_NAME=linqqkto_linqsafedev       # prod: linqqkto_linqsafe
+DB_NAME=linqqkto_linqsafe_dev       # prod: linqqkto_linqsafe
 
 # Long random text, different on each stage: openssl rand -hex 32
 JWT_SECRET=...
@@ -489,7 +489,7 @@ PassengerStartupFile app.cjs
 |---|---|---|---|---|
 | `NODE_ENV` | — | `production` | `production` | turns on secure cookies |
 | `DB_HOST` `DB_PORT` | `localhost` `3306` | `localhost` `3306` | `localhost` `3306` | |
-| `DB_USER` `DB_PASSWORD` `DB_NAME` | your local MySQL, `linqsafe_local` | dev user, `linqqkto_linqsafedev` | prod user, `linqqkto_linqsafe` | different per stage |
+| `DB_USER` `DB_PASSWORD` `DB_NAME` | your local MySQL, `linqsafe_local` | user `linqqkto_linqsafedev`, database `linqqkto_linqsafe_dev` | prod user, `linqqkto_linqsafe` | different per stage |
 | `JWT_SECRET` | anything | random | random | different per stage |
 | `APP_URL` | — | `https://dev.linqsafe.com` | `https://linqsafe.com` | links in emails |
 | `VITE_APP_STAGE` | `local` | set by `package:dev` | set by `package` | build time only |

@@ -29,7 +29,7 @@
 | Stage | Address | Database | Settings file | Branch | Paystack |
 |---|---|---|---|---|---|
 | **local** | `localhost:5173` | `linqsafe_local` (your computer) | `.env.local` | usually `dev` | test |
-| **dev** | dev.linqsafe.com | `linqqkto_linqsafedev` (cPanel) | `.env` in `/home/linqqkto/linqsafe-dev` | `dev` | test |
+| **dev** | dev.linqsafe.com | `linqqkto_linqsafe_dev` (cPanel) | `.env` in `/home/linqqkto/linqsafe-dev` | `dev` | test |
 | **prod** | linqsafe.com + admin.linqsafe.com | `linqqkto_linqsafe` (cPanel) | `.env` in `/home/linqqkto/linqsafe` and `…/linqsafe-admin` (same file) | `prod` | live |
 
 Each stage has its own database and settings, so testing never touches real users or money. The server reads `.env.local` first, then `.env` (`server/env.js`). Templates: [`.env.dev.example`](.env.dev.example), [`.env.prod.example`](.env.prod.example), [`.env.example`](.env.example).
