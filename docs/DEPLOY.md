@@ -1,6 +1,6 @@
 # Deploying linqsafe
 
-**Status (8 Oct 2026):** prod is live at https://linqsafe.com on Namecheap cPanel (Node.js 22, cPanel MySQL). dev.linqsafe.com and admin.linqsafe.com are set up as domains; their apps are next.
+**Status (8 Oct 2026):** linqsafe.com, admin.linqsafe.com and dev.linqsafe.com are live on Namecheap cPanel (Node.js 22, cPanel MySQL) and deploy automatically from GitHub Actions on push to `prod` / `dev`.
 
 The single, step-by-step reference for running linqsafe on your computer (**local**), on the test site (**dev**) and on the live site (**prod**).
 
@@ -331,12 +331,15 @@ Free for this repo: GitHub Actions runs on every push and deploys over FTPS, so 
 Each run: starts a throwaway MySQL, runs `npm test` against it (a failing test stops the deploy), builds the site, uploads only the changed files, then writes `tmp/restart.txt`, which makes cPanel restart the app. Finally it checks `/api/health` and shows a warning if the site didn't come back. Your `.env`, `node_modules` and logs on the server are never touched.
 
 ### One-time setup
-1. **FTP account:** cPanel → **FTP Accounts** → *Add FTP Account*: login e.g. `deploy`, a generated password, **Directory: `/home/linqqkto`** (clear the suggested `public_html/deploy`), quota *Unlimited* → **Create**. Under *Configure FTP Client* note the **FTP server** (usually `ftp.linqsafe.com`) and the full username (`deploy@linqsafe.com`).
-2. **GitHub secrets:** github.com/moyocodes/LINQSAFE → **Settings → Secrets and variables → Actions → New repository secret**, three times:
-   - `FTP_SERVER` = `ftp.linqsafe.com`
-   - `FTP_USERNAME` = `deploy@linqsafe.com`
-   - `FTP_PASSWORD` = the password from step 1
-3. **Run it:** push to `dev` (or GitHub → **Actions → Deploy → Run workflow**). Watch it in the **Actions** tab; a green tick means deployed.
+1. **FTP login:** use the main cPanel FTP account shown under cPanel → **FTP Accounts → Special FTP Accounts**: login `linqqkto`, path **`/home/linqqkto`**, password = your cPanel password.
+   > Don't use an extra account like `deploy@linqsafe.com`: cPanel roots new FTP accounts in the domain's folder (`/home/linqqkto/linqsafe.com`) and won't let you change it, so uploads land next to, not in, the app folders. (This happened on the first setup.)
+   > Protect the cPanel login: a long unique password and cPanel → **Security → Two-Factor Authentication**. If you change the cPanel password, update `FTP_PASSWORD` too.
+2. **GitHub secrets:** github.com/moyocodes/LINQSAFE → **Settings → Secrets and variables → Actions**:
+   - `FTP_SERVER` = `server144.web-hosting.com` (the server's own name, so deploys work even if linqsafe.com DNS is changing)
+   - `FTP_USERNAME` = `linqqkto`
+   - `FTP_PASSWORD` = your cPanel password
+3. **Run it:** push to `dev`, or GitHub → **Actions → Deploy → Run workflow**.
+4. **Check it landed:** `https://dev.linqsafe.com/version.txt` (and `linqsafe.com`, `admin.linqsafe.com` after a prod deploy) shows the commit hash that was deployed.
 
 ### Day to day
 ```bash
@@ -462,6 +465,21 @@ Code and database changes are additive (migrations only add columns or tables), 
 | Features say "Coming soon" | no price set | founder console → *Pricing* |
 | Feature not unlocked after paying | webhook not set | check the webhook URL for that mode in Paystack; the return page also unlocks it |
 | Country shows "Unknown" | visitor's time zone unavailable | expected for some visitors; there's no host location header on cPanel |
+
+---
+
+### The cPanel Node block (`.htaccess` in each subdomain folder)
+If a subdomain shows "Index of /", its `/home/linqqkto/<subdomain>/.htaccess` needs this (for dev; for admin replace `linqsafe-dev` with `linqsafe-admin` twice):
+```
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerAppRoot "/home/linqqkto/linqsafe-dev"
+PassengerBaseURI "/"
+PassengerNodejs "/home/linqqkto/nodevenv/linqsafe-dev/22/bin/node"
+PassengerAppType node
+PassengerStartupFile app.cjs
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+```
+**Never delete the app folders or subdomain folders** in `/home/linqqkto` (`linqsafe`, `linqsafe-admin`, `linqsafe-dev`, `admin.linqsafe.com`, `dev.linqsafe.com`); if it happens, restore them from File Manager → **View Trash** → Restore.
 
 ---
 

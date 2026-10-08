@@ -248,8 +248,8 @@ Use these with an AI video or image tool (Meta AI, Runway, Sora, Midjourney). Ea
 **Live (8 Oct 2026):**
 - **prod** https://linqsafe.com on Namecheap cPanel (Node.js 22 + cPanel MySQL).
 - **dev** https://dev.linqsafe.com running on its own database.
-- **admin** admin.linqsafe.com: domain and app created; packages still to install (Run JS script → `deps`).
-- **CI/CD:** GitHub Actions tests and builds on every push; deploying needs the three FTP secrets (DEPLOY.md → 5b).
+- **admin** https://admin.linqsafe.com founder console (prod database).
+- **CI/CD:** GitHub Actions tests, builds and deploys on every push to `dev` / `prod`; verified via `/version.txt` on all three sites.
 
 **Tested end to end (API tests, run locally and in GitHub Actions):** sign-up, log-in by email, httpOnly sessions, log-out, links with type detection, free limits and paid-feature locks, business profile and WhatsApp validation, onboarding, analytics (views, unique visitors, clicks, country, device, referrer; owner visits, refreshes and bots excluded), founder-dashboard lockout, Paystack refusing unsigned webhooks.
 
