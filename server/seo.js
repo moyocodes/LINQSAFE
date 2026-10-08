@@ -77,7 +77,7 @@ export function createSeo({ pool, dist }) {
   async function profile(username) {
     if (!/^[a-z0-9_]{3,32}$/i.test(username)) return null
     const [[u]] = await pool.query(
-      'SELECT id, username, display_name, bio, avatar_url, account_type, occupation, location FROM users WHERE username = ? AND email_verified = 1 AND deleted_at IS NULL', [username.toLowerCase()])
+      'SELECT id, username, display_name, bio, avatar_url, account_type, occupation, location FROM users WHERE username = ? AND page_live = 1 AND deleted_at IS NULL', [username.toLowerCase()])
     if (!u) return null
     const [links] = await pool.query("SELECT url, type FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id", [u.id])
     return { ...u, links }
@@ -179,7 +179,7 @@ export function createSeo({ pool, dist }) {
     // Profiles worth indexing: at least one link. lastmod = newest link (or signup).
     const [rows] = await pool.query(
       `SELECT u.username, DATE_FORMAT(GREATEST(u.created_at, COALESCE(MAX(l.created_at), u.created_at)), '%Y-%m-%d') AS lastmod
-       FROM users u JOIN links l ON l.user_id = u.id AND l.deleted_at IS NULL WHERE u.email_verified = 1 AND u.deleted_at IS NULL GROUP BY u.id ORDER BY u.id LIMIT 45000`)
+       FROM users u JOIN links l ON l.user_id = u.id AND l.deleted_at IS NULL WHERE u.page_live = 1 AND u.deleted_at IS NULL GROUP BY u.id ORDER BY u.id LIMIT 45000`)
     const url = (loc, extra = '') => `  <url><loc>${esc(loc)}</loc>${extra}</url>`
     res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send([
       '<?xml version="1.0" encoding="UTF-8"?>',
@@ -193,7 +193,7 @@ export function createSeo({ pool, dist }) {
 
   // Serves an uploaded profile picture (stored as a data: URL) as a real image, for link previews.
   async function avatar(req, res) {
-    const [[u]] = await pool.query('SELECT avatar_url FROM users WHERE username = ? AND email_verified = 1 AND deleted_at IS NULL', [String(req.params.username).toLowerCase()])
+    const [[u]] = await pool.query('SELECT avatar_url FROM users WHERE username = ? AND page_live = 1 AND deleted_at IS NULL', [String(req.params.username).toLowerCase()])
     const m = u?.avatar_url?.match(/^data:(image\/(?:webp|jpeg|png));base64,(.+)$/)
     if (!m) return res.status(404).end()
     res.type(m[1]).set('Cache-Control', 'public, max-age=86400').send(Buffer.from(m[2], 'base64'))

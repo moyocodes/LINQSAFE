@@ -45,7 +45,7 @@ async function signUp(api, { verified = true } = {}) {
   const r = await api('POST', '/register', { username, email: `${username}@example.com`, password: 'secret123' })
   assert.equal(r.status, 200, JSON.stringify(r.body))
   // Pages only go public once the email is confirmed; mark it confirmed directly (no inbox in tests).
-  if (verified) await (await db()).query('UPDATE users SET email_verified = 1 WHERE username = ?', [username])
+  if (verified) await (await db()).query('UPDATE users SET email_verified = 1, page_live = 1 WHERE username = ?', [username])
   return username
 }
 let pool
@@ -199,7 +199,7 @@ test('a page is a 404 until its owner confirms their email', async () => {
   const own = await owner('GET', `/u/${username}`)
   assert.equal(own.status, 404)
   assert.match(own.body.error, /verify your email/i)
-  await (await db()).query('UPDATE users SET email_verified = 1 WHERE username = ?', [username])
+  await (await db()).query('UPDATE users SET email_verified = 1, page_live = 1 WHERE username = ?', [username])
   assert.equal((await client()('GET', `/u/${username}`)).status, 200)
 })
 
@@ -272,4 +272,26 @@ test('hidden links, click allowance, and founder-only gifting', async () => {
 
   assert.equal((await api('POST', `/owner/users/${username}/features`, { feature: 'qr_code', months: 1 })).status, 403)
   assert.equal((await api('GET', '/owner/users')).status, 403)
+})
+
+test('loophole fixes: old usernames held and forwarded, email change keeps the page live, big logos fit', async () => {
+  const api = client()
+  const username = await signUp(api)
+  const next = `${username}z`.slice(0, 32)
+  created.push(next)
+  assert.equal((await api('PUT', '/username', { username: next })).status, 200)
+  // The old name forwards for 90 days and nobody else can take it.
+  assert.deepEqual((await client()('GET', `/u/${username}`)).body, { moved_to: next })
+  assert.equal((await client()('GET', `/username/${username}`)).body.available, false)
+  assert.equal((await client()('POST', '/register', { username, email: `${username}2@example.com`, password: 'secret123' })).status, 409)
+
+  // Changing email (unverified until clicked) doesn't take a live page offline.
+  assert.equal((await api('POST', '/account/email', { email: `${next}.new@example.com` })).status, 200)
+  assert.ok(!(await api('GET', '/me')).body.email_verified)
+  assert.equal((await client()('GET', `/u/${next}`)).status, 200)
+
+  // A ~40 KB logo upload is accepted (the links API allows up to 100 KB bodies).
+  const link = (await api('POST', '/links', { title: 'Shop', url: 'https://example.com/shop' })).body
+  const big = 'data:image/png;base64,' + 'A'.repeat(40_000)
+  assert.equal((await api('PUT', `/links/${link.id}`, { title: 'Shop', url: 'https://example.com/shop', icon_url: big })).status, 200)
 })

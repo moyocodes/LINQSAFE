@@ -243,6 +243,17 @@ const MIGRATIONS = [
   [28, 'links can be hidden from the public page', async (db) => {
     await addColumn(db, 'links', 'is_public TINYINT(1) NOT NULL DEFAULT 1')
   }],
+  [29, 'page_live (stays on after the first verification); old usernames held 90 days', async (db) => {
+    await addColumn(db, 'users', 'page_live TINYINT(1) NOT NULL DEFAULT 0')
+    await db.query('UPDATE users SET page_live = 1 WHERE email_verified = 1')
+    await db.query(`CREATE TABLE IF NOT EXISTS username_history (
+      username VARCHAR(32) NOT NULL PRIMARY KEY,
+      user_id INT NOT NULL,
+      released_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY user_id (user_id),
+      CONSTRAINT username_history_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    )`)
+  }],
 ]
 
 export async function migrate(pool) {

@@ -22,7 +22,7 @@ export default function Auth({ mode }) {
   const query = new URLSearchParams(location.search)
   const expired = isLogin && query.get('expired') === '1'
   // Back to the page they were on when the session ran out (same-site paths only).
-  const next = /^\/(?!\/)/.test(query.get('next') || '') ? query.get('next') : null
+  const next = /^\/(?![/\\])/.test(query.get('next') || '') ? query.get('next') : null
 
   // Already signed in: log in / sign up just take you to your dashboard until you log out.
   // (The session is checked first, so an expired one still shows the form.)

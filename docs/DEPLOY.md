@@ -317,7 +317,7 @@ Upload `linqsafe-prod.zip` into `linqsafe` and `linqsafe-admin.zip` into `linqsa
 
 Your `.env` is never in the zip, so extracting over the folder keeps your settings. Database changes apply automatically on restart (see `server/migrations.js`): you'll see `Applying migration …` in `stderr.log`.
 
-**Before a prod deploy:** take a database backup (section 7) if the update includes a new migration.
+**Before a prod deploy:** take a database backup (section 7) if the update includes a new migration. Migrations run automatically when the app starts (`server/migrations.js`); the 9 Oct 2026 release adds 26–29 (username changes, link logos and redirect, hidden links, `page_live` and `username_history`). Security notes and known risks: [SECURITY.md](SECURITY.md).
 
 ---
 

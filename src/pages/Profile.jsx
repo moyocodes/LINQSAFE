@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { api, isSignedIn } from '@/api'
@@ -37,6 +37,7 @@ function useMedia(query) {
 export default function Profile() {
   const { username } = useParams()
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const name = data ? data.display_name || data.username : ''
@@ -52,6 +53,8 @@ export default function Profile() {
     setError('')
     api(`/u/${username}?ref=${encodeURIComponent(document.referrer)}&tz=${encodeURIComponent(visitorTz)}${params.get('src') === 'qr' ? '&src=qr' : ''}`)
       .then((d) => {
+        // Old username (changed in the last 90 days): go to the new one.
+        if (d.moved_to) { loaded.current = ''; navigate(`/${d.moved_to}${location.search}`, { replace: true }); return }
         // Redirect mode: visitors go straight to the chosen link (counted as a click). The owner still sees the page.
         if (d.redirect && !d.own && !params.get('preview') && params.get('embed') !== '1') { trackClick(d.redirect.id); window.location.replace(d.redirect.url); return }
         setData(d)

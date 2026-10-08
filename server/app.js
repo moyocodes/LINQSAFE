@@ -167,11 +167,15 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json', limit: 
 })
 
 app.use('/api/profile', express.json({ limit: '900kb' })) // room for an uploaded profile picture
+app.use('/api/links', express.json({ limit: '100kb' })) // room for a link's logo (≤ 60 KB)
 app.use(express.json({ limit: '20kb' }))
 
 const limiter = (windowMs, limit, message) =>
   rateLimit({ windowMs, limit, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: message } })
-app.use('/api', limiter(60_000, 300, 'Too many requests, please slow down.'))
+// Generous per-IP ceiling: Nigerian mobile networks put many people behind one shared IP (carrier NAT).
+// Cached images and favicons don't count.
+app.use('/api', rateLimit({ windowMs: 60_000, limit: 600, standardHeaders: 'draft-7', legacyHeaders: false,
+  skip: (req) => req.path.startsWith('/img/') || req.path.startsWith('/favicon/'), message: { error: 'Too many requests, please slow down.' } }))
 const authLimiter = limiter(15 * 60_000, 30, 'Too many attempts, try again in a few minutes.')
 const clickLimiter = limiter(60_000, 30, 'Too many clicks.')
 const contactLimiter = limiter(60 * 60_000, 5, 'You have sent a few messages already. Please try again later.')
@@ -246,7 +250,7 @@ async function sessionUserId(req) {
   if (!token) return null
   try {
     const { id, tv = 0 } = jwt.verify(token, SECRET)
-    const [[u]] = await pool.query('SELECT token_version FROM users WHERE id = ?', [id])
+    const [[u]] = await pool.query('SELECT token_version FROM users WHERE id = ? AND deleted_at IS NULL', [id])
     return u && u.token_version === tv ? id : null
   } catch {
     return null
@@ -382,6 +386,14 @@ app.get('/api/favicon/:host', async (req, res) => {
 })
 
 // Is a username free? Used by the "claim your link" box on the home page.
+// After a change the old username stays with its owner for this long (others can't take it; visits forward).
+const USERNAME_HOLD_DAYS = 90
+// True when someone else changed away from `name` recently, so it isn't free yet.
+async function usernameHeld(name, userId = 0) {
+  const [[h]] = await pool.query(`SELECT 1 AS x FROM username_history WHERE username = ? AND user_id <> ? AND released_at > DATE_SUB(NOW(), INTERVAL ${USERNAME_HOLD_DAYS} DAY)`, [name, userId])
+  return !!h
+}
+
 // Username changes: the first is allowed any time, then the wait alternates 30, 90, 30, 90… days.
 const usernameWaitDays = (changes) => (changes % 2 === 1 ? 30 : 90)
 function nextUsernameChange(u) {
@@ -395,7 +407,8 @@ app.get('/api/username/:name', async (req, res) => {
   if (!/^[a-z0-9_]{3,32}$/i.test(name)) return res.json({ available: false, reason: '3–32 letters, numbers or _' })
   if (RESERVED.has(name.toLowerCase())) return res.json({ available: false, reason: 'That one is reserved' })
   const [[taken]] = await pool.query('SELECT 1 AS x FROM users WHERE username = ? LIMIT 1', [name])
-  res.json({ available: !taken, reason: taken ? 'Already taken' : '' })
+  const held = !taken && (await usernameHeld(name.toLowerCase()))
+  res.json({ available: !taken && !held, reason: taken || held ? 'Already taken' : '' })
 })
 
 app.post('/api/register', authLimiter, async (req, res) => {
@@ -404,6 +417,8 @@ app.post('/api/register', authLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Username must be 3-32 letters, numbers or underscores' })
   if (RESERVED.has(username.toLowerCase()))
     return res.status(400).json({ error: 'That username is reserved, please choose another' })
+  if (await usernameHeld(username.toLowerCase()))
+    return res.status(409).json({ error: 'Username already taken' })
   if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || email.length > 254)
     return res.status(400).json({ error: 'Please enter a valid email address' })
   if ((password || '').length < 6)
@@ -438,7 +453,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
 app.post('/api/login', authLimiter, async (req, res) => {
   const { username, password } = req.body
   const id = String(username || '').trim().toLowerCase()
-  const [rows] = await pool.query('SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1', [id, id])
+  const [rows] = await pool.query('SELECT id, password_hash, token_version FROM users WHERE (username = ? OR email = ?) AND deleted_at IS NULL LIMIT 1', [id, id])
   const user = rows[0]
   if (!user || !(await bcrypt.compare(password || '', user.password_hash)))
     return res.status(401).json({ error: 'Invalid username, email or password' })
@@ -482,7 +497,7 @@ app.post('/api/account/email', auth, authLimiter, async (req, res) => {
 app.post('/api/verify-email', authLimiter, async (req, res) => {
   const userId = await consumeToken(req.body?.token, 'verify')
   if (!userId) return res.status(400).json({ error: 'This link is invalid or has expired. Request a new one from your dashboard.' })
-  const [upd] = await pool.query('UPDATE users SET email_verified = 1 WHERE id = ? AND email_verified = 0', [userId])
+  const [upd] = await pool.query('UPDATE users SET email_verified = 1, page_live = 1 WHERE id = ? AND email_verified = 0', [userId])
   if (upd.affectedRows) { // first confirmation only: send the welcome email
     const [[u]] = await pool.query('SELECT email, username, display_name, avatar_url FROM users WHERE id = ?', [userId])
     send(u.email, Email.welcome({ name: u.display_name || u.username, username: u.username, person: Email.personOf(u) }), { tag: 'welcome' })
@@ -506,7 +521,7 @@ app.post('/api/password/reset', authLimiter, async (req, res) => {
   const userId = await consumeToken(token, 'reset')
   if (!userId) return res.status(400).json({ error: 'This reset link is invalid or has expired. Request a new one.' })
   // Resetting proves control of the inbox, so it also verifies the email; bumping token_version signs out old sessions.
-  await pool.query('UPDATE users SET password_hash = ?, email_verified = 1, token_version = token_version + 1 WHERE id = ?',
+  await pool.query('UPDATE users SET password_hash = ?, email_verified = 1, page_live = 1, token_version = token_version + 1 WHERE id = ?',
     [await bcrypt.hash(password, 10), userId])
   const [[user]] = await pool.query('SELECT id, token_version, email, username, display_name, avatar_url FROM users WHERE id = ?', [userId])
   send(user.email, Email.passwordChanged({ username: user.username, person: Email.personOf(user) }), { tag: 'password-changed' })
@@ -546,8 +561,11 @@ app.put('/api/username', auth, async (req, res) => {
   const wait = nextUsernameChange(u)
   if (wait) return res.status(429).json({ error: `You can change your username again on ${wait.slice(0, 10)}.`, next_change_at: wait })
   const [[taken]] = await pool.query('SELECT 1 AS x FROM users WHERE username = ? LIMIT 1', [name])
-  if (taken) return res.status(409).json({ error: 'That username is already taken' })
+  if (taken || (await usernameHeld(name, req.userId))) return res.status(409).json({ error: 'That username is already taken' })
   await pool.query('UPDATE users SET username = ?, username_changed_at = NOW(), username_changes = username_changes + 1 WHERE id = ?', [name, req.userId])
+  // Hold the old name for this user (and forward visits); taking back one of your own old names frees it.
+  await pool.query('INSERT INTO username_history (username, user_id, released_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), released_at = NOW()', [u.username, req.userId])
+  await pool.query('DELETE FROM username_history WHERE username = ? AND user_id = ?', [name, req.userId])
   const changes = u.username_changes + 1
   res.json({ username: name, next_change_at: new Date(Date.now() + usernameWaitDays(changes) * 86400_000).toISOString() })
 })
@@ -698,11 +716,12 @@ app.post('/api/links', auth, async (req, res) => {
   res.json({ id: r.insertId, title, url, type, clicks: 0 })
 })
 
-// A link's own logo: a small uploaded picture (resized in the browser) or an https image link; '' clears it.
+// A link's own logo: only a small uploaded picture (resized in the browser); '' clears it. Outside image links
+// aren't allowed, so no third party learns who visits a page.
 const linkIconError = (v) => {
   if (!v) return ''
   if (/^data:image\/(webp|jpeg|png);base64,[a-z0-9+/=]+$/i.test(v)) return v.length > 60_000 ? 'That logo is too large' : ''
-  return v.length <= 500 && /^https:\/\//i.test(v) && validUrl(v) ? '' : 'The logo must be an uploaded picture or an https:// image link'
+  return 'The logo must be an uploaded picture'
 }
 
 app.put('/api/links/:id', auth, async (req, res) => {
@@ -750,27 +769,33 @@ function sendDataImage(res, dataUrl, versioned) {
 app.get('/api/img/u/:username/:kind', async (req, res) => {
   const col = { avatar: 'avatar_url', cover: 'cover_url' }[req.params.kind]
   if (!col) return res.status(404).end()
-  const [[u]] = await pool.query(`SELECT ${col} AS img FROM users WHERE username = ? AND email_verified = 1 AND deleted_at IS NULL`, [String(req.params.username).toLowerCase()])
+  const [[u]] = await pool.query(`SELECT ${col} AS img FROM users WHERE username = ? AND page_live = 1 AND deleted_at IS NULL`, [String(req.params.username).toLowerCase()])
   sendDataImage(res, u?.img, !!req.query.v)
 })
 app.get('/api/img/link/:id', async (req, res) => {
   const [[l]] = await pool.query(`SELECT l.icon_url AS img FROM links l JOIN users u ON u.id = l.user_id
-    WHERE l.id = ? AND l.deleted_at IS NULL AND l.is_public = 1 AND u.email_verified = 1 AND u.deleted_at IS NULL`, [Number(req.params.id) || 0])
+    WHERE l.id = ? AND l.deleted_at IS NULL AND l.is_public = 1 AND u.page_live = 1 AND u.deleted_at IS NULL`, [Number(req.params.id) || 0])
   sendDataImage(res, l?.img, !!req.query.v)
 })
 
 app.get('/api/u/:username', async (req, res) => {
   const [[user]] = await pool.query(
-    `SELECT id, username, email_verified, redirect_link_id, display_name, bio, layout, avatar_url, cover_url, theme, tags, ${PLAN_SQL}, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur FROM users WHERE username = ? AND deleted_at IS NULL`,
+    `SELECT id, username, page_live, redirect_link_id, display_name, bio, layout, avatar_url, cover_url, theme, tags, ${PLAN_SQL}, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur FROM users WHERE username = ? AND deleted_at IS NULL`,
     [req.params.username.toLowerCase()])
-  if (!user) return res.status(404).json({ error: 'Profile not found' })
-  // A page goes public only once its owner confirms their email; until then it's a 404 for everyone
-  // (the owner gets a reason instead of a plain "not found").
-  if (!user.email_verified) {
+  if (!user) {
+    // A recently changed username forwards to the new one for 90 days (shared links and printed QR codes keep working).
+    const [[moved]] = await pool.query(`SELECT u.username FROM username_history h JOIN users u ON u.id = h.user_id AND u.deleted_at IS NULL
+      WHERE h.username = ? AND h.released_at > DATE_SUB(NOW(), INTERVAL ${USERNAME_HOLD_DAYS} DAY)`, [req.params.username.toLowerCase()])
+    if (moved) return res.json({ moved_to: moved.username })
+    return res.status(404).json({ error: 'Profile not found' })
+  }
+  // A page goes public the first time its owner verifies their email (and stays public if they change it
+  // later); until then it's a 404 for everyone (the owner gets a reason instead of a plain "not found").
+  if (!user.page_live) {
     const own = (await sessionUserId(req)) === user.id
     return res.status(404).json({ error: own ? 'Your page goes live once you verify your email. Check your inbox, or resend the link from your dashboard.' : 'Profile not found' })
   }
-  delete user.email_verified
+  delete user.page_live
   // Anything not unlocked falls back to the free version instead of breaking the page.
   const unlocked = await unlockedFeatures(user.id)
   if (LAYOUT_FEATURE[user.layout] && !unlocked.includes(LAYOUT_FEATURE[user.layout])) user.layout = 'classic'

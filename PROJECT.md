@@ -14,15 +14,22 @@ This guide explains what the product does, how it's built, how to run it in each
 - **8 templates**: Classic, Grid, Minimal (free); Cover, Editorial, Search & solve, Photo background (blurred or sharp), Profile card (paid).
 - **5 themes**: Light, Sage, Blush, Midnight, Auto (follows the visitor's light/dark setting).
 - Business pages can show a **Chat on WhatsApp** button.
-- Pages can show a **Founder's note** (paid) (paper-style letter with signature) and **Kind words** (client testimonials as chat bubbles).
+- Pages can show a **Founder's note** (paid) (paper-style letter with signature) and **Kind words** (client testimonials as small chat bubbles under a "What people say" label).
+- A page is **public only once its owner has verified their email** (`users.page_live`, set on first verification and never cleared, so changing email later doesn't take a page down). Until then it's a 404 for everyone; the owner sees why.
+- **Redirect mode:** the owner can send visitors straight to one of their links instead of showing the page (counted as a click; the owner still sees the page with a "Redirect on" bar).
+- Links can carry their own **logo / thumbnail**; links can be **hidden** without deleting them.
+- **Old usernames** (changed in the last 90 days) forward to the new one, and nobody else can take them.
+- No cookies for visitors; a tiny linqsafe mark sits top-left and a *Made with linqsafe* badge at the bottom.
 
 ### For page owners (dashboard, `/admin`)
 
 - **Onboarding** after the first login: account type (personal or business), business category and optional WhatsApp, profile basics, socials, template.
-- Add, edit, drag-to-reorder and delete links. Pasting a URL detects the platform (Instagram, TikTok, YouTube, and others). Unknown URLs ask for a type.
-- Social link suggestions (one tap to start an Instagram, TikTok, … link).
-- Profile picture and cover photo upload (cropped and resized in the browser).
-- Live phone preview with a toolbar (Open, Copy, Share, QR, Stats). On phones it opens as a slide-up sheet.
+- Add, edit, drag-to-reorder, hide and delete links. Pasting a URL detects the platform (Instagram, Threads, TikTok, YouTube, and others). Unknown URLs ask for a type with a row of tappable icons (no dropdowns). Tap a link's icon to add or change its logo.
+- **Link ideas tailored to onboarding** (`linkIdeas()` in `src/components/ProFeatures.jsx`): account type + business category pick a list (e.g. food → menu, WhatsApp, Instagram, Google Maps), and words in the occupation/topics add more (e.g. "baker" → menu, "developer" → GitHub). Tap a card to fill in the add-link form.
+- Profile picture and cover photo upload (cropped and resized in the browser); a blur suggestion on every new photo for the Photo background template.
+- Live preview drawn directly in the page from the editor's data (no iframe, updates as you type) with a toolbar (Open, Copy, Share, QR, Stats). On phones a floating **Preview** button opens it, with a switcher for templates you already own and **View QR**.
+- **Your account:** picture, link, email and verify status; **change username** (first change any time, then waits of 30, 90, 30, 90… days); send yourself a password reset link. A chip at the top shows who's signed in.
+- Each section has a floating Save; **Enter** in a one-line field saves too. An expired session sends you to log in and back.
 - **Analytics** (`/admin/analytics`): week-on-week summary, views, unique visitors, clicks, click-through rate, QR scans, daily chart (or table), best time to post (day × hour), new vs returning visitors, links by conversion, countries, sources, devices. **Export CSV** downloads every view and click in the chosen range (time, type, link, source, device, country).
 - **Light / dark / system** appearance toggle in the navbar (remembered per browser). Public profiles always keep the owner's chosen theme.
 - Email verification, forgot/reset password, log in with username or email.
@@ -33,7 +40,10 @@ This guide explains what the product does, how it's built, how to run it in each
 - **Traffic, the users' analytics for the whole site**, plus more: week summary, views, visitors, clicks, CTR, QR scans, pages visited, daily chart, best time to post, new vs returning (across all pages), a pages table (views, visitors, clicks, CTR), top links, clicks by platform, countries, sources, devices, views by account type and template.
 - **Filters** (kept in the URL, so a filtered view can be bookmarked): date range (7/30/90/180/365 days), account type, business category, template, plan (paid/free), visitor country, device, source (incl. direct and QR) and a single page by username. Clicking a page in the table filters to it.
 - **CSV exports**, using the same filters: visits & clicks (one row per event), pages (totals per page), users (account, plan, paid features, total paid, signup and last login) and payments.
-- Only the `OWNER_EMAIL` account can open it, and only after that email is verified.
+- **Layout:** collapsible sidebar (icons only when collapsed; a drawer on phones) and a toolbar with the signed-in founder, date range, refresh and log out.
+- **All users** (`/owner/users`, or `/users` on the admin host): 25 per page, search by username/name/email, sort by newest/oldest/last active/views. **Give or remove any feature** per user for 1/3/6/12 months or forever (stored with `payment_reference = 'founder'`, shown as "gift").
+- **Emails to the founder:** one per sign-up, and a daily summary from the reminders job.
+- Only the founder account can open it (email hardcoded as `OWNER_EMAIL` in `server/emails.js`), and only after that email is verified.
 
 ### Free and paid features
 
@@ -41,13 +51,14 @@ Everyone gets a free page. On top of that, each extra feature is **bought separa
 
 | Free                                                             | Paid features (each sold on its own)                                             |
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Up to 3 links                                                    | Unlimited links                                                                  |
+| Up to N links (founder sets N, default 3)                        | Unlimited links                                                                  |
+| N link clicks counted a month (founder sets N, default 0 = no cap) | Unlimited link clicks                                                          |
 | Classic, Grid, Minimal templates                                 | Cover, Editorial, Search & solve, Profile card templates (one purchase each)     |
 | All themes, WhatsApp button, analytics for the last 7 or 30 days | Founder's note · Kind words (testimonials) · QR code download · 90-day analytics |
 
 Each paid feature shows its own price and an **Add** button right where it lives on the dashboard (template cards, Founder's note, Kind words, QR code, the links limit, analytics). Added features collect in a cart bar at the bottom: pick 1/3/6/12 months, see the total, and pay for all of them in **one Paystack payment** (`payments.items` records each feature, months and price). Receipts list every feature bought.
 
-**Prices:** each feature has a monthly price in naira, plus optional discounts for 3, 6 and 12 months. The founder sets them in the founder dashboard (_Pricing_), and saved values are stored in `app_settings`. `.env` values (`PRICE_<FEATURE>`, `DISCOUNT_3M/6M/12M`) are the fallback. A feature with no price isn't for sale. The list of features lives in `server/features.js`.
+**Prices and free allowances:** each feature has a monthly price in naira, plus optional discounts for 3, 6 and 12 months. The founder also sets the free plan's allowances: links per page (`FREE_LINKS`) and link clicks counted per month (`FREE_CLICKS`; past it the links keep working, clicks just aren't counted). All are set in the founder dashboard (_Pricing_) and stored in `app_settings`; `.env` values (`PRICE_<FEATURE>`, `DISCOUNT_3M/6M/12M`, `FREE_LINKS`, `FREE_CLICKS`) are the fallback. A feature with no price isn't for sale. The list of features lives in `server/features.js`.
 
 **Payments: Paystack (naira).** "Unlock" creates the checkout on the server and opens it in Paystack's inline popup (`@paystack/inline-js`, `resumeTransaction`) on the same page, falling back to Paystack's full page if the popup can't load. The feature switches on only after the server verifies the payment with Paystack, on the return page (`/billing/callback`) and again through the signed webhook (`/api/billing/webhook`), so it still works if the buyer closes the tab. Every checkout is recorded in `payments` with a LinqSafe reference and, once verified, how the customer paid (card type and last 4, bank transfer, USSD, bank). The founder dashboard lists payments with method breakdowns, and customers see their own receipts under Features. and access is stored in `user_features` with an `expires_at`. When a feature expires, the page quietly falls back to the free version. `npm run set-plan -- <username> pro` grants every feature with no expiry, for you or for comps.
 
@@ -125,12 +136,14 @@ src/lib/                linkTypes (platform detection), plans, stage, motion pre
 
 The full schema is in [`server/schema.sql`](server/schema.sql). The main tables:
 
-- **users**: login (username, email, password hash, `email_verified`, `token_version`), public profile (display name, bio, avatar, cover, tags, occupation, location), look (`layout`, `theme`), business (`account_type`, `category`, `whatsapp`), paid content (`note_body`, `note_sign`, `testimonials`), `plan` (`pro` = everything, set by hand), activity (`views`, `last_login_at`, `login_count`, `onboarded_at`).
+- **users**: login (username, email, password hash, `email_verified`, `token_version`), `page_live` (public since first verification), username changes (`username_changes`, `username_changed_at`), `redirect_link_id`, `deleted_at`, public profile (display name, bio, avatar, cover, tags, occupation, location), look (`layout`, `theme`), business (`account_type`, `category`, `whatsapp`), paid content (`note_body`, `note_sign`, `testimonials`), `plan` (`pro` = everything, set by hand), activity (`views`, `last_login_at`, `login_count`, `onboarded_at`).
 - **payments**: one row per checkout. `reference` is our LinqSafe reference (`LQS-…`), also sent to Paystack as its reference. It also stores Paystack's transaction ID, amount (kobo), feature, months, status (`initialized` → `success` / `abandoned` / `failed`), how they paid (`channel`, card type and last 4, bank), the customer email and Paystack's response.
 - **user_features**: which paid features each user has, with `expires_at` (NULL = no expiry).
-- **app_settings**: founder-editable settings (feature prices and discounts).
-- **links**: `user_id`, `title`, `url`, `type`, `position`, `clicks`.
-- **events**: one row per view or click: `user_id`, `link_id`, `kind`, `referrer` (domain only), `device`, `country`, `visitor` (random cookie id). No IP addresses or user agents are stored.
+- **app_settings**: founder-editable settings (feature prices, discounts, free allowances).
+- **links**: `user_id`, `title`, `url`, `type`, `position`, `clicks`, `icon_url` (logo), `is_public`, `deleted_at` (soft delete).
+- **username_history**: old usernames held for 90 days after a change (forwarding + no squatting).
+- **events**: one row per view or click: `user_id`, `link_id`, `kind`, `referrer` (domain only), `device`, `country`, `visitor` (a daily-rotating hash, no cookie). No IP addresses or user agents are stored.
+- Uploaded pictures (avatar, cover, link logos) are stored as small `data:` URLs; public pages get them from `/api/img/...?v=<hash>` (cached for a year, the hash changes with the picture).
 - **auth_tokens**: one-time verify and reset tokens, stored as SHA-256 hashes with an expiry.
 - **contact_messages**: contact form submissions.
 - **schema_migrations**: which migrations have run.
@@ -168,11 +181,12 @@ Full step-by-step instructions: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 | `PORT`                                                         | server           | Local API port (3001)                                                  |
 | `APP_URL`                                                      | server           | Base URL for links in emails                                           |
 | `RESEND_API_KEY` `MAIL_FROM`                                   | server           | Sending email                                                          |
-| `OWNER_EMAIL`                                                  | server           | Founder dashboard access                                               |
+| `OWNER_EMAIL`                                                  | server           | Used by `npm run owner` / `email:test` (founder access itself is hardcoded in `server/emails.js`) |
 | `ADMIN_HOST`                                                   | server           | Locks the founder API to the admin subdomain                           |
 | `PAYSTACK_SECRET_KEY`                                          | server           | Paystack API + webhook signature check                                 |
 | `PRICE_<FEATURE>`                                              | server           | Default monthly price per feature (naira); founder dashboard overrides |
 | `DISCOUNT_3M` `DISCOUNT_6M` `DISCOUNT_12M`                     | server           | Default % off for longer periods                                       |
+| `FREE_LINKS` `FREE_CLICKS`                                     | server           | Default free allowances; founder dashboard overrides                   |
 | `PAYSTACK_PUBLIC_KEY`                                          | frontend         | Only needed for Paystack's in-page popup (not used yet)                |
 | `CORS_ORIGIN`                                                  | server           | Only if the frontend is on a different origin                          |
 | `APP_STAGE`                                                    | frontend (build) | `local` / `dev` / `prod` badge                                         |
@@ -190,6 +204,7 @@ Full step-by-step instructions: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 | `npm run set-plan -- <username> <free\|pro>` | Change a plan by hand                                                               |
 | `npm run owner`                              | Verify the owner email and unlock every feature (local setup)                       |
 | `npm test`                                   | API tests against the running dev server (`API_URL` to point elsewhere; never prod) |
+| `npm run reminders`                          | Expiry emails + the founder's daily summary (daily cron on prod)                    |
 
 ---
 
@@ -203,7 +218,8 @@ linqsafe is a single-page app, so the server fills in each page's `<head>` befor
 | Share image (Open Graph / Twitter card) | `public/og-image.png` (1200×630); profiles use their own picture (uploaded pictures are served from `/api/u/:username/avatar`) |
 | Structured data (JSON-LD) | home: `WebSite` + `Organization`; profiles: `ProfilePage` with a `Person` or `Organization` (business accounts) and their social links as `sameAs` |
 | `robots.txt` | generated; blocks `/admin`, `/owner`, `/api/`, `/billing/`, password and verify pages; points to the sitemap |
-| `sitemap.xml` | generated live: the public pages plus every profile with at least one link |
+| `sitemap.xml` | generated live: the public pages plus every live (verified) profile with at least one link |
+| Keywords | `linqsafe, linksafe, linq safe, …` (Google ignores the keywords tag; Search Console is what helps) |
 | No indexing on dev and admin | `dev.*` and `admin.*` hosts get `Disallow: /` and an `X-Robots-Tag: noindex` header |
 | Private pages | `noindex, nofollow`; unknown usernames return a real 404 |
 | Icons | `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192/512.png`, `site.webmanifest` |
@@ -215,8 +231,10 @@ linqsafe is a single-page app, so the server fills in each page's `<head>` befor
 - Signing up with an email that an _unverified_ account holds releases it to the new signup, so nobody can squat someone else's email.
 - Social badges must match the URL's real domain (no "Instagram" badge on a phishing page).
 - Public pages set no cookies and show no cookie notice. Unique visitors come from a daily-rotating hash of IP + browser (HMAC with JWT_SECRET); the IP is never stored, and ids can't be linked across days.
-- Rate limits: auth 30 per 15 minutes, clicks 30 per minute, contact 5 per hour, API 300 per minute.
+- Rate limits: auth 30 per 15 minutes, clicks 30 per minute, contact 5 per hour, API 600 per minute per IP (images and favicons excluded; Nigerian mobile networks share IPs).
 - The security policy (CSP) allows images from `https:` and `data:` only, plus the site's own scripts.
+- The browser never receives internal user ids; the server always takes the user from the session token.
+- Full list of protections, the loopholes fixed on 9 Oct 2026 and the known risks: **[docs/SECURITY.md](docs/SECURITY.md)**.
 
 ---
 
@@ -251,21 +269,21 @@ Use these with an AI video or image tool (Meta AI, Runway, Sora, Midjourney). Ea
 
 ## 10. Status and next steps
 
-**Live (8 Oct 2026):**
+**Live (9 Oct 2026):**
 - **prod** https://linqsafe.com on Namecheap cPanel (Node.js 22 + cPanel MySQL).
 - **dev** https://dev.linqsafe.com running on its own database.
 - **admin** https://admin.linqsafe.com founder console (prod database).
 - **CI/CD:** GitHub Actions tests, builds and deploys on every push to `dev` / `prod`; verified via `/version.txt` on all three sites.
 
-**Tested end to end (API tests, run locally and in GitHub Actions):** sign-up, log-in by email, httpOnly sessions, log-out, links with type detection, free limits and paid-feature locks, business profile and WhatsApp validation, onboarding, analytics (views, unique visitors, clicks, country, device, referrer; owner visits, refreshes and bots excluded), founder-dashboard lockout (stats, traffic, exports), analytics CSV export, Paystack refusing unsigned webhooks.
+**Tested end to end (16 API tests, run locally and in GitHub Actions):** sign-up, log-in by email, httpOnly sessions, log-out, links with type detection, free limits and paid-feature locks, business profile and WhatsApp validation, onboarding, cookie-free analytics (views, unique visitors, clicks, country, device, referrer; owner visits, refreshes and bots excluded), founder-dashboard lockout (stats, traffic, exports, users, gifting), analytics CSV export, Paystack refusing unsigned webhooks, pages hidden until verified, username change waits and the 90-day hold/forwarding, redirect mode, link logos (cacheable image URLs), hidden links, the free click allowance, email change keeping a page live.
 
 **Tested by hand:** Paystack checkout creation against Paystack's test API (real checkout page, `LQS-` reference, abandoned status recorded); the cPanel package starting under Node 22; SEO output (robots, sitemap, per-page and profile meta, noindex on dev/admin).
 
-**Not yet seen in a browser:** the Paystack inline popup, onboarding wizard, premium templates, founder dashboard charts.
+**Checked in a browser (headless Chrome, desktop + iPhone size):** dashboard save/Enter/preview, template switching, founder console (sidebar, users, gifting, pricing save), link ideas and type chips, redirect mode, link logos, old-username forwarding, the Cover template, the home nav hiding. **Not yet:** the Paystack inline popup end to end.
 
 **Open:**
 - **Payments:** one full test payment on dev (popup → paid → feature unlocked → webhook), then live keys (`sk_live_` + `pk_live_`) on prod once Paystack activates live mode.
-- **Email:** templates and sending are built; verify linqsafe.com in Resend, add `RESEND_API_KEY` on dev and prod, create `support@linqsafe.com`, and add the daily reminders cron (DEPLOY.md → Email).
+- **Email:** templates and sending are built; verify linqsafe.com in Resend, add `RESEND_API_KEY` on dev and prod, create `support@linqsafe.com`, and add the daily reminders cron (DEPLOY.md → Email); the founder's daily summary needs that cron.
 - **Search:** submit `sitemap.xml` in Google Search Console.
 - **Browser tests:** a Playwright smoke test for onboarding and templates would be the next layer. Sign-ups are rate-limited (30 per 15 minutes), so running `npm test` many times in a row hits 429s.
 - **Image storage:** pictures are stored in the database as small data URLs, fine at small scale; move to object storage (S3, Cloudinary) as you grow.
