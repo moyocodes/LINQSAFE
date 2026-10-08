@@ -91,3 +91,7 @@ See [`.env.example`](.env.example) for the full list with comments: database, `J
 ## Accessibility
 
 Skip link, focus moved on navigation with a screen-reader announcement, labelled fields with described errors, visible focus rings, keyboard-reorderable links, and `prefers-reduced-motion` respected by Framer Motion, GSAP and the 3D scene.
+
+## License
+
+© 2026 Moyosore James. **All rights reserved.** The code is public to view only; no permission is granted to copy, reuse or host it. See [LICENSE](LICENSE). Permission requests: support@linqsafe.com.

@@ -90,7 +90,7 @@ git switch dev         # go back to working on dev
 
 1. Get the code and dependencies:
    ```bash
-   git clone https://github.com/moyocodes/linktree.git linqsafe
+   git clone https://github.com/moyocodes/LINQSAFE.git linqsafe
    cd linqsafe
    git switch dev
    npm install
@@ -330,7 +330,7 @@ Each run: starts a throwaway MySQL, runs `npm test` against it (a failing test s
 
 ### One-time setup
 1. **FTP account:** cPanel → **FTP Accounts** → *Add FTP Account*: login e.g. `deploy`, a generated password, **Directory: `/home/linqqkto`** (clear the suggested `public_html/deploy`), quota *Unlimited* → **Create**. Under *Configure FTP Client* note the **FTP server** (usually `ftp.linqsafe.com`) and the full username (`deploy@linqsafe.com`).
-2. **GitHub secrets:** github.com/moyocodes/linktree → **Settings → Secrets and variables → Actions → New repository secret**, three times:
+2. **GitHub secrets:** github.com/moyocodes/LINQSAFE → **Settings → Secrets and variables → Actions → New repository secret**, three times:
    - `FTP_SERVER` = `ftp.linqsafe.com`
    - `FTP_USERNAME` = `deploy@linqsafe.com`
    - `FTP_PASSWORD` = the password from step 1

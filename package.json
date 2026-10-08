@@ -60,5 +60,7 @@
   "engines": {
     "node": ">=20"
   },
-  "description": "Link-in-bio pages with a 3D animated landing page. React + Vite + Tailwind + Express + MySQL."
+  "description": "Link-in-bio pages with a 3D animated landing page. React + Vite + Tailwind + Express + MySQL.",
+  "license": "UNLICENSED",
+  "author": "Moyosore James <support@linqsafe.com>"
 }
