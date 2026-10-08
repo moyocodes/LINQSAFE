@@ -240,6 +240,9 @@ const MIGRATIONS = [
     await addColumn(db, 'links', 'icon_url MEDIUMTEXT NULL')
     await addColumn(db, 'users', 'redirect_link_id INT NULL')
   }],
+  [28, 'links can be hidden from the public page', async (db) => {
+    await addColumn(db, 'links', 'is_public TINYINT(1) NOT NULL DEFAULT 1')
+  }],
 ]
 
 export async function migrate(pool) {

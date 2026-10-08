@@ -252,13 +252,12 @@ export function SearchTemplate({ data, name, onLinkClick }) {
   )
 }
 
-// Client messages as chat bubbles around a big headline (after the "i got a text" post style).
+// Client messages as small chat bubbles under a quiet "What people say" label.
 // `onPhoto`: the page sits on a photo (Photo background), so the section gets its own dark glass panel
 // and white bubbles, and always reads whatever the picture behind it looks like.
 export function KindWords({ data, onPhoto = false }) {
   const items = data.testimonials || []
   if (!items.length) return null
-  const half = Math.ceil(items.length / 2)
   const Bubble = ({ t, i }) => (
     <motion.figure
       initial={{ opacity: 0, scale: 0.6, y: 20 }} whileInView={{ opacity: 1, scale: 1, y: 0 }} viewport={{ once: true }}
@@ -271,12 +270,11 @@ export function KindWords({ data, onPhoto = false }) {
   )
   return (
     <section aria-label="What clients say" className={`mt-8 space-y-2 ${onPhoto ? 'rounded-2xl bg-black/55 p-3.5 ring-1 ring-white/15 backdrop-blur-xl' : ''}`}>
-      {items.slice(0, half).map((t, i) => <Bubble key={i} t={t} i={i} />)}
       <motion.h2 initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
-        className={`py-1 text-center font-display text-2xl font-extrabold lowercase leading-none tracking-tight sm:text-3xl ${onPhoto ? '!text-white drop-shadow-lg' : 'text-accent'}`}>
-        i got a text
+        className={`py-1 text-center font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${onPhoto ? '!text-white/90' : 'text-muted-foreground'}`}>
+        What people say
       </motion.h2>
-      {items.slice(half).map((t, i) => <Bubble key={i + half} t={t} i={i + half} />)}
+      {items.map((t, i) => <Bubble key={i} t={t} i={i} />)}
     </section>
   )
 }

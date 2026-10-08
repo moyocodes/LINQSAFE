@@ -237,3 +237,32 @@ test('redirect mode and link logos', async () => {
   assert.equal((await api('PUT', `/links/${link.id}`, { title: 'Shop', url: 'https://example.com/shop', icon_url: icon })).status, 200)
   assert.equal((await client()('GET', `/u/${username}`)).body.links[0].icon_url, icon)
 })
+
+test('hidden links, click allowance, and founder-only gifting', async () => {
+  const api = client()
+  const username = await signUp(api)
+  const a = (await api('POST', '/links', { title: 'Shown', url: 'https://example.com/a' })).body
+  const b = (await api('POST', '/links', { title: 'Hidden', url: 'https://example.com/b' })).body
+  assert.equal((await api('PUT', `/links/${b.id}`, { title: 'Hidden', url: 'https://example.com/b', is_public: 0 })).status, 200)
+  const pub = (await client()('GET', `/u/${username}`)).body
+  assert.deepEqual(pub.links.map((l) => l.title), ['Shown'])
+  assert.equal((await api('GET', '/me')).body.links.length, 2, 'the owner still sees hidden links')
+
+  // Free allowance: 1 counted click a month, then clicks stop counting (the link still works).
+  const pool = await db()
+  const [[before]] = await pool.query("SELECT value FROM app_settings WHERE name = 'FREE_CLICKS'")
+  await pool.query("INSERT INTO app_settings (name, value) VALUES ('FREE_CLICKS', '1') ON DUPLICATE KEY UPDATE value = '1'")
+  try {
+    await client('Mozilla/5.0 (iPhone) one')('POST', `/click/${a.id}`, { ref: '' })
+    await client('Mozilla/5.0 (Android) two')('POST', `/click/${a.id}`, { ref: '' })
+    const me = (await api('GET', '/me')).body
+    assert.equal(me.clicks_this_month, 1)
+    assert.equal(me.limits.clicks, 1)
+  } finally {
+    if (before) await pool.query("UPDATE app_settings SET value = ? WHERE name = 'FREE_CLICKS'", [before.value])
+    else await pool.query("DELETE FROM app_settings WHERE name = 'FREE_CLICKS'")
+  }
+
+  assert.equal((await api('POST', `/owner/users/${username}/features`, { feature: 'qr_code', months: 1 })).status, 403)
+  assert.equal((await api('GET', '/owner/users')).status, 403)
+})

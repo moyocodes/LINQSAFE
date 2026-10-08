@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, Reorder, motion, useDragControls } from 'framer-motion'
-import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, UserRound, Share2, Smartphone, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, GripVertical, ImagePlus, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
+import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, UserRound, Share2, Smartphone, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, EyeOff, GripVertical, ImagePlus, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
 import { api, logout, setSignedIn } from '@/api'
 import { ProfileView } from '@/pages/Profile'
 import ShareButton from '@/ShareButton'
@@ -90,7 +90,7 @@ function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDra
     <Reorder.Item
       value={link} dragListener={false} dragControls={controls} onDragEnd={onDragEnd}
       initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-      className="relative overflow-hidden rounded-lg border bg-card"
+      className={`relative overflow-hidden rounded-lg border bg-card ${link.is_public === 0 ? 'border-dashed opacity-70' : ''}`}
       whileDrag={{ scale: 1.02, boxShadow: '0 10px 30px rgba(0,0,0,.12)', zIndex: 10 }}
     >
       {/* Phones: handle + icon + fields on top, controls in a row underneath. Wider: controls on the right. */}
@@ -113,6 +113,13 @@ function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDra
         <div className="col-span-2 flex items-center justify-between gap-1 border-t pt-2 sm:col-span-1 sm:flex-col sm:justify-center sm:border-0 sm:pt-0">
           <Badge variant="secondary"><BarChart3 className="mr-1 size-3" aria-hidden="true" />{link.clicks}<span className="sr-only"> clicks</span></Badge>
           <div className="flex">
+            {/* Public = shown on your page; hidden links stay saved here but visitors don't see them. */}
+            <Button variant="ghost" size="icon" className={`size-9 sm:size-8 ${link.is_public === 0 ? 'text-muted-foreground' : 'text-emerald-700'}`}
+              aria-pressed={link.is_public !== 0} aria-label={`${link.is_public === 0 ? 'Show' : 'Hide'} ${link.title || 'link'} on your page`}
+              title={link.is_public === 0 ? 'Hidden from your page. Tap to show it.' : 'Shown on your page. Tap to hide it.'}
+              onClick={() => { const is_public = link.is_public === 0 ? 1 : 0; onChange({ is_public }); onSave({ is_public }) }}>
+              {link.is_public === 0 ? <EyeOff /> : <Eye />}
+            </Button>
             <Button variant="ghost" size="icon" className="size-9 sm:size-8" aria-label={`Move ${link.title || 'link'} up`} disabled={index === 0} onClick={() => onMove(-1)}><ChevronUp /></Button>
             <Button variant="ghost" size="icon" className="size-9 sm:size-8" aria-label={`Move ${link.title || 'link'} down`} disabled={index === total - 1} onClick={() => onMove(1)}><ChevronDown /></Button>
             <Button variant="ghost" size="icon" className="size-9 text-destructive hover:bg-destructive/10 hover:text-destructive sm:size-8" aria-label={`Delete ${link.title || 'link'}`} onClick={onRemove}>
@@ -457,7 +464,8 @@ export default function Admin() {
     setMe((m) => ({ ...m, links: m.links.map((l) => (l.id === id ? { ...l, ...patch } : l)) }))
 
   const unlimited = has(me, 'unlimited_links')
-  const atLimit = !unlimited && me.links.length >= FREE_LINK_LIMIT
+  const freeLinks = me.limits?.links ?? FREE_LINK_LIMIT
+  const atLimit = !unlimited && me.links.length >= freeLinks
 
   // `m` lets callers save a change they just made (e.g. "Use this template") before state catches up.
   async function saveProfile(m = me) {
@@ -572,6 +580,21 @@ export default function Admin() {
               <ExternalLink className="size-4" aria-hidden="true" />
             </Link>
           )}
+          {me.limits?.clicks > 0 && !has(me, 'unlimited_clicks') && (() => {
+            const used = me.clicks_this_month || 0, cap = me.limits.clicks, full = used >= cap
+            return (
+              <div className={`col-span-2 space-y-2 rounded-xl border p-3 ${full ? 'border-accent/40 bg-accent/[0.06]' : 'bg-card'}`}>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span><b className="tabular-nums">{used.toLocaleString()}</b> of {cap.toLocaleString()} link clicks counted this month</span>
+                  <UnlockChip feature="unlimited_clicks" />
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10" role="progressbar" aria-valuemin={0} aria-valuemax={cap} aria-valuenow={Math.min(used, cap)} aria-label="Link clicks this month">
+                  <div className={`h-full rounded-full ${full ? 'bg-accent' : 'bg-emerald-600'}`} style={{ width: `${Math.min(100, (used / cap) * 100)}%` }} />
+                </div>
+                {full && <p className="text-xs text-muted-foreground">Your links still work for visitors. New clicks aren't counted until next month, or unlock unlimited clicks.</p>}
+              </div>
+            )
+          })()}
           <p className="col-span-2 -mt-1 text-xs text-muted-foreground">Your own visits while logged in aren't counted. To test, open your page in a private/incognito window.</p>
           <Link to="/admin/analytics" className="group col-span-2 flex items-center justify-between rounded-xl border bg-card px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted">
             <span className="flex items-center gap-2"><BarChart3 className="size-4" aria-hidden="true" /> Full analytics: countries, sources, devices</span>
@@ -670,7 +693,7 @@ export default function Admin() {
         <Card id="links" accent="lilac" className="scroll-mt-24">
           <CardHeader>
             <CardTitle className="flex items-center justify-between"><span className="flex items-center gap-2.5"><IconChip icon={Link2} tone="lilac" /> Links</span>
-              {!unlimited && <span className="text-xs font-medium text-muted-foreground">{me.links.length} of {FREE_LINK_LIMIT} free links</span>}
+              {!unlimited && <span className="text-xs font-medium text-muted-foreground">{me.links.length} of {freeLinks} free links</span>}
             </CardTitle>
             <CardDescription>Drag the handle to reorder. Changes save automatically.</CardDescription>
           </CardHeader>
@@ -693,7 +716,7 @@ export default function Admin() {
 
             {atLimit ? (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed bg-accent/[0.04] p-4">
-                <p className="text-sm">You've used all {FREE_LINK_LIMIT} free links. <span className="text-muted-foreground">Add unlimited links:</span></p>
+                <p className="text-sm">You've used all {freeLinks} free links. <span className="text-muted-foreground">Add unlimited links:</span></p>
                 <UnlockChip feature="unlimited_links" />
               </div>
             ) : (

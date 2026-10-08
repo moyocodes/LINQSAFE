@@ -38,7 +38,8 @@ export default function Onboarding({ me, onDone }) {
   useEffect(() => { api('/onboarding/step', { method: 'POST', body: { step: 1 } }).catch(() => {}) }, [])
   const set = (patch) => setD((x) => ({ ...x, ...patch }))
   const business = d.account_type === 'business'
-  const room = (has(me, 'unlimited_links') ? 99 : FREE_LINK_LIMIT) - me.links.length
+  const freeLinks = me.limits?.links ?? FREE_LINK_LIMIT
+  const room = (has(me, 'unlimited_links') ? 99 : freeLinks) - me.links.length
   const chosen = SOCIALS.filter(([t]) => handles[t]?.trim())
 
   const categoryValue = business && d.category === 'other' ? makeCustomCategory(d.category_other) : d.category
@@ -158,7 +159,7 @@ export default function Onboarding({ me, onDone }) {
               </>)}
 
               {step === 3 && (<>
-                <p className="text-sm text-muted-foreground">Add the socials you use. Just your handle is fine.{!has(me, 'unlimited_links') && ` Free pages hold ${FREE_LINK_LIMIT} links (${Math.max(0, room)} left).`}</p>
+                <p className="text-sm text-muted-foreground">Add the socials you use. Just your handle is fine.{!has(me, 'unlimited_links') && ` Free pages hold ${freeLinks} links (${Math.max(0, room)} left).`}</p>
                 {SOCIALS.map(([type, prefix, ph]) => (
                   <div key={type} className="flex items-center gap-3">
                     <TypeBadge type={type} className="size-9" />

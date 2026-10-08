@@ -14,6 +14,7 @@ export const FEATURES = [
   { key: 'testimonials', name: 'Kind words', detail: 'Client messages as chat bubbles' },
   { key: 'qr_code', name: 'QR code download', detail: 'For print, packaging and stories' },
   { key: 'analytics_90', name: '90-day analytics', detail: 'Free analytics cover the last 30 days' },
+  { key: 'unlimited_clicks', name: 'Unlimited link clicks', detail: 'Free pages count a set number of link clicks a month' },
 ]
 export const DURATIONS = [1, 3, 6, 12] // months
 export const FEATURE_KEYS = FEATURES.map((f) => f.key)
@@ -40,5 +41,8 @@ export function pricing(saved = {}) {
     forSale: monthly(f.key) > 0,
     prices: Object.fromEntries(DURATIONS.map((m) => [m, priceFor(f.key, m)])),
   }))
-  return { monthly, discount, priceFor, catalog, discounts: Object.fromEntries(DURATIONS.slice(1).map((m) => [m, discount(m)])) }
+  // Free plan allowances, also set by the founder: links per page, and link clicks counted per month (0 = no cap).
+  const count = (name, fallback) => { const v = read(name); return v == null || v === '' || !Number.isFinite(Number(v)) ? fallback : Math.max(0, Math.floor(Number(v))) }
+  const limits = { links: count('FREE_LINKS', 3), clicks: count('FREE_CLICKS', 0) }
+  return { monthly, discount, priceFor, catalog, limits, discounts: Object.fromEntries(DURATIONS.slice(1).map((m) => [m, discount(m)])) }
 }

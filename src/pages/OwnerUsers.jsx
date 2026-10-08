@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Search, ShieldCheck, Users } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Gift, Loader2, Search, ShieldCheck, Users, X } from 'lucide-react'
 import { api } from '@/api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -25,6 +26,9 @@ export default function OwnerUsers() {
   const [data, setData] = useState(null)
   const [denied, setDenied] = useState(false)
   const [reload, setReload] = useState(0)
+  const [catalog, setCatalog] = useState([])
+  const [managing, setManaging] = useState(null) // username whose features are open
+  useEffect(() => { api('/owner/pricing').then((c) => setCatalog(c.features)).catch(() => {}) }, [])
 
   const update = (patch) => setParams((p) => {
     const next = new URLSearchParams(p)
@@ -93,7 +97,7 @@ export default function OwnerUsers() {
                 <table className="w-full min-w-[56rem] text-sm">
                   <thead className="text-left text-muted-foreground">
                     <tr><th className="py-2 font-medium">User</th><th className="font-medium">Email</th><th className="font-medium">Type</th><th className="font-medium">Template</th>
-                      <th className="text-right font-medium">Links</th><th className="text-right font-medium">Views</th><th className="pl-4 font-medium">Paid</th><th className="font-medium">Joined</th><th className="font-medium">Last login</th></tr>
+                      <th className="text-right font-medium">Links</th><th className="text-right font-medium">Views</th><th className="pl-4 font-medium">Features</th><th className="font-medium">Joined</th><th className="font-medium">Last login</th></tr>
                   </thead>
                   <tbody>{data.users.map((u) => (
                     <tr key={u.username} className="border-t align-top">
@@ -108,7 +112,11 @@ export default function OwnerUsers() {
                       <td>{tplName[u.layout] || u.layout}</td>
                       <td className="text-right tabular-nums">{u.links}</td>
                       <td className="text-right tabular-nums">{Number(u.views || 0).toLocaleString()}</td>
-                      <td className="pl-4">{u.paid_features ? <span className="font-semibold text-accent">{u.paid_features}</span> : <span className="text-muted-foreground">–</span>}</td>
+                      <td className="pl-4">
+                        <button type="button" onClick={() => setManaging(u.username)} className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted">
+                          <Gift className="size-3.5" aria-hidden="true" />{u.features.length ? `${u.features.length} active` : 'Give'}
+                        </button>
+                      </td>
                       <td className="whitespace-nowrap tabular-nums text-muted-foreground">{u.joined}</td>
                       <td className="whitespace-nowrap tabular-nums text-muted-foreground">{u.last_login || '–'}{u.login_count ? <span className="block text-xs">{u.login_count} logins</span> : null}</td>
                     </tr>
@@ -120,7 +128,86 @@ export default function OwnerUsers() {
           </CardContent>
         </Card>
       )}
+      <AnimatePresence>
+        {managing && data && (
+          <FeatureManager user={data.users.find((u) => u.username === managing)} catalog={catalog} onClose={() => setManaging(null)}
+            onChanged={(features) => setData((d) => ({ ...d, users: d.users.map((u) => (u.username === managing
+              ? { ...u, features: Object.entries(features).map(([feature, until]) => ({ feature, until, gift: u.features.find((f) => f.feature === feature)?.gift ?? true })) }
+              : u)) }))} />
+        )}
+      </AnimatePresence>
     </OwnerShell>
+  )
+}
+
+// Founder gives (or takes back) any paid feature for one user: 1, 3, 6 or 12 months on top of time left, or forever.
+function FeatureManager({ user, catalog, onClose, onChanged }) {
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+  const [length, setLength] = useState({}) // feature → months | 'forever'
+  const active = Object.fromEntries(user.features.map((f) => [f.feature, f]))
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  async function run(key, req) {
+    setBusy(key); setError('')
+    try { onChanged((await req()).features) } catch (e) { setError(e.message) } finally { setBusy('') }
+  }
+  const give = (key) => {
+    const l = length[key] ?? 1
+    return run(key, () => api(`/owner/users/${user.username}/features`, { method: 'POST', body: { feature: key, months: l === 'forever' ? null : l } }))
+  }
+  const remove = (key) => window.confirm(`Remove ${catalog.find((f) => f.key === key)?.name || key} from @${user.username}?`)
+    && run(key, () => api(`/owner/users/${user.username}/features/${key}`, { method: 'DELETE' }))
+  return (
+    <motion.div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+      <motion.div role="dialog" aria-modal="true" aria-label={`Features for @${user.username}`} onClick={(e) => e.stopPropagation()}
+        initial={{ y: 24, scale: 0.97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 24, scale: 0.97 }} transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl">
+        <div className="flex items-center justify-between gap-3 border-b px-5 py-4">
+          <div className="min-w-0">
+            <p className="truncate font-semibold">Features for @{user.username}</p>
+            <p className="truncate text-xs text-muted-foreground">{user.email || 'No email'} · gifts are free; buying later adds time on top</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="grid size-8 shrink-0 place-items-center rounded-md hover:bg-muted"><X className="size-4" /></button>
+        </div>
+        <ul className="divide-y overflow-y-auto">
+          {catalog.map((f) => {
+            const on = active[f.key]
+            const l = length[f.key] ?? 1
+            return (
+              <li key={f.key} className="space-y-2 px-5 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">{f.name}</span>
+                    <span className={`block text-xs ${on ? 'text-emerald-700' : 'text-muted-foreground'}`}>
+                      {on ? `Active ${on.until ? `until ${on.until}` : 'forever'}${on.gift ? ' · gift' : ' · paid'}` : 'Not active'}
+                    </span>
+                  </span>
+                  {on && <button type="button" onClick={() => remove(f.key)} disabled={!!busy} className="text-xs font-medium text-destructive hover:underline disabled:opacity-50">Remove</button>}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[1, 3, 6, 12, 'forever'].map((m) => (
+                    <button key={m} type="button" onClick={() => setLength({ ...length, [f.key]: m })} aria-pressed={l === m}
+                      className={`rounded-full border px-2.5 py-1 text-xs font-medium ${l === m ? 'border-foreground bg-foreground text-background' : 'hover:bg-muted'}`}>
+                      {m === 'forever' ? 'Forever' : `${m} mo`}
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => give(f.key)} disabled={!!busy}
+                    className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-60">
+                    {busy === f.key ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : on ? <Check className="size-3.5" aria-hidden="true" /> : <Gift className="size-3.5" aria-hidden="true" />}
+                    {on ? 'Add time' : 'Give'}
+                  </button>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+        {error && <p role="alert" className="border-t px-5 py-3 text-sm font-medium text-destructive">{error}</p>}
+      </motion.div>
+    </motion.div>
   )
 }
 

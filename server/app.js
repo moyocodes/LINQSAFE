@@ -52,7 +52,7 @@ if (process.env.CORS_ORIGIN) app.use(cors({ origin: process.env.CORS_ORIGIN.spli
 const PAYSTACK_KEY = process.env.PAYSTACK_SECRET_KEY || ''
 // Current prices: founder-saved settings over .env defaults. Read fresh each time (tiny table).
 async function currentPricing() {
-  const [rows] = await pool.query("SELECT name, value FROM app_settings WHERE name LIKE 'PRICE\\_%' OR name LIKE 'DISCOUNT\\_%'")
+  const [rows] = await pool.query("SELECT name, value FROM app_settings WHERE name LIKE 'PRICE\\_%' OR name LIKE 'DISCOUNT\\_%' OR name LIKE 'FREE\\_%'")
   return pricing(Object.fromEntries(rows.map((r) => [r.name, r.value])))
 }
 async function paystack(path, init = {}) {
@@ -192,7 +192,6 @@ function typeMatchesUrl(type, url) {
 }
 // Paid (Pro) features are enforced here, not just hidden in the UI.
 const PRO_LAYOUTS = Object.keys(LAYOUT_FEATURE)
-const FREE_LINK_LIMIT = 3
 const CATEGORIES = ['beauty', 'fashion', 'food', 'coaching', 'creative', 'health', 'tech', 'retail', 'events', 'education', 'finance', 'real_estate', 'home_services', 'nonprofit', 'travel', 'other']
 const cleanCategory = (value = '') => {
   const raw = String(value || '').trim()
@@ -520,9 +519,10 @@ app.get('/api/me', auth, async (req, res) => {
   const [[user]] = await pool.query(
     `SELECT username, username_changes, username_changed_at, redirect_link_id, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
   const [links] = await pool.query(
-    'SELECT id, title, url, type, icon_url, clicks FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [req.userId])
+    'SELECT id, title, url, type, icon_url, is_public, clicks FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [req.userId])
+  const { limits } = await currentPricing()
   const { username_changes: _n, username_changed_at: _at, ...me } = user
-  res.json({ ...me, is_owner: ownsSite(user), next_username_change: nextUsernameChange(user), testimonials: parseList(user.testimonials),
+  res.json({ ...me, is_owner: ownsSite(user), next_username_change: nextUsernameChange(user), limits, clicks_this_month: await clicksThisMonth(req.userId), testimonials: parseList(user.testimonials),
     features: await featureAccess(req.userId), links })
 })
 
@@ -592,7 +592,7 @@ app.post('/api/onboarding/complete', auth, async (req, res) => {
 app.get('/api/billing/config', async (req, res) => {
   const p = await currentPricing()
   // Public key is safe to expose; read at runtime so cPanel's .env is enough (no rebuild needed).
-  res.json({ enabled: !!PAYSTACK_KEY, publicKey: process.env.PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY || '', currency: 'NGN', durations: DURATIONS, discounts: p.discounts, features: p.catalog() })
+  res.json({ enabled: !!PAYSTACK_KEY, publicKey: process.env.PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY || '', currency: 'NGN', durations: DURATIONS, discounts: p.discounts, limits: p.limits, features: p.catalog() })
 })
 
 app.post('/api/billing/checkout', auth, async (req, res) => {
@@ -687,8 +687,9 @@ app.post('/api/links', auth, async (req, res) => {
   if (!LINK_TYPES.includes(type)) return res.status(400).json({ error: 'Please choose a link type' })
   if (!typeMatchesUrl(type, url)) return res.status(400).json({ error: 'That link type does not match the URL' })
   const [[{ count }]] = await pool.query('SELECT COUNT(*) AS count FROM links WHERE user_id = ? AND deleted_at IS NULL', [req.userId])
-  if (count >= FREE_LINK_LIMIT && !(await hasFeature(req.userId, 'unlimited_links')))
-    return res.status(402).json({ error: `Free pages hold ${FREE_LINK_LIMIT} links. Unlock unlimited links from your dashboard.`, upgrade: true, feature: 'unlimited_links' })
+  const { limits } = await currentPricing()
+  if (count >= limits.links && !(await hasFeature(req.userId, 'unlimited_links')))
+    return res.status(402).json({ error: `Free pages hold ${limits.links} links. Unlock unlimited links from your dashboard.`, upgrade: true, feature: 'unlimited_links' })
   const [[{ next }]] = await pool.query(
     'SELECT COALESCE(MAX(position), 0) + 1 AS next FROM links WHERE user_id = ? AND deleted_at IS NULL', [req.userId])
   const [r] = await pool.query(
@@ -710,6 +711,8 @@ app.put('/api/links/:id', auth, async (req, res) => {
     return res.status(400).json({ error: 'Title and a valid http(s) URL are required' })
   if (!LINK_TYPES.includes(type)) return res.status(400).json({ error: 'Unknown link type' })
   if (!typeMatchesUrl(type, url)) return res.status(400).json({ error: 'That link type does not match the URL' })
+  if ('is_public' in req.body)
+    await pool.query('UPDATE links SET is_public = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [req.body.is_public ? 1 : 0, req.params.id, req.userId])
   if ('icon_url' in req.body) {
     const icon = String(req.body.icon_url || '')
     if (linkIconError(icon)) return res.status(400).json({ error: linkIconError(icon) })
@@ -758,16 +761,29 @@ app.get('/api/u/:username', async (req, res) => {
   if (!own && (await track(req, res, { userId: user.id, kind: 'view', ref: req.query.src === 'qr' ? 'qr' : String(req.query.ref || ''), tz: String(req.query.tz || '') })))
     await pool.query('UPDATE users SET views = views + 1 WHERE id = ?', [user.id])
   const [links] = await pool.query(
-    'SELECT id, title, url, type, icon_url FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [user.id])
+    'SELECT id, title, url, type, icon_url FROM links WHERE user_id = ? AND deleted_at IS NULL AND is_public = 1 ORDER BY position, id', [user.id])
   // Redirect mode: the page sends visitors straight to one of its links.
   const redirect = links.find((l) => l.id === user.redirect_link_id)
   const { id: _id, redirect_link_id: _r, ...pub } = user // internal ids never leave the server; links keep theirs for click counting
   res.json({ ...pub, testimonials: parseList(user.testimonials), links, redirect: redirect ? { id: redirect.id, url: redirect.url } : null, own })
 })
 
+// Link clicks counted this calendar month (the free plan's allowance is per month).
+async function clicksThisMonth(userId) {
+  const [[{ n }]] = await pool.query("SELECT COUNT(*) AS n FROM events WHERE user_id = ? AND kind = 'click' AND created_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')", [userId])
+  return Number(n)
+}
+// Free pages count up to limits.clicks link clicks a month (0 = no cap). Past that the links still work for
+// visitors; the clicks just aren't counted until next month or until Unlimited link clicks is unlocked.
+async function overClickQuota(userId) {
+  const { limits } = await currentPricing()
+  if (!limits.clicks || (await hasFeature(userId, 'unlimited_clicks'))) return false
+  return (await clicksThisMonth(userId)) >= limits.clicks
+}
+
 app.post('/api/click/:id', clickLimiter, async (req, res) => {
   const [[link]] = await pool.query('SELECT id, user_id FROM links WHERE id = ? AND deleted_at IS NULL', [req.params.id])
-  if (link && (await sessionUserId(req)) !== link.user_id && (await track(req, res, { userId: link.user_id, kind: 'click', linkId: link.id, ref: String(req.body?.ref || ''), tz: String(req.body?.tz || '') })))
+  if (link && (await sessionUserId(req)) !== link.user_id && !(await overClickQuota(link.user_id)) && (await track(req, res, { userId: link.user_id, kind: 'click', linkId: link.id, ref: String(req.body?.ref || ''), tz: String(req.body?.tz || '') })))
     await pool.query('UPDATE links SET clicks = clicks + 1 WHERE id = ?', [link.id])
   res.json({ ok: true })
 })
@@ -1033,7 +1049,37 @@ app.get('/api/owner/users', auth, ownerOnly, async (req, res) => {
        (SELECT COUNT(*) FROM links l WHERE l.user_id = u.id AND l.deleted_at IS NULL) AS links,
        (SELECT COUNT(*) FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > NOW())) AS paid_features
      FROM users u WHERE ${W} ORDER BY ${order} LIMIT ? OFFSET ?`, [...args, per, (page - 1) * per])
-  res.json({ users: users.map((u) => ({ ...u, email_verified: !!u.email_verified, onboarded: !!u.onboarded })), total, page, pages: Math.max(1, Math.ceil(total / per)) })
+  const names = users.map((u) => u.username)
+  const [feats] = names.length ? await pool.query(
+    `SELECT u.username, f.feature, DATE_FORMAT(f.expires_at, '%Y-%m-%d') AS until, f.payment_reference = 'founder' AS gift FROM user_features f JOIN users u ON u.id = f.user_id
+     WHERE u.username IN (?) AND (f.expires_at IS NULL OR f.expires_at > NOW())`, [names]) : [[]]
+  const byUser = {}
+  for (const f of feats) (byUser[f.username] ??= []).push({ feature: f.feature, until: f.until, gift: !!f.gift })
+  res.json({ users: users.map((u) => ({ ...u, email_verified: !!u.email_verified, onboarded: !!u.onboarded, features: byUser[u.username] || [] })), total, page, pages: Math.max(1, Math.ceil(total / per)) })
+})
+
+// Founder gives a feature for free: for `months` (added on top of any time left) or forever (months = null).
+app.post('/api/owner/users/:username/features', auth, ownerOnly, async (req, res) => {
+  const { feature, months = null } = req.body || {}
+  if (!FEATURE_KEYS.includes(feature)) return res.status(400).json({ error: 'Unknown feature' })
+  if (months != null && !(Number.isInteger(months) && months >= 1 && months <= 120)) return res.status(400).json({ error: 'Months must be 1–120, or empty for no end date' })
+  const [[u]] = await pool.query('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', [String(req.params.username).toLowerCase()])
+  if (!u) return res.status(404).json({ error: 'User not found' })
+  if (months == null) {
+    await pool.query(`INSERT INTO user_features (user_id, feature, payment_reference, expires_at) VALUES (?, ?, 'founder', NULL)
+      ON DUPLICATE KEY UPDATE payment_reference = 'founder', expires_at = NULL, reminded_at = NULL, expired_notice_at = NULL`, [u.id, feature])
+  } else {
+    await pool.query(`INSERT INTO user_features (user_id, feature, payment_reference, expires_at) VALUES (?, ?, 'founder', DATE_ADD(NOW(), INTERVAL ? MONTH))
+      ON DUPLICATE KEY UPDATE payment_reference = 'founder', reminded_at = NULL, expired_notice_at = NULL,
+        expires_at = IF(expires_at IS NULL, NULL, DATE_ADD(GREATEST(expires_at, NOW()), INTERVAL ? MONTH))`, [u.id, feature, months, months])
+  }
+  res.json({ features: await featureAccess(u.id) })
+})
+app.delete('/api/owner/users/:username/features/:feature', auth, ownerOnly, async (req, res) => {
+  const [[u]] = await pool.query('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', [String(req.params.username).toLowerCase()])
+  if (!u) return res.status(404).json({ error: 'User not found' })
+  await pool.query('DELETE FROM user_features WHERE user_id = ? AND feature = ?', [u.id, req.params.feature])
+  res.json({ features: await featureAccess(u.id) })
 })
 
 // ---- Founder traffic: the users' analytics for the whole site, filterable ----
@@ -1145,11 +1191,17 @@ app.get('/api/owner/export/:what.csv', auth, ownerOnly, async (req, res) => {
 
 app.get('/api/owner/pricing', auth, ownerOnly, async (req, res) => {
   const p = await currentPricing()
-  res.json({ durations: DURATIONS, discounts: p.discounts, features: p.catalog() })
+  res.json({ durations: DURATIONS, discounts: p.discounts, limits: p.limits, features: p.catalog() })
 })
 app.put('/api/owner/pricing', auth, ownerOnly, async (req, res) => {
-  const { prices = {}, discounts = {} } = req.body || {}
+  const { prices = {}, discounts = {}, limits = {} } = req.body || {}
   const rows = []
+  for (const [k, name, label] of [['links', 'FREE_LINKS', 'Free links'], ['clicks', 'FREE_CLICKS', 'Free link clicks a month']]) {
+    if (!(k in limits)) continue
+    const v = Number(limits[k])
+    if (!Number.isInteger(v) || v < 0 || v > 10_000_000) return res.status(400).json({ error: `${label} must be a whole number` })
+    rows.push([name, String(v)])
+  }
   for (const f of FEATURES) {
     if (!(f.key in prices)) continue
     const v = Number(prices[f.key])
@@ -1165,7 +1217,7 @@ app.put('/api/owner/pricing', auth, ownerOnly, async (req, res) => {
   for (const [name, value] of rows)
     await pool.query('INSERT INTO app_settings (name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)', [name, value])
   const p = await currentPricing()
-  res.json({ ok: true, discounts: p.discounts, features: p.catalog() })
+  res.json({ ok: true, discounts: p.discounts, limits: p.limits, features: p.catalog() })
 })
 
 // ---- SEO: robots.txt, sitemap.xml, profile pictures for link previews ----

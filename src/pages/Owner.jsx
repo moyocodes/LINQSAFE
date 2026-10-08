@@ -39,12 +39,14 @@ function PricingEditor() {
   const [cfg, setCfg] = useState(null)
   const [prices, setPrices] = useState({})
   const [discounts, setDiscounts] = useState({})
+  const [limits, setLimits] = useState({ links: '', clicks: '' })
   const [state, setState] = useState('idle')
   const [error, setError] = useState('')
   const load = (c) => {
     setCfg(c)
     setPrices(Object.fromEntries(c.features.map((f) => [f.key, f.monthly || ''])))
     setDiscounts({ ...c.discounts })
+    setLimits({ links: c.limits?.links ?? 3, clicks: c.limits?.clicks ?? 0 })
   }
   useEffect(() => { api('/owner/pricing').then(load).catch((e) => setError(e.message)) }, [])
   async function save() {
@@ -54,6 +56,7 @@ function PricingEditor() {
       const body = {
         prices: Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, Number(v) || 0])),
         discounts: Object.fromEntries(Object.entries(discounts).map(([k, v]) => [k, Number(v) || 0])),
+        limits: { links: Number(limits.links) || 0, clicks: Number(limits.clicks) || 0 },
       }
       load(await api('/owner/pricing', { method: 'PUT', body }))
       setState('saved')
@@ -72,7 +75,7 @@ function PricingEditor() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Tag className="size-5" aria-hidden="true" /> Pricing</CardTitle>
-        <CardDescription>Monthly price per feature in naira. 0 or empty keeps a feature off sale. Changes apply to new checkouts immediately.</CardDescription>
+        <CardDescription>Monthly price per feature in naira, and what the free plan includes. 0 or empty keeps a feature off sale. Changes apply immediately.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="overflow-x-auto">
@@ -93,6 +96,17 @@ function PricingEditor() {
             </tbody>
           </table>
         </div>
+        <fieldset className="grid gap-3 rounded-md border p-4 sm:grid-cols-2">
+          <legend className="px-1 text-sm font-medium">Free plan allowances</legend>
+          <label className="text-xs text-muted-foreground">Links per page (free)
+            <Input type="number" min="0" inputMode="numeric" className="mt-1 h-9" value={limits.links} onChange={(e) => setLimits({ ...limits, links: e.target.value })} />
+            <span className="mt-1 block">More needs <b>Unlimited links</b> (price above).</span>
+          </label>
+          <label className="text-xs text-muted-foreground">Link clicks counted per month (free)
+            <Input type="number" min="0" inputMode="numeric" className="mt-1 h-9" value={limits.clicks} onChange={(e) => setLimits({ ...limits, clicks: e.target.value })} />
+            <span className="mt-1 block">0 = no cap. Past it, links still work but clicks aren't counted until <b>Unlimited link clicks</b> is bought.</span>
+          </label>
+        </fieldset>
         <fieldset className="flex flex-wrap items-end gap-4">
           <legend className="mb-2 text-sm font-medium">Discount for longer periods (%)</legend>
           {[3, 6, 12].map((m) => (

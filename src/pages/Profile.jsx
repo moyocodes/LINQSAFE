@@ -81,7 +81,9 @@ export default function Profile() {
 
 // The page itself, from data alone. The dashboard renders this directly as its instant live preview
 // (no network), passing unsaved edits as `data` and `onLinkClick` that doesn't count clicks.
-export function ProfileView({ data, layout, theme: chosen, preview = null, embed = false, onLinkClick = () => {} }) {
+export function ProfileView({ data: raw, layout, theme: chosen, preview = null, embed = false, onLinkClick = () => {} }) {
+  // Hidden links (is_public 0) never show, including in the dashboard's previews.
+  const data = raw.links.some((l) => l.is_public === 0) ? { ...raw, links: raw.links.filter((l) => l.is_public !== 0) } : raw
   const name = data.display_name || data.username
   const trackClick = onLinkClick
   const prefersDark = useMedia('(prefers-color-scheme: dark)')

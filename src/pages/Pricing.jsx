@@ -8,7 +8,11 @@ import { FREE_LINK_LIMIT, naira } from '@/lib/plans'
 import { fadeUp, stagger } from '@/lib/motion'
 import { useTitle } from '@/lib/useTitle'
 
-const FREE = [`Up to ${FREE_LINK_LIMIT} links`, 'Classic, Grid and Minimal templates', 'All 5 themes incl. auto dark', 'Social badges & WhatsApp button', '30-day analytics: countries, sources, devices']
+// Free plan, with the founder's current allowances (links per page, link clicks counted per month).
+const freeList = (limits = {}) => [
+  `Up to ${limits.links ?? FREE_LINK_LIMIT} links`, ...(limits.clicks ? [`${Number(limits.clicks).toLocaleString()} link clicks counted a month`] : []),
+  'Classic, Grid and Minimal templates', 'All 5 themes incl. auto dark', 'Social badges & WhatsApp button', '30-day analytics: countries, sources, devices',
+]
 
 export default function Pricing() {
   useTitle('Pricing')
@@ -29,7 +33,7 @@ export default function Pricing() {
             <div aria-hidden="true" className="border-blend" />
             <h2 className="text-xl font-bold">Free, always</h2>
             <p className="mt-1 text-3xl font-extrabold">₦0</p>
-            <ul className="mt-6 space-y-2.5 text-sm">{FREE.map((f) => <li key={f} className="flex gap-2"><Check className="size-4 shrink-0 text-emerald-700" aria-hidden="true" />{f}</li>)}</ul>
+            <ul className="mt-6 space-y-2.5 text-sm">{freeList(cfg?.limits).map((f) => <li key={f} className="flex gap-2"><Check className="size-4 shrink-0 text-emerald-700" aria-hidden="true" />{f}</li>)}</ul>
             <Button asChild variant="outline" className="mt-8 w-full"><Link to={isSignedIn() ? '/admin' : '/signup'}>{isSignedIn() ? 'Go to dashboard' : 'Start free'}</Link></Button>
           </motion.div>
 
