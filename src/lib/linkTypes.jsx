@@ -73,19 +73,22 @@ export function TypeBadge({ type, url, icon, className = 'size-9' }) {
   )
 }
 
-export function TypeSelect({ value, onChange, id, required, ...rest }) {
+// Link type picker as tappable chips (no dropdown): socials first, then shop, website, music, other.
+// Scrolls sideways on narrow screens.
+export function TypeSelect({ value, onChange, id, required, className = '', ...rest }) {
+  const keys = [...SOCIAL_KEYS.filter((k) => k !== 'music'), 'store', 'website', 'music', 'other']
   return (
-    <select
-      id={id} required={required} value={value} onChange={(e) => onChange(e.target.value)}
-      className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm" {...rest}
-    >
-      {!value && <option value="" disabled>Choose a type…</option>}
-      <optgroup label="Social media">
-        {SOCIAL_KEYS.map((k) => <option key={k} value={k}>{LINK_TYPES[k].label}</option>)}
-      </optgroup>
-      <optgroup label="Other">
-        {['music', 'store', 'website', 'other'].filter((k) => !SOCIAL_KEYS.includes(k)).map((k) => <option key={k} value={k}>{LINK_TYPES[k].label}</option>)}
-      </optgroup>
-    </select>
+    <div id={id} role="radiogroup" aria-required={required || undefined} {...rest}
+      className={`-mx-1 flex gap-1.5 overflow-x-auto px-1 py-1 [scrollbar-width:thin] ${className}`}>
+      {keys.map((k) => {
+        const on = value === k
+        return (
+          <button key={k} type="button" role="radio" aria-checked={on} onClick={() => onChange(k)} title={LINK_TYPES[k].label}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-xs font-medium transition-all ${on ? 'border-foreground bg-foreground text-background shadow-sm' : 'bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground'}`}>
+            <TypeBadge type={k} className="size-6" />{LINK_TYPES[k].label.split(' /')[0]}
+          </button>
+        )
+      })}
+    </div>
   )
 }

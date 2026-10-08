@@ -33,12 +33,19 @@ function RedirectPicker({ me, setMe }) {
   }
   return (
     <div className={`space-y-2 rounded-lg border p-3 ${value ? 'border-accent/40 bg-accent/[0.05]' : ''}`}>
-      <label htmlFor="redirect" className="block text-sm font-semibold">When someone opens {location.host}/{me.username}</label>
-      <select id="redirect" value={value} onChange={(e) => choose(e.target.value)} disabled={!me.links.length}
-        className="h-10 w-full rounded-md border bg-background px-3 text-sm">
-        <option value="">Show my page with all my links</option>
-        {me.links.map((l) => <option key={l.id} value={l.id}>Go straight to: {l.title || l.url}</option>)}
-      </select>
+      <p id="redirect-label" className="break-words text-sm font-semibold">When someone opens {location.host}/{me.username}</p>
+      <div role="radiogroup" aria-labelledby="redirect-label" className="flex flex-wrap gap-2">
+        {[['', 'Show my page', null], ...me.links.map((l) => [String(l.id), l.title || l.url, l])].map(([v, label, l]) => {
+          const on = value === v
+          return (
+            <motion.button key={v || 'page'} type="button" role="radio" aria-checked={on} whileTap={{ scale: 0.95 }} onClick={() => !on && choose(v)}
+              className={`flex min-w-0 max-w-full items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-xs font-medium transition-colors ${on ? 'border-foreground bg-foreground text-background' : 'bg-card hover:border-foreground/30'}`}>
+              {l ? <TypeBadge type={l.type} url={l.url} icon={l.icon_url} className="size-6" /> : <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground"><Eye className="size-3.5" aria-hidden="true" /></span>}
+              <span className="truncate">{l ? `Go to ${label}` : label}</span>
+            </motion.button>
+          )
+        })}
+      </div>
       <p className="text-xs text-muted-foreground">{value ? 'Visitors skip your page and land on that link (counted as a click). You still see your page when signed in.' : 'Or send everyone to just one link, for a launch, a sale or a new video.'}</p>
       {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
     </div>
@@ -472,6 +479,7 @@ export default function Admin() {
   async function addLink(e) {
     e.preventDefault()
     setError('')
+    if (!newLink.type) return setError('Tap what kind of link it is (Instagram, Website, Shop…).')
     setAdding(true)
     try {
       const link = await api('/links', { method: 'POST', body: { title: newLink.title, url: newLink.url, type: newLink.type } })
@@ -681,7 +689,7 @@ export default function Admin() {
             </Reorder.Group>
             {me.links.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No links yet. Add your first one below.</p>}
 
-            {!atLimit && <SocialSuggestions links={me.links} onPick={(l) => { setNewLink({ ...l, detected: true }); setTimeout(() => urlInput.current?.focus(), 0) }} />}
+            {!atLimit && <SocialSuggestions me={me} onPick={(l) => { setNewLink({ ...l, detected: true, picked: true }); setTimeout(() => { const el = urlInput.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length) } }, 0) }} />}
 
             {atLimit ? (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed bg-accent/[0.04] p-4">
@@ -694,19 +702,21 @@ export default function Admin() {
               <Input ref={urlInput} placeholder="https://youtube.com/…" aria-label="New link URL" type="url" inputMode="url" required value={newLink.url} onChange={(e) => {
                 const url = e.target.value
                 const detected = detectType(url)
-                setNewLink({ ...newLink, url, type: detected || (newLink.detected ? '' : newLink.type), detected: !!detected })
+                // A picked suggestion keeps its type (e.g. "Our menu" stays a Shop link) whatever URL goes in.
+                setNewLink({ ...newLink, url, type: detected || (newLink.detected && !newLink.picked ? '' : newLink.type), detected: !!detected || !!newLink.picked })
               }} />
               <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
                 <AnimatePresence mode="wait" initial={false}>
                   {newLink.detected ? (
                     <motion.p key="yes" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-1 items-center gap-2 text-sm">
                       <TypeBadge type={newLink.type} url={newLink.url} className="size-7" />
-                      <span><span className="font-medium">{LINK_TYPES[newLink.type].label}</span> link detected</span>
+                      <span>{newLink.picked ? 'Adding as ' : ''}<span className="font-medium">{LINK_TYPES[newLink.type].label}</span>{newLink.picked ? '' : ' link detected'}</span>
+                      <button type="button" onClick={() => setNewLink({ ...newLink, detected: false, picked: false })} className="text-xs font-semibold text-accent hover:underline">Change</button>
                     </motion.p>
                   ) : (
-                    <motion.div key="ask" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-1 flex-wrap items-center gap-2">
-                      <label htmlFor="new-type" className="text-sm text-muted-foreground">Is this a social link? Choose its type:</label>
-                      <div className="min-w-44 flex-1"><TypeSelect id="new-type" required value={newLink.type} onChange={(type) => setNewLink({ ...newLink, type })} /></div>
+                    <motion.div key="ask" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid min-w-0 flex-1 gap-1">
+                      <p id="new-type-label" className="text-sm text-muted-foreground">What kind of link is it? Tap one:</p>
+                      <TypeSelect id="new-type" required aria-labelledby="new-type-label" value={newLink.type} onChange={(type) => setNewLink({ ...newLink, type })} />
                     </motion.div>
                   )}
                 </AnimatePresence>

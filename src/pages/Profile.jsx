@@ -211,7 +211,7 @@ export function ProfileView({ data, layout, theme: chosen, preview = null, embed
         </motion.div>
         )}
 
-        <KindWords data={data} onPhoto={layout === 'backdrop'} />
+        <KindWords data={data} onPhoto={['backdrop', 'cover', 'search'].includes(layout)} />
         <FounderNote data={data} name={name} />
 
         {/* Every public page carries the linqsafe mark. Its links open in a new tab so visitors keep this page. */}
@@ -222,7 +222,7 @@ export function ProfileView({ data, layout, theme: chosen, preview = null, embed
               <span>Made with <Wordmark className="font-display font-bold" /></span>
             </Link>
           </motion.div>
-          <span className={layout === 'backdrop' ? 'rounded-full bg-black/55 px-3 py-1 text-white/90 backdrop-blur [&_a:hover]:!text-white' : ''}><Link to="/signup" target="_blank" rel="noopener" className="underline hover:text-foreground">Create your own page</Link><span className="mx-2">·</span><Link to="/privacy" target="_blank" rel="noopener" className="hover:text-foreground">Privacy</Link></span>
+          <span className={['backdrop', 'cover', 'search'].includes(layout) ? 'rounded-full bg-black/55 px-3 py-1 text-white/90 backdrop-blur [&_a:hover]:!text-white' : ''}><Link to="/signup" target="_blank" rel="noopener" className="underline hover:text-foreground">Create your own page</Link><span className="mx-2">·</span><Link to="/privacy" target="_blank" rel="noopener" className="hover:text-foreground">Privacy</Link></span>
         </footer>
       </div>
     </div>

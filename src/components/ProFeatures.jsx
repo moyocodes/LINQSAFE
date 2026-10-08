@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, IconChip } from '@/components/ui/card'
 import { LINK_TYPES, TypeBadge } from '@/lib/linkTypes'
-import { CATEGORIES, TEMPLATES, customCategoryText, has, isCustomCategory, makeCustomCategory, methodLabel, naira } from '@/lib/plans'
+import { CATEGORIES, TEMPLATES, categoryLabel, customCategoryText, has, isCustomCategory, makeCustomCategory, methodLabel, naira } from '@/lib/plans'
 
 export const PaidBadge = ({ unlocked }) => (
   <span title={unlocked ? 'Unlocked' : 'Paid'} className={`inline-flex shrink-0 items-center gap-1 rounded-full p-1 text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset sm:px-2 sm:py-0.5 ${unlocked ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : 'bg-accent/10 text-accent ring-accent/20'}`}>
@@ -393,27 +393,90 @@ export function AccountFields({ me, setMe }) {
   )
 }
 
-// One-tap starters for socials the user hasn't added yet.
-const SUGGEST = [
-  ['instagram', 'https://instagram.com/'], ['threads', 'https://threads.net/@'], ['tiktok', 'https://tiktok.com/@'], ['youtube', 'https://youtube.com/@'],
-  ['x', 'https://x.com/'], ['linkedin', 'https://linkedin.com/in/'], ['whatsapp', 'https://wa.me/'],
-  ['pinterest', 'https://pinterest.com/'], ['snapchat', 'https://snapchat.com/add/'], ['facebook', 'https://facebook.com/'],
+// Link ideas tailored to what they told us in onboarding (account type, category, occupation, topics).
+// Each idea: [type, title, url prefix]. Socials they already have drop out.
+const IDEA = {
+  instagram: ['instagram', 'Instagram', 'https://instagram.com/'], threads: ['threads', 'Threads', 'https://threads.net/@'],
+  tiktok: ['tiktok', 'TikTok', 'https://tiktok.com/@'], youtube: ['youtube', 'YouTube', 'https://youtube.com/@'],
+  x: ['x', 'X', 'https://x.com/'], linkedin: ['linkedin', 'LinkedIn', 'https://linkedin.com/in/'], whatsapp: ['whatsapp', 'WhatsApp', 'https://wa.me/'],
+  pinterest: ['pinterest', 'Pinterest', 'https://pinterest.com/'], snapchat: ['snapchat', 'Snapchat', 'https://snapchat.com/add/'],
+  facebook: ['facebook', 'Facebook', 'https://facebook.com/'], github: ['github', 'GitHub', 'https://github.com/'],
+  music: ['music', 'My music', 'https://open.spotify.com/artist/'],
+  booking: ['website', 'Book an appointment', 'https://'], menu: ['store', 'Our menu', 'https://'], shop: ['store', 'Shop now', 'https://'],
+  portfolio: ['website', 'My portfolio', 'https://'], site: ['website', 'Website', 'https://'], course: ['website', 'Join my course', 'https://'],
+  donate: ['website', 'Donate', 'https://'], listings: ['website', 'Current listings', 'https://'], tickets: ['website', 'Get tickets', 'https://'],
+  newsletter: ['website', 'Newsletter', 'https://'], map: ['website', 'Find us on Google Maps', 'https://maps.google.com/'],
+  quote: ['website', 'Get a quote', 'https://'], cv: ['website', 'My CV', 'https://'],
+}
+const PLAN = {
+  beauty: ['instagram', 'booking', 'tiktok', 'whatsapp', 'map', 'pinterest'],
+  fashion: ['instagram', 'shop', 'tiktok', 'pinterest', 'whatsapp', 'threads'],
+  food: ['menu', 'whatsapp', 'instagram', 'map', 'tiktok', 'facebook'],
+  coaching: ['booking', 'linkedin', 'youtube', 'course', 'newsletter', 'instagram'],
+  creative: ['portfolio', 'instagram', 'youtube', 'tiktok', 'music', 'pinterest'],
+  health: ['booking', 'instagram', 'youtube', 'whatsapp', 'tiktok', 'course'],
+  tech: ['github', 'linkedin', 'x', 'site', 'youtube', 'newsletter'],
+  retail: ['shop', 'whatsapp', 'instagram', 'tiktok', 'facebook', 'map'],
+  events: ['tickets', 'instagram', 'whatsapp', 'tiktok', 'map', 'facebook'],
+  education: ['course', 'youtube', 'linkedin', 'whatsapp', 'newsletter', 'site'],
+  finance: ['booking', 'linkedin', 'site', 'whatsapp', 'newsletter', 'x'],
+  real_estate: ['listings', 'whatsapp', 'instagram', 'booking', 'youtube', 'facebook'],
+  home_services: ['quote', 'whatsapp', 'map', 'facebook', 'instagram', 'site'],
+  nonprofit: ['donate', 'site', 'instagram', 'facebook', 'linkedin', 'youtube'],
+  travel: ['booking', 'instagram', 'tiktok', 'youtube', 'whatsapp', 'site'],
+  personal: ['instagram', 'tiktok', 'threads', 'youtube', 'x', 'linkedin'],
+}
+// Words in occupation/topics that point to a specific link.
+const HINTS = [
+  [/music|sing|dj|producer|artist|rapper|band/i, 'music'], [/develop|engineer|code|software|tech/i, 'github'],
+  [/design|photo|illustrat|art|creative|film|video/i, 'portfolio'], [/coach|consult|mentor|therap/i, 'booking'],
+  [/write|blog|author|journal/i, 'newsletter'], [/youtube|vlog|content|creator|influenc/i, 'youtube'],
+  [/job|career|recruit|professional|lawyer|account/i, 'linkedin'], [/hair|nail|lash|brow|makeup|barber|spa/i, 'booking'],
+  [/chef|bak|cake|food|restaurant|cater/i, 'menu'], [/shop|store|sell|brand|boutique|fashion/i, 'shop'],
 ]
-export function SocialSuggestions({ links, onPick }) {
-  const have = new Set(links.map((l) => l.type))
-  const left = SUGGEST.filter(([t]) => !have.has(t)).slice(0, 6)
-  if (!left.length) return null
+
+export function linkIdeas(me) {
+  const plan = PLAN[me.account_type === 'business' ? me.category : 'personal'] || PLAN.personal
+  const text = `${me.occupation || ''} ${me.tags || ''}`
+  const hinted = HINTS.filter(([re]) => re.test(text)).map(([, k]) => k)
+  const reason = me.account_type === 'business' ? `Popular with ${categoryLabel(me.category)}` : 'Popular with creators'
+  const have = new Set(me.links.map((l) => l.type))
+  const haveTitles = new Set(me.links.map((l) => l.title.toLowerCase()))
+  const seen = new Set()
+  return [...hinted.map((k) => [k, 'Fits what you do']), ...plan.map((k) => [k, reason]), ...Object.keys(IDEA).map((k) => [k, 'More ideas'])]
+    .filter(([k]) => { if (seen.has(k)) return false; seen.add(k); return true })
+    .map(([k, why]) => { const [type, title, url] = IDEA[k]; return { key: k, type, title, url, why } })
+    .filter((i) => !(LINK_TYPES[i.type].hosts.length && have.has(i.type)) && !haveTitles.has(i.title.toLowerCase()))
+}
+
+// Tappable idea cards (no dropdowns): tap one and the add-link form is filled in, ready for the URL.
+export function SocialSuggestions({ me, onPick }) {
+  const [more, setMore] = useState(false)
+  const ideas = linkIdeas(me)
+  if (!ideas.length) return null
+  const shown = ideas.slice(0, more ? 12 : 6)
   return (
     <div>
-      <p className="text-xs font-medium text-muted-foreground">Suggested: add your socials</p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {left.map(([t, prefix]) => (
-          <motion.button key={t} type="button" whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }} onClick={() => onPick({ type: t, title: LINK_TYPES[t].label.split(' /')[0], url: prefix })}
-            className="inline-flex items-center gap-1.5 rounded-full border bg-card py-1 pl-1 pr-3 text-xs font-medium hover:bg-muted">
-            <TypeBadge type={t} className="size-6" /> <Plus className="size-3" aria-hidden="true" />{LINK_TYPES[t].label.split(' /')[0]}
-          </motion.button>
-        ))}
+      <p className="text-xs font-medium text-muted-foreground">Suggested for you · tap one to add it</p>
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <AnimatePresence initial={false}>
+          {shown.map((i) => (
+            <motion.button key={i.key} type="button" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+              whileHover={{ y: -3 }} whileTap={{ scale: 0.95 }} onClick={() => onPick({ type: i.type, title: i.title, url: i.url })}
+              className="group flex min-w-0 items-center gap-2.5 rounded-xl border bg-card p-2.5 text-left shadow-sm transition-colors hover:border-accent/50 hover:bg-accent/[0.04]">
+              <TypeBadge type={i.type} className="size-8 sm:size-9" />
+              <span className="min-w-0 flex-1">
+                <span className="line-clamp-2 break-words text-sm font-semibold leading-tight sm:line-clamp-1">{i.title}</span>
+                <span className="hidden truncate text-[11px] text-muted-foreground sm:block">{i.why}</span>
+              </span>
+              <Plus className="hidden size-4 shrink-0 text-muted-foreground transition-transform group-hover:rotate-90 group-hover:text-accent sm:block" aria-hidden="true" />
+            </motion.button>
+          ))}
+        </AnimatePresence>
       </div>
+      {ideas.length > 6 && (
+        <button type="button" onClick={() => setMore((m) => !m)} className="mt-2 text-xs font-semibold text-accent hover:underline">{more ? 'Fewer ideas' : 'More ideas'}</button>
+      )}
     </div>
   )
 }

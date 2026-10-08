@@ -83,10 +83,10 @@ export function CoverTemplate({ data, name, onLinkClick }) {
           <motion.img src={img} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover"
             initial={{ scale: 1.12 }} animate={{ scale: 1 }} transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/65" aria-hidden="true" />
-        <div className="absolute inset-x-0 bottom-0 px-6 pb-8 text-white">
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/80" aria-hidden="true" />
+        <div className="on-photo absolute inset-x-0 bottom-0 px-6 pb-8">
           <motion.h1 variants={fadeUp} className="font-serif text-4xl font-medium leading-none sm:text-5xl">Hi, I'm <em>{firstName(name)}</em></motion.h1>
-          {data.bio && <motion.p variants={fadeUp} className="mx-auto mt-3 max-w-xs text-sm text-white/85">{data.bio}</motion.p>}
+          {data.bio && <motion.p variants={fadeUp} className="mx-auto mt-3 max-w-xs text-sm font-medium">{data.bio}</motion.p>}
           <motion.div variants={fadeUp} className="mt-5 flex justify-center gap-6">
             {socialsOf(data.links).map((l) => {
               const Icon = LINK_TYPES[l.type].icon
@@ -219,7 +219,7 @@ export function SearchTemplate({ data, name, onLinkClick }) {
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/40" />
         </div>
         <div className="relative">
-          <motion.h1 variants={fadeUp} className="text-3xl font-bold tracking-tight text-white drop-shadow">the search:</motion.h1>
+          <motion.h1 variants={fadeUp} className="on-photo text-3xl font-bold tracking-tight">the search:</motion.h1>
           <motion.div variants={fadeUp} className="relative mx-auto mt-4 flex max-w-sm items-center gap-2 rounded-full bg-white px-5 py-3 text-left text-sm text-black shadow-lg">
             <span className="flex-1">
               <span className="sr-only">{query}</span>
@@ -232,7 +232,7 @@ export function SearchTemplate({ data, name, onLinkClick }) {
               </motion.span>
             )}
           </motion.div>
-          <motion.p variants={fadeUp} className="mt-16 text-3xl font-bold tracking-tight text-white drop-shadow">the solution:</motion.p>
+          <motion.p variants={fadeUp} className="on-photo mt-16 text-3xl font-bold tracking-tight">the solution:</motion.p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             {data.links.map((l, i) => (
               <motion.a key={l.id} {...linkProps(l, onLinkClick)}
@@ -263,17 +263,17 @@ export function KindWords({ data, onPhoto = false }) {
     <motion.figure
       initial={{ opacity: 0, scale: 0.6, y: 20 }} whileInView={{ opacity: 1, scale: 1, y: 0 }} viewport={{ once: true }}
       transition={{ delay: i * 0.12, type: 'spring', stiffness: 260, damping: 16 }}
-      className={`relative max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-snug ${onPhoto ? 'bg-white text-ink shadow-lg' : 'bg-accent/15 text-foreground'} ${i % 2 ? 'ml-auto rotate-2' : '-rotate-2'}`}
+      className={`relative max-w-[75%] rounded-2xl px-3 py-1.5 text-xs leading-snug ${onPhoto ? 'bg-white text-ink shadow-lg' : 'bg-accent/15 text-foreground'} ${i % 2 ? 'ml-auto rotate-2' : '-rotate-2'}`}
     >
       <blockquote>{t}</blockquote>
-      <span aria-hidden="true" className={`absolute -bottom-1.5 size-3 rotate-45 ${onPhoto ? 'bg-white' : 'bg-accent/15'} ${i % 2 ? 'right-6' : 'left-6'}`} />
+      <span aria-hidden="true" className={`absolute -bottom-1 size-2 rotate-45 ${onPhoto ? 'bg-white' : 'bg-accent/15'} ${i % 2 ? 'right-6' : 'left-6'}`} />
     </motion.figure>
   )
   return (
-    <section aria-label="What clients say" className={`mt-12 space-y-3 ${onPhoto ? 'rounded-3xl bg-black/55 p-5 ring-1 ring-white/15 backdrop-blur-xl' : ''}`}>
+    <section aria-label="What clients say" className={`mt-8 space-y-2 ${onPhoto ? 'rounded-2xl bg-black/55 p-3.5 ring-1 ring-white/15 backdrop-blur-xl' : ''}`}>
       {items.slice(0, half).map((t, i) => <Bubble key={i} t={t} i={i} />)}
       <motion.h2 initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
-        className={`py-2 text-center font-display text-5xl font-extrabold lowercase leading-none tracking-tighter sm:text-6xl ${onPhoto ? '!text-white drop-shadow-lg' : 'text-accent'}`}>
+        className={`py-1 text-center font-display text-2xl font-extrabold lowercase leading-none tracking-tight sm:text-3xl ${onPhoto ? '!text-white drop-shadow-lg' : 'text-accent'}`}>
         i got a text
       </motion.h2>
       {items.slice(half).map((t, i) => <Bubble key={i + half} t={t} i={i + half} />)}
@@ -302,8 +302,8 @@ export function BackdropTemplate({ data, name, onLinkClick }) {
             ? <img src={data.avatar_url} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
             : <div className="grid size-full place-items-center bg-white/20 font-display text-4xl backdrop-blur">{name[0]}</div>}
         </motion.div>
-        <motion.h1 variants={fadeUp} className="mt-4 text-3xl font-semibold tracking-tight !text-white drop-shadow">{name}</motion.h1>
-        {data.bio && <motion.p variants={fadeUp} className="mx-auto mt-2 max-w-xs text-white/85 drop-shadow">{data.bio}</motion.p>}
+        <motion.h1 variants={fadeUp} className="on-photo mt-4 text-3xl font-semibold tracking-tight">{name}</motion.h1>
+        {data.bio && <motion.p variants={fadeUp} className="on-photo mx-auto mt-2 max-w-xs font-medium">{data.bio}</motion.p>}
         <motion.div variants={fadeUp} className="mt-5 flex flex-wrap justify-center gap-3">
           {socialsOf(data.links).map((l) => {
             const Icon = LINK_TYPES[l.type].icon
