@@ -1,5 +1,5 @@
 {
-  "name": "linktree",
+  "name": "linqsafe",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -13,7 +13,8 @@
     "owner": "node server/scripts/owner.js",
     "test": "node --test tests/*.test.js",
     "package": "sh scripts/package.sh prod",
-    "package:dev": "sh scripts/package.sh dev"
+    "package:dev": "sh scripts/package.sh dev",
+    "check": "node server/scripts/check.js"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.16",
