@@ -34,6 +34,7 @@ npm test                     # API tests (they clean up after themselves)
 ```bash
 npm run package:dev   # dev branch  → linqsafe-dev.zip
 npm run package       # prod branch → linqsafe-prod.zip
+npm run package:admin # prod branch → linqsafe-admin.zip (admin.linqsafe.com)
 ```
 
 Upload and extract the zip into the app folder, then *Setup Node.js App* → **Restart**. Use Node.js 20+ and `DB_HOST=localhost`; run `check` from *Run JS script* if anything fails. Each server keeps its own `.env`. First-time setup, DNS, SSL, Paystack, email, backups and troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).

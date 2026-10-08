@@ -29,7 +29,7 @@ Each stage has its **own database** and **own settings**, so testing never touch
 | Database | `linqsafe_local` (MySQL on your computer) | `linqqkto_linqsafe_dev` (cPanel) | `linqqkto_linqsafe` (cPanel) |
 | Settings file | `.env.local` | `.env` in `/home/linqqkto/linqsafe-dev` | `.env` in `/home/linqqkto/linqsafe` and `/home/linqqkto/linqsafe-admin` |
 | Git branch | any, usually `dev` | `dev` | `prod` |
-| Deploy package | — | `npm run package:dev` → `linqsafe-dev.zip` | `npm run package` → `linqsafe-prod.zip` |
+| Deploy package | — | `npm run package:dev` → `linqsafe-dev.zip` | `npm run package` → `linqsafe-prod.zip`; founder console: `npm run package:admin` → `linqsafe-admin.zip` |
 | Paystack keys | test (`sk_test_`, `pk_test_`) | test | live (`sk_live_`, `pk_live_`) |
 | Corner badge | LOCAL | DEV | none |
 | Emails | printed in the terminal | sent (or in the app log if no Resend key) | sent |
@@ -174,6 +174,7 @@ Use a **different user and password** for dev and prod.
 ```bash
 git switch dev  && git pull && npm run package:dev    # → linqsafe-dev.zip
 git switch prod && git pull && npm run package        # → linqsafe-prod.zip
+npm run package:admin                                  # → linqsafe-admin.zip (founder console)
 ```
 
 Each zip (~0.5 MB) contains `app.cjs`, `package.json`, `package-lock.json`, `server/` and the built site in `dist/`. No settings files.
@@ -308,7 +309,7 @@ git switch prod && git pull && git merge dev && git push
 npm run package           # → linqsafe-prod.zip
 git switch dev
 ```
-Upload and extract into **both** `linqsafe` and `linqsafe-admin`, then **Restart** both apps.
+Upload `linqsafe-prod.zip` into `linqsafe` and `linqsafe-admin.zip` into `linqsafe-admin` (`npm run package:admin`), then **Restart** both apps.
 
 Your `.env` is never in the zip, so extracting over the folder keeps your settings. Database changes apply automatically on restart (see `server/migrations.js`): you'll see `Applying migration …` in `stderr.log`.
 
