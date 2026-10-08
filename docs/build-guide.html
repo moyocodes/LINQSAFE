@@ -622,66 +622,28 @@ docker run -p 3001:3001 --env-file .env linqsafe   # app only, hosted DB</pre
     </div>
 
     <h2 class="page-break">5. Going live: local, dev and prod</h2>
-    <table>
-      <tr>
-        <th>Stage</th>
-        <th>Site</th>
-        <th>Founder console</th>
-        <th>Database</th>
-        <th>Git branch</th>
-      </tr>
-      <tr>
-        <td>Local</td>
-        <td>localhost:5173</td>
-        <td>admin.localhost:5173</td>
-        <td>MySQL on your computer</td>
-        <td>any</td>
-      </tr>
-      <tr>
-        <td>Dev</td>
-        <td>dev.linqsafe.com</td>
-        <td>admin-dev.linqsafe.com</td>
-        <td>hosted dev DB</td>
-        <td><code>dev</code></td>
-      </tr>
-      <tr>
-        <td>Prod</td>
-        <td>linqsafe.com</td>
-        <td>admin.linqsafe.com</td>
-        <td>hosted prod DB</td>
-        <td><code>main</code></td>
-      </tr>
-    </table>
-    <ol>
-      <li>
-        Push the code to GitHub. In Vercel, <b>Add New → Project</b> and import
-        the repo.
-      </li>
-      <li>Create two hosted MySQL databases (dev, prod).</li>
-      <li>
-        In Vercel → Settings → Environment Variables, add each variable twice,
-        once for <b>Production</b> and once for <b>Preview</b>:
-        <code>DB_*</code>, <code>DB_SSL=true</code>, <code>JWT_SECRET</code>,
-        <code>APP_URL</code>, <code>RESEND_API_KEY</code>,
-        <code>MAIL_FROM</code>, <code>OWNER_EMAIL</code>,
-        <code>ADMIN_HOST</code>, <code>PAYSTACK_SECRET_KEY</code> (test key for
-        dev, live key for prod), optional default prices <code>PRICE_*</code> /
-        <code>DISCOUNT_*</code>, <code>APP_STAGE</code>.
-      </li>
-      <li>
-        Vercel → Domains: add the prod domains to Production; add the dev
-        domains and assign them to the <code>dev</code> branch.
-      </li>
-      <li>
-        Paystack → Settings → API Keys &amp; Webhooks: set the webhook URL to
-        <code>https://linqsafe.com/api/billing/webhook</code> (and the dev one
-        in test mode).
-      </li>
-      <li>Resend: verify your domain so emails don't land in spam.</li>
-      <li>Turn on Vercel Analytics for the project.</li>
-    </ol>
+<p>Three stages, each with its own database and settings, so testing never touches real users or money.</p>
+<table>
+  <tr><th>Stage</th><th>Address</th><th>Database</th><th>Settings</th><th>Branch</th><th>Paystack</th></tr>
+  <tr><td>Local</td><td>localhost:5173</td><td><code>linqsafe_local</code> on your computer</td><td><code>.env.local</code></td><td>usually <code>dev</code></td><td>test</td></tr>
+  <tr><td>Dev</td><td>dev.linqsafe.com</td><td>cPanel MySQL <code>…_linqsafe_dev</code></td><td><code>.env</code> on the server</td><td><code>dev</code></td><td>test</td></tr>
+  <tr><td>Prod</td><td>linqsafe.com, admin.linqsafe.com</td><td>cPanel MySQL <code>…_linqsafe</code></td><td><code>.env</code> on the server</td><td><code>prod</code></td><td>live</td></tr>
+</table>
+<p>The server reads <code>.env.local</code> first and <code>.env</code> second (first value wins), so your computer never uses a live database by accident. Work on <code>dev</code>, deploy it to dev.linqsafe.com, check it, then <code>git merge dev</code> into <code>prod</code> and deploy that.</p>
+<h3>Hosting on Namecheap cPanel</h3>
+<p>Namecheap's MySQL only accepts connections from its own server, so the app runs right next to it as a cPanel <b>Node.js App</b> (Phusion Passenger):</p>
+<ol>
+  <li>Point the domain at the hosting: nameservers <b>Namecheap Web Hosting DNS</b>. Create subdomains <code>dev</code> and <code>admin</code> in cPanel → Domains.</li>
+  <li>cPanel → MySQL Databases: one database and user for dev, another for prod.</li>
+  <li>On your computer: <code>npm run package:dev</code> (dev branch) or <code>npm run package</code> (prod branch). This builds the site and zips only what the server needs: no settings files.</li>
+  <li>File Manager: create the app folder outside <code>public_html</code>, upload and extract the zip, and create a <code>.env</code> with that stage's database, <code>JWT_SECRET</code>, <code>APP_URL</code>, Paystack keys and <code>NODE_ENV=production</code>.</li>
+  <li>Setup Node.js App → Create Application: root = the folder, URL = the (sub)domain, startup file <code>app.cjs</code> → Run NPM Install → Restart.</li>
+  <li>Check <code>/api/health</code>; turn on AutoSSL; set the Paystack webhook (test mode → dev, live mode → prod).</li>
+</ol>
+<p>Updating: build the zip, upload and extract over the folder (the <code>.env</code> stays), Restart. Database changes apply automatically on restart. Full details, backups and troubleshooting are in <code>docs/DEPLOY.md</code>.</p>
+<p class="prompt"><b>Prompt:</b> "Set up local, dev and prod stages with separate databases and settings files, a startup file for cPanel's Node.js App, and a script that builds a deploy zip per stage."</p>
 
-    <h2>6. Launch checklist</h2>
+<h2>6. Launch checklist</h2>
     <ul>
       <li>
         A long random <code>JWT_SECRET</code> per stage (<code

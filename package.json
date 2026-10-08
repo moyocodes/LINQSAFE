@@ -12,7 +12,8 @@
     "set-plan": "node server/scripts/set-plan.js",
     "owner": "node server/scripts/owner.js",
     "test": "node --test tests/*.test.js",
-    "package": "sh scripts/package.sh"
+    "package": "sh scripts/package.sh prod",
+    "package:dev": "sh scripts/package.sh dev"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.16",

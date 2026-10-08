@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise'
-import 'dotenv/config'
+import './env.js'
 
 const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DB_SSL } = process.env
 const ssl = DB_SSL === 'true' ? { rejectUnauthorized: true } : undefined // hosted MySQL (PlanetScale, Aiven, RDS…) usually needs TLS
@@ -23,6 +23,7 @@ export const pool = mysql.createPool({
 try {
   await pool.query('SELECT 1')
 } catch (e) {
+  if (!DB_HOST || !DB_NAME) console.error('\nNo database settings found. Is there a .env file in the app folder (next to app.cjs)?')
   console.error(`\nCould not connect to MySQL as "${DB_USER}"@"${DB_HOST}:${DB_PORT}" (${e.code || e.message}).`)
   if (e.code === 'ER_ACCESS_DENIED_ERROR')
     console.error('Check DB_USER and DB_PASSWORD in your .env file (see .env.example).')

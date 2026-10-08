@@ -1,9 +1,13 @@
 #!/bin/sh
 # Builds the site and zips exactly what the server needs, for upload to cPanel.
-#   npm run package   →   linqsafe-deploy.zip
+#   npm run package       → linqsafe-prod.zip  (for linqsafe.com and admin.linqsafe.com)
+#   npm run package:dev   → linqsafe-dev.zip   (for dev.linqsafe.com; shows a DEV badge)
+# Never includes .env files: each server keeps its own .env.
 set -e
 cd "$(dirname "$0")/.."
-VITE_APP_STAGE=${VITE_APP_STAGE:-prod} npm run build
-rm -f linqsafe-deploy.zip
-zip -rq linqsafe-deploy.zip app.cjs package.json package-lock.json server dist -x "*.DS_Store"
-echo "Created linqsafe-deploy.zip ($(du -h linqsafe-deploy.zip | cut -f1)). Upload it to your app folder in cPanel and extract."
+STAGE=${1:-prod}
+VITE_APP_STAGE=$STAGE npm run build
+OUT="linqsafe-$STAGE.zip"
+rm -f "$OUT"
+zip -rq "$OUT" app.cjs package.json package-lock.json server dist -x "*.DS_Store"
+echo "Created $OUT ($(du -h "$OUT" | cut -f1)). Upload it to the $STAGE app folder in cPanel, extract, then Restart."

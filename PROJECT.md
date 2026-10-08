@@ -97,6 +97,10 @@ server/app.js           all API routes
 server/db.js            MySQL connection, runs migrations
 server/migrations.js    versioned schema changes (append-only)
 server/schema.sql       readable snapshot of the full schema
+server/env.js           loads .env.local (your computer) then .env (servers)
+app.cjs                 cPanel startup file
+scripts/package.sh      builds linqsafe-dev.zip / linqsafe-prod.zip
+docs/DEPLOY.md          step-by-step deployment for local, dev, prod
 server/mailer.js        Resend email + email template
 server/scripts/         set-plan.js, owner.js
 tests/api.test.js       API tests (npm test)
@@ -133,98 +137,19 @@ mysqldump -u root -p --no-data linktree > server/schema.sql
 
 ## 5. Stages: local, dev, prod
 
-| Stage     | Main site          | Founder console          | Database           | Branch |
-| --------- | ------------------ | ------------------------ | ------------------ | ------ |
-| **local** | `localhost:5173`   | `admin.localhost:5173`   | local MySQL        | any    |
-| **dev**   | `dev.linqsafe.com` | `admin-dev.linqsafe.com` | separate dev MySQL | `dev`  |
-| **prod**  | `linqsafe.com`     | `admin.linqsafe.com`     | production MySQL   | `main` |
+Full step-by-step instructions: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
-A small **LOCAL** or **DEV** badge shows in the corner outside prod, so stages are never confused.
+| Stage | Where | Address | Database | Settings | Branch | Paystack |
+|---|---|---|---|---|---|---|
+| **local** | your computer | `localhost:5173` | `linqsafe_local` | `.env.local` | any (usually `dev`) | test |
+| **dev** | Namecheap cPanel | `dev.linqsafe.com` | `linqqkto_linqsafe_dev` | `.env` on the server | `dev` | test |
+| **prod** | Namecheap cPanel | `linqsafe.com`, `admin.linqsafe.com` | `linqqkto_linqsafe` | `.env` on the server | `prod` | live |
 
-### Local
-
-```bash
-cp .env.example .env        # fill in DB_* and JWT_SECRET
-npm install
-npm run dev                 # API on :3001, site on :5173
-npm run owner               # after signing up with OWNER_EMAIL: verifies it and unlocks every feature
-```
-
-Verify and reset emails are printed in the terminal running `npm run dev`.
-
-### Namecheap (cPanel) — the live site
-linqsafe.com runs on Namecheap shared hosting: one Node.js app (cPanel **Setup Node.js App**, Phusion Passenger) serves the API and the website, and talks to cPanel's MySQL on `localhost`.
-
-**One-time setup**
-1. **Database** — cPanel → *MySQL Databases*: create a database and a user, add the user to the database with **All Privileges**. Note the full names (cPanel prefixes them, e.g. `linqqkto_linqsafe`).
-2. **Upload** — on your computer run `npm run package` → `linqsafe-deploy.zip`. In cPanel → *File Manager*, create a folder **outside** `public_html` (e.g. `/home/linqqkto/linqsafe`), upload the zip there and **Extract** it.
-3. **Settings file** — in that folder create `.env` (File Manager → + File):
-   ```
-   NODE_ENV=production
-   DB_HOST=localhost
-   DB_PORT=3306
-   DB_USER=linqqkto_youruser
-   DB_PASSWORD=...
-   DB_NAME=linqqkto_linqsafe
-   JWT_SECRET=...            # openssl rand -hex 32
-   APP_URL=https://linqsafe.com
-   OWNER_EMAIL=moyosorejames@gmail.com
-   PAYSTACK_SECRET_KEY=sk_live_...   # sk_test_ until you've done a test payment
-   PAYSTACK_PUBLIC_KEY=pk_live_...   # pk_test_ with the test secret key
-   RESEND_API_KEY=...        # optional; without it emails go to the app log
-   MAIL_FROM=linqsafe <support@linqsafe.com>
-   ```
-4. **Create the app** — cPanel → *Setup Node.js App* → **Create Application**:
-   - Node.js version: the newest offered (20 or later)
-   - Application mode: **Production**
-   - Application root: `linqsafe` (the folder from step 2)
-   - Application URL: `linqsafe.com`
-   - Application startup file: `app.cjs`
-   - **Create**, then **Run NPM Install**, then **Restart**.
-5. **Domain** — linqsafe.com must point at this hosting, not Vercel. In Namecheap → Domain List → Manage: nameservers **Namecheap Web Hosting DNS** (or an A record `@` → your hosting IP). Remove the domain from the Vercel project.
-6. **Check** — open `https://linqsafe.com/api/health` → `{"ok":true}`. The first start creates all database tables automatically.
-7. **Owner access** — sign up with `OWNER_EMAIL`, then confirm your email (or in *Setup Node.js App* open the terminal command shown at the top, `cd linqsafe`, and run `npm run owner`).
-8. **Paystack** — Settings → API Keys & Webhooks → webhook URL `https://linqsafe.com/api/billing/webhook`.
-
-**Updating the live site**: `npm run package`, upload and extract over the old files (your `.env` stays), *Setup Node.js App* → **Run NPM Install** if dependencies changed → **Restart**.
-
-**Logs**: errors are written to `stderr.log` in the app folder (File Manager).
-
-**Notes**: country analytics use the visitor's time zone here (there's no Vercel location header). The founder console on `admin.linqsafe.com` needs its own subdomain pointed at the same app; until then use `linqsafe.com/owner`.
-
-### Alternative: Vercel
-(Only if the database is reachable from the internet — Namecheap's isn't, which is why the live site runs on cPanel.)
-
-
-1. Push the repo to GitHub and import it in Vercel. The framework is detected as Vite and `vercel.json` handles the rest.
-2. Create two hosted MySQL databases (dev and prod). PlanetScale, Aiven or TiDB Cloud all work. Set `DB_SSL=true`.
-3. In **Vercel → Settings → Environment Variables**, set these for **Production** and **Preview** separately:
-   - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSL`
-   - `JWT_SECRET` (different per stage; `openssl rand -hex 32`)
-   - `APP_URL` (e.g. `https://linqsafe.com`)
-   - `RESEND_API_KEY`, `MAIL_FROM`
-   - `OWNER_EMAIL`, `ADMIN_HOST` (e.g. `admin.linqsafe.com`)
-   - `PAYSTACK_SECRET_KEY` (`sk_test_…` for dev, `sk_live_…` for prod), optional `PAYSTACK_PUBLIC_KEY`
-   - Optional starting prices `PRICE_<FEATURE>` and `DISCOUNT_3M/6M/12M` (you can set them in the founder dashboard instead)
-   - `APP_STAGE` (`prod` or `dev`)
-4. **Domains:** add `linqsafe.com` and `admin.linqsafe.com` to Production. Add `dev.linqsafe.com` and `admin-dev.linqsafe.com`, then assign them to the `dev` git branch.
-5. In **Paystack → Settings → API Keys & Webhooks**, set the webhook URL to `https://linqsafe.com/api/billing/webhook` (live) and the dev URL in test mode.
-6. Turn on **Analytics** in the Vercel project for site-wide traffic stats.
-
----
-
-### Docker (optional)
-
-Docker isn't used for local development (`npm run dev` runs Node and MySQL directly) or on Vercel. It's there for two cases:
-
-1. **Run the whole stack in containers:** `docker compose up --build` starts MySQL 8.4 (data in the `db-data` volume) and the app on `http://localhost:3001`, using `.env`. The compose file points the app at the `db` container.
-2. **Deploy to a Docker host** (Render, Railway, Fly, a VPS) with a hosted database:
-   ```bash
-   docker build -t linqsafe --build-arg APP_STAGE=prod .
-   docker run -p 3001:3001 --env-file .env linqsafe
-   ```
-
-**How the image is built (`Dockerfile`):** stage 1 (`node:22-alpine`) runs `npm ci` and `npm run build`, with `APP_STAGE` passed as a build argument because Vite bakes it in. Stage 2 copies in only production dependencies, `server/` and `dist/`, runs as the non-root `node` user, exposes port 3001, and checks `/api/health` every 30 seconds. `.dockerignore` keeps `.env`, `node_modules`, docs and tests out of the image, so secrets come from the environment at run time.
+- Each stage has its own database and settings; the server reads `.env.local` first, then `.env` (`server/env.js`). Only your computer has `.env.local`.
+- Work on `dev` → deploy to dev.linqsafe.com → `git merge dev` into `prod` → deploy to linqsafe.com.
+- Deploy packages: `npm run package:dev` → `linqsafe-dev.zip`, `npm run package` → `linqsafe-prod.zip`. Each runs as a cPanel *Node.js App* with startup file `app.cjs`, next to cPanel's MySQL (`DB_HOST=localhost`).
+- A LOCAL / DEV badge shows outside prod.
+- Vercel (`api/index.js`, `vercel.json`) and Docker remain supported, but aren't used: Namecheap's MySQL only accepts connections from its own server.
 
 ## 6. Environment variables
 

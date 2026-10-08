@@ -6,48 +6,39 @@ Link-in-bio pages for creators and small businesses. Sign up, add your links, pi
 
 For the full picture (features, architecture, database, stages, security, design system), see **[PROJECT.md](PROJECT.md)**. For a step-by-step guide to rebuilding a project like this, see **[docs/linqsafe-Build-Guide.pdf](docs/linqsafe-Build-Guide.pdf)**.
 
-## Run locally (Node + MySQL)
+## Stages
 
-Requires Node 22 and a running MySQL 8.
+| Stage | Address | Database | Settings | Branch |
+|---|---|---|---|---|
+| local | `localhost:5173` | `linqsafe_local` | `.env.local` | usually `dev` |
+| dev | `dev.linqsafe.com` | `linqqkto_linqsafe_dev` (cPanel) | `.env` on server | `dev` |
+| prod | `linqsafe.com` + `admin.linqsafe.com` | `linqqkto_linqsafe` (cPanel) | `.env` on server | `prod` |
+
+Work on `dev`, check it on dev.linqsafe.com, then merge `dev` into `prod` and deploy. **Full instructions: [docs/DEPLOY.md](docs/DEPLOY.md).**
+
+## Run locally
+
+Requires Node 22 and MySQL 8.
 
 ```bash
-cp .env.example .env      # fill in DB_* and JWT_SECRET
+git switch dev
+cp .env.example .env.local   # DB_* for your local MySQL, DB_NAME=linqsafe_local
 npm install
-npm run dev               # API on :3001, site on :5173, founder console on admin.localhost:5173
-npm run owner             # after signing up with OWNER_EMAIL: verifies it and unlocks every feature
+npm run dev                  # API :3001, site :5173, founder console admin.localhost:5173
+npm run owner                # after signing up with OWNER_EMAIL: verifies it and unlocks every feature
+npm test                     # API tests (they clean up after themselves)
 ```
 
-The database schema is created and updated automatically on start (`server/migrations.js`). Verify and reset emails are printed in the terminal until `RESEND_API_KEY` is set.
-
-## Run with Docker (optional)
-
-Docker is **not** needed for local development or for Vercel. It's an alternative way to run everything in containers, or to deploy to a Docker-based host.
-
-**Whole stack (app + MySQL):**
+## Deploy (Namecheap cPanel)
 
 ```bash
-docker compose up --build    # site + API at http://localhost:3001
+npm run package:dev   # dev branch  → linqsafe-dev.zip
+npm run package       # prod branch → linqsafe-prod.zip
 ```
 
-`docker-compose.yml` starts MySQL 8.4 (data kept in a `db-data` volume) and the app, using the values in `.env`. Inside Docker the app reaches the database at `db`, not `localhost`. The compose file sets that for you.
+Upload and extract the zip into the app folder, then *Setup Node.js App* → **Restart**. Each server keeps its own `.env`. First-time setup, DNS, SSL, Paystack, email, backups and troubleshooting: [docs/DEPLOY.md](docs/DEPLOY.md).
 
-**App image only** (when your database is hosted elsewhere):
-
-```bash
-docker build -t linqsafe --build-arg APP_STAGE=prod .
-docker run -p 3001:3001 --env-file .env linqsafe
-```
-
-**How the image works:** a two-stage build. Stage 1 installs everything and builds the frontend into `dist/`. Stage 2 is a slim Node 22 Alpine image with production dependencies, `server/` and `dist/` only. It runs as the non-root `node` user, serves the API and the site on port 3001, and has a health check on `/api/health`.
-
-## Deploy
-
-- **Namecheap cPanel (live site):** `npm run package`, upload `linqsafe-deploy.zip`, run it as a cPanel Node.js App with startup file `app.cjs`. Step-by-step in PROJECT.md → *Namecheap (cPanel)*.
-- **Vercel:** import the repo. `vercel.json` routes `/api/*` to the Express app as a serverless function (`api/index.js`) and serves the built site. Set the environment variables per stage. See _Stages_ in PROJECT.md.
-- **Docker hosts** (Render, Railway, Fly, a VPS): build from the `Dockerfile`, set the same environment variables, health check path `/api/health`.
-- **Any Node host:** build `npm ci && npm run build`, start `npm start`.
-
-In production the server refuses to start without a real `JWT_SECRET` (`openssl rand -hex 32`).
+Docker (`docker compose up --build`) and Vercel are still supported as alternatives, but the live site runs on cPanel.
 
 ## Scripts
 
