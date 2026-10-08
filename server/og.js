@@ -107,7 +107,7 @@ export function createOg({ pool }) {
     const [[u]] = await pool.query(
       'SELECT id, username, display_name, bio, avatar_url, occupation, location FROM users WHERE username = ?', [username.toLowerCase()])
     if (!u) return null
-    const [links] = await pool.query('SELECT type FROM links WHERE user_id = ? ORDER BY position, id', [u.id])
+    const [links] = await pool.query('SELECT type FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [u.id])
     return { ...u, links }
   }
 

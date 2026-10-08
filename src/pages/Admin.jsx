@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, Reorder, motion, useDragControls } from 'framer-motion'
 import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, UserRound, Share2, Smartphone, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, GripVertical, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
 import { api, logout, setSignedIn } from '@/api'
+import { ProfileView } from '@/pages/Profile'
 import ShareButton from '@/ShareButton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +15,7 @@ import AvatarPicker from '@/components/AvatarPicker'
 import QrCard from '@/components/QrCard'
 import { AmbientVideo } from '@/components/Media'
 import Onboarding from '@/components/Onboarding'
-import { AccountFields, BillingProvider, StickySave, FeatureCard, FounderNoteEditor, PaymentHistory, SocialSuggestions, TemplatePicker, TestimonialsEditor, UnlockChip } from '@/components/ProFeatures'
+import { AccountFields, BillingProvider, StickySave, FeatureCard, TemplatePreview, FounderNoteEditor, PaymentHistory, SocialSuggestions, TemplatePicker, TestimonialsEditor, UnlockChip } from '@/components/ProFeatures'
 import { FREE_LINK_LIMIT, TEMPLATES, has } from '@/lib/plans'
 import { LINK_TYPES, TypeBadge, TypeSelect, detectType } from '@/lib/linkTypes'
 
@@ -222,7 +223,7 @@ function MobileSectionNav() {
   return (
     <nav aria-label="Dashboard sections" className="sticky top-16 z-30 -mx-4 border-b border-foreground/10 bg-background/90 backdrop-blur lg:hidden">
       <ul className="flex snap-x gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {[...SECTIONS, ['preview', 'Preview', Smartphone]].map(([id, label, Icon]) => (
+        {SECTIONS.map(([id, label, Icon]) => (
           <li key={id} className="shrink-0 snap-start">
             <a href={`#${id}`}
               className="flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground active:bg-muted">
@@ -299,6 +300,21 @@ export default function Admin() {
   const urlInput = useRef(null)
   const [adding, setAdding] = useState(false)
   const [announce, setAnnounce] = useState('')
+  const [peek, setPeek] = useState(false)
+  // Each new photo on the Photo background template suggests blurring it (text reads better on blur).
+  const [blurTip, setBlurTip] = useState(false)
+  const lastPhoto = useRef(null)
+  const photo = me ? `${me.cover_url || ''}|${me.avatar_url || ''}` : null
+  useEffect(() => {
+    if (photo === null) return
+    if (lastPhoto.current !== null && lastPhoto.current !== photo && me.layout === 'backdrop') setBlurTip(true)
+    lastPhoto.current = photo
+  }, [photo]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!peek) return
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [peek])
   const navigate = useNavigate()
   const latest = useRef(null)
   latest.current = me
@@ -318,14 +334,15 @@ export default function Admin() {
   const unlimited = has(me, 'unlimited_links')
   const atLimit = !unlimited && me.links.length >= FREE_LINK_LIMIT
 
-  async function saveProfile() {
+  // `m` lets callers save a change they just made (e.g. "Use this template") before state catches up.
+  async function saveProfile(m = me) {
     setProfileError('')
     try {
       await api('/profile', { method: 'PUT', body: {
-        display_name: me.display_name, bio: me.bio, layout: me.layout || 'classic', theme: me.theme || 'light',
-        avatar_url: me.avatar_url || '', cover_url: me.cover_url || '', tags: me.tags || '',
-        account_type: me.account_type || 'personal', category: me.category || '', whatsapp: me.whatsapp || '',
-        occupation: me.occupation || '', location: me.location || '', bg_blur: me.bg_blur === 0 || me.bg_blur === false ? 0 : 1,
+        display_name: m.display_name, bio: m.bio, layout: m.layout || 'classic', theme: m.theme || 'light',
+        avatar_url: m.avatar_url || '', cover_url: m.cover_url || '', tags: m.tags || '',
+        account_type: m.account_type || 'personal', category: m.category || '', whatsapp: m.whatsapp || '',
+        occupation: m.occupation || '', location: m.location || '', bg_blur: m.bg_blur === 0 || m.bg_blur === false ? 0 : 1,
       } })
       setSaved(true)
       setTimeout(() => setSaved(false), 1500)
@@ -464,19 +481,9 @@ export default function Admin() {
               <Label htmlFor="tags">Topics <span className="font-normal text-muted-foreground">(up to 4, comma-separated)</span></Label>
               <Input id="tags" placeholder="Fashion, Beauty, Lifestyle, Inspiration" maxLength={110} value={me.tags || ''} onChange={(e) => setMe({ ...me, tags: e.target.value })} />
             </div>
-            <fieldset className="space-y-2">
-              <legend className="label-form">Theme <span className="font-normal text-muted-foreground">(Auto follows each visitor's light or dark setting)</span></legend>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-                {[['light', 'Light'], ['sage', 'Sage'], ['midnight', 'Midnight'], ['blush', 'Blush'], ['auto', 'Auto']].map(([v, label]) => (
-                  <label key={v} className="cursor-pointer">
-                    <input type="radio" name="theme" value={v} checked={(me.theme || 'light') === v} onChange={() => setMe({ ...me, theme: v })} className="peer sr-only" />
-                    <motion.span whileTap={{ scale: 0.95 }} className="block rounded-lg border p-3 text-center text-sm font-semibold transition-colors peer-checked:border-foreground peer-checked:bg-muted peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[hsl(var(--ring))]">{label}</motion.span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-            <TemplatePicker value={me.layout || 'classic'} me={me} category={me.category} accountType={me.account_type}
-              onChange={(t) => setMe({ ...me, layout: t.id })} />
+            <TemplatePicker value={me.layout || 'classic'} theme={me.theme} onTheme={(theme) => setMe({ ...me, theme })} me={me} category={me.category} accountType={me.account_type}
+              onChange={(t) => setMe({ ...me, layout: t.id })}
+              onUse={(t) => { const next = { ...me, layout: t.id }; setMe(next); saveProfile(next) }} />
             {/* Photo templates: upload the photo they use right here (same fields as above). */}
             <AnimatePresence initial={false}>
               {PHOTO_TEMPLATES[me.layout] && (
@@ -491,8 +498,18 @@ export default function Admin() {
               )}
             </AnimatePresence>
             <AnimatePresence initial={false}>
+              {me.layout === 'backdrop' && blurTip && (
+                <motion.div key="blur-tip" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} role="status"
+                  className="flex flex-wrap items-center justify-between gap-2 overflow-hidden rounded-md border border-accent/30 bg-accent/[0.06] px-4 py-3 text-sm">
+                  <span><b>New photo.</b> Blur it so your name and links stay easy to read?</span>
+                  <span className="flex gap-2">
+                    <Button size="sm" onClick={() => { setMe({ ...me, bg_blur: 1 }); setBlurTip(false) }}>Blur it</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setMe({ ...me, bg_blur: 0 }); setBlurTip(false) }}>Keep it sharp</Button>
+                  </span>
+                </motion.div>
+              )}
               {me.layout === 'backdrop' && (
-                <motion.label initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                <motion.label key="blur-toggle" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
                   className="flex cursor-pointer items-center justify-between gap-3 overflow-hidden rounded-md border border-foreground/10 bg-gradient-to-r from-rose/30 via-sand/30 to-lilac/30 px-4 py-3">
                   <span>
                     <span className="block text-sm font-semibold">Blur the background photo</span>
@@ -506,7 +523,7 @@ export default function Admin() {
             </AnimatePresence>
             {profileError && <p role="alert" className="text-sm font-medium text-destructive">{profileError}</p>}
             <StickySave hint="Changes show on your page after saving.">
-              <Button onClick={saveProfile}>{saved ? <><Check aria-hidden="true" /> Saved</> : 'Save profile'}</Button>
+              <Button onClick={() => saveProfile()}>{saved ? <><Check aria-hidden="true" /> Saved</> : 'Save profile'}</Button>
             </StickySave>
             <span role="status" className="sr-only">{saved ? 'Profile saved' : ''}</span>
           </CardContent>
@@ -580,13 +597,29 @@ export default function Admin() {
         <PaymentHistory />
       </div>
 
-      {/* Desktop: sticky side column. Mobile: stacks under the editor (the Preview chip jumps here). */}
-      <motion.aside id="preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="scroll-mt-32 border-t pt-8 lg:scroll-mt-0 lg:border-t-0 lg:pt-0">
-        <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pb-4 lg:[scrollbar-width:thin]">
-          <p className="mb-3 text-center text-sm font-medium text-muted-foreground">Live preview <span className="font-normal">(tap to open your page)</span></p>
+      {/* Phones & tablets: floating Preview button (bottom-left, clear of Save). It opens the preview over
+          the page, so closing it leaves you exactly where you were editing. */}
+      <button type="button" onClick={() => setPeek(true)} aria-haspopup="dialog"
+        className="fixed bottom-5 left-4 z-40 flex h-12 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold text-paper shadow-[0_12px_30px_-8px_hsl(20_30%_15%/.5)] transition-transform active:scale-95 lg:hidden [body[data-cart]_&]:bottom-44">
+        <Smartphone className="size-4" aria-hidden="true" /> Preview
+      </button>
+      <AnimatePresence>
+        {peek && (
+          <TemplatePreview username={me.username} title="Your page" onClose={() => setPeek(false)}
+            footer={<a href={profileUrl} target="_blank" rel="noopener noreferrer"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-black hover:bg-white/90"><ExternalLink className="size-4" aria-hidden="true" /> Open my page</a>}>
+            <ProfileView data={me} layout={me.layout || 'classic'} theme={me.theme || 'light'} embed />
+          </TemplatePreview>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop only: sticky preview column. */}
+      <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:block">
+        <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4 [scrollbar-width:thin]">
+          <p className="mb-3 text-center text-sm font-medium text-muted-foreground">Live preview <span className="font-normal">(click to open your page)</span></p>
           <Preview me={me} />
           <PreviewToolbar me={me} url={profileUrl} canQr={has(me, 'qr_code')} />
-          <div className="hidden lg:block"><SectionNav /></div>
+          <SectionNav />
         </div>
       </motion.aside>
 

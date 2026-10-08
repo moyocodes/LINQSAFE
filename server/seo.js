@@ -75,7 +75,7 @@ export function createSeo({ pool, dist }) {
     const [[u]] = await pool.query(
       'SELECT id, username, display_name, bio, avatar_url, account_type, occupation, location FROM users WHERE username = ?', [username.toLowerCase()])
     if (!u) return null
-    const [links] = await pool.query("SELECT url, type FROM links WHERE user_id = ? ORDER BY position, id", [u.id])
+    const [links] = await pool.query("SELECT url, type FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id", [u.id])
     return { ...u, links }
   }
 
@@ -175,7 +175,7 @@ export function createSeo({ pool, dist }) {
     // Profiles worth indexing: at least one link. lastmod = newest link (or signup).
     const [rows] = await pool.query(
       `SELECT u.username, DATE_FORMAT(GREATEST(u.created_at, COALESCE(MAX(l.created_at), u.created_at)), '%Y-%m-%d') AS lastmod
-       FROM users u JOIN links l ON l.user_id = u.id GROUP BY u.id ORDER BY u.id LIMIT 45000`)
+       FROM users u JOIN links l ON l.user_id = u.id AND l.deleted_at IS NULL GROUP BY u.id ORDER BY u.id LIMIT 45000`)
     const url = (loc, extra = '') => `  <url><loc>${esc(loc)}</loc>${extra}</url>`
     res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send([
       '<?xml version="1.0" encoding="UTF-8"?>',

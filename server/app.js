@@ -256,10 +256,12 @@ async function sessionUserId(req) {
 
 // Founder dashboard access: only the configured owner email, and only once that email is verified
 // (otherwise anyone could sign up with the address first and inherit owner access).
-const OWNER_EMAIL = (process.env.OWNER_EMAIL || 'moyosorejames@gmail.com').toLowerCase()
+// Hardcoded on purpose so a missing or wrong OWNER_EMAIL on a server can't lock the founder out.
+const OWNER_EMAIL = 'moyosorejames@gmail.com'
+const ownsSite = (u) => !!u && String(u.email || '').trim().toLowerCase() === OWNER_EMAIL && !!u.email_verified
 async function isOwner(userId) {
   const [[u]] = await pool.query('SELECT email, email_verified FROM users WHERE id = ?', [userId])
-  return !!u && u.email === OWNER_EMAIL && !!u.email_verified
+  return ownsSite(u)
 }
 
 async function auth(req, res, next) {
@@ -422,6 +424,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
     await pool.query('UPDATE users SET last_login_at = NOW(), login_count = 1 WHERE id = ?', [user.id])
     startSession(res, user)
     sendVerification(req, user).catch((e) => console.error('verification email:', e.message))
+    send(OWNER_EMAIL, Email.ownerSignup({ username: user.username, email: cleanEmail, accountType: business ? 'business' : 'personal', category: cleanCat, url: `${appUrl(req)}/${user.username}` }), { tag: 'owner-signup' })
     res.json({ ok: true })
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: /email/.test(e.message) ? 'That email is already registered' : 'Username taken' })
@@ -514,8 +517,8 @@ app.get('/api/me', auth, async (req, res) => {
   const [[user]] = await pool.query(
     `SELECT id, username, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
   const [links] = await pool.query(
-    'SELECT id, title, url, type, clicks FROM links WHERE user_id = ? ORDER BY position, id', [req.userId])
-  res.json({ ...user, is_owner: user.email === OWNER_EMAIL && !!user.email_verified, testimonials: parseList(user.testimonials),
+    'SELECT id, title, url, type, clicks FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [req.userId])
+  res.json({ ...user, is_owner: ownsSite(user), testimonials: parseList(user.testimonials),
     features: await featureAccess(req.userId), links })
 })
 
@@ -653,11 +656,11 @@ app.post('/api/links', auth, async (req, res) => {
     return res.status(400).json({ error: 'Title and a valid http(s) URL are required' })
   if (!LINK_TYPES.includes(type)) return res.status(400).json({ error: 'Please choose a link type' })
   if (!typeMatchesUrl(type, url)) return res.status(400).json({ error: 'That link type does not match the URL' })
-  const [[{ count }]] = await pool.query('SELECT COUNT(*) AS count FROM links WHERE user_id = ?', [req.userId])
+  const [[{ count }]] = await pool.query('SELECT COUNT(*) AS count FROM links WHERE user_id = ? AND deleted_at IS NULL', [req.userId])
   if (count >= FREE_LINK_LIMIT && !(await hasFeature(req.userId, 'unlimited_links')))
     return res.status(402).json({ error: `Free pages hold ${FREE_LINK_LIMIT} links. Unlock unlimited links from your dashboard.`, upgrade: true, feature: 'unlimited_links' })
   const [[{ next }]] = await pool.query(
-    'SELECT COALESCE(MAX(position), 0) + 1 AS next FROM links WHERE user_id = ?', [req.userId])
+    'SELECT COALESCE(MAX(position), 0) + 1 AS next FROM links WHERE user_id = ? AND deleted_at IS NULL', [req.userId])
   const [r] = await pool.query(
     'INSERT INTO links (user_id, title, url, type, position) VALUES (?, ?, ?, ?, ?)',
     [req.userId, title.trim().slice(0, 100), url, type, next])
@@ -670,13 +673,13 @@ app.put('/api/links/:id', auth, async (req, res) => {
     return res.status(400).json({ error: 'Title and a valid http(s) URL are required' })
   if (!LINK_TYPES.includes(type)) return res.status(400).json({ error: 'Unknown link type' })
   if (!typeMatchesUrl(type, url)) return res.status(400).json({ error: 'That link type does not match the URL' })
-  await pool.query('UPDATE links SET title = ?, url = ?, type = ? WHERE id = ? AND user_id = ?',
+  await pool.query('UPDATE links SET title = ?, url = ?, type = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
     [title.trim().slice(0, 100), url, type, req.params.id, req.userId])
   res.json({ ok: true })
 })
 
 app.delete('/api/links/:id', auth, async (req, res) => {
-  await pool.query('DELETE FROM links WHERE id = ? AND user_id = ?', [req.params.id, req.userId])
+  await pool.query('UPDATE links SET deleted_at = NOW() WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [req.params.id, req.userId])
   res.json({ ok: true })
 })
 
@@ -705,12 +708,12 @@ app.get('/api/u/:username', async (req, res) => {
   if ((await sessionUserId(req)) !== user.id && (await track(req, res, { userId: user.id, kind: 'view', ref: req.query.src === 'qr' ? 'qr' : String(req.query.ref || ''), consent: req.query.consent === '1', tz: String(req.query.tz || '') })))
     await pool.query('UPDATE users SET views = views + 1 WHERE id = ?', [user.id])
   const [links] = await pool.query(
-    'SELECT id, title, url, type FROM links WHERE user_id = ? ORDER BY position, id', [user.id])
+    'SELECT id, title, url, type FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [user.id])
   res.json({ ...user, testimonials: parseList(user.testimonials), links })
 })
 
 app.post('/api/click/:id', clickLimiter, async (req, res) => {
-  const [[link]] = await pool.query('SELECT id, user_id FROM links WHERE id = ?', [req.params.id])
+  const [[link]] = await pool.query('SELECT id, user_id FROM links WHERE id = ? AND deleted_at IS NULL', [req.params.id])
   if (link && (await sessionUserId(req)) !== link.user_id && (await track(req, res, { userId: link.user_id, kind: 'click', linkId: link.id, ref: String(req.body?.ref || ''), consent: req.body?.consent === true, tz: String(req.body?.tz || '') })))
     await pool.query('UPDATE links SET clicks = clicks + 1 WHERE id = ?', [link.id])
   res.json({ ok: true })
@@ -788,7 +791,7 @@ app.get('/api/analytics', auth, async (req, res) => {
   if (days === 90 && !(await hasFeature(req.userId, 'analytics_90'))) return locked(res, 'analytics_90')
   const report = await trafficReport({ scope: 'e.user_id = ?', args: [req.userId], days })
   // Include links that got no clicks yet, so every link shows its conversion.
-  const [all] = await pool.query('SELECT id, title, type FROM links WHERE user_id = ? ORDER BY position, id', [req.userId])
+  const [all] = await pool.query('SELECT id, title, type FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [req.userId])
   report.links = all.map((l) => {
     const hit = report.links.find((x) => x.id === l.id)
     return { ...l, n: hit?.n || 0, rate: hit?.rate || 0 }
@@ -831,7 +834,7 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
     name.trim(), email.trim(), message.trim()])
   const msg = { name: name.trim(), email: email.trim(), message: message.trim() }
   // To support (reply goes straight to the sender) and a short "we got it" to the sender.
-  send(process.env.SUPPORT_EMAIL || process.env.OWNER_EMAIL, Email.contactNotify(msg), { tag: 'contact', replyTo: msg.email })
+  send(process.env.SUPPORT_EMAIL || OWNER_EMAIL, Email.contactNotify(msg), { tag: 'contact', replyTo: msg.email })
   send(msg.email, Email.contactReceived(msg), { tag: 'contact-auto-reply' })
   res.json({ ok: true })
 })
@@ -847,7 +850,7 @@ app.get('/api/owner/stats', auth, async (req, res) => {
   const [[totals]] = await pool.query(`SELECT COUNT(*) AS users,
       (SELECT COUNT(DISTINCT user_id) FROM user_features WHERE expires_at IS NULL OR expires_at > NOW()) AS pro, SUM(account_type = 'business') AS business, SUM(email_verified) AS verified,
       SUM(created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)) AS new_users FROM users`, [days - 1])
-  const [[{ links }]] = await pool.query('SELECT COUNT(*) AS links FROM links')
+  const [[{ links }]] = await pool.query('SELECT COUNT(*) AS links FROM links WHERE deleted_at IS NULL')
   const [[{ revenue }]] = await pool.query(
     "SELECT COALESCE(SUM(amount_kobo), 0) / 100 AS revenue FROM payments WHERE status = 'success' AND paid_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)", [days - 1])
   const [[ev]] = await pool.query(`SELECT SUM(kind = 'view') AS views, SUM(kind = 'click') AS clicks, COUNT(DISTINCT visitor) AS visitors
@@ -875,7 +878,7 @@ app.get('/api/owner/stats', auth, async (req, res) => {
     `SELECT COUNT(*) AS signed_up,
        SUM(onboarded_at IS NOT NULL) AS onboarded,
        SUM(bio <> '' OR avatar_url IS NOT NULL AND avatar_url <> '') AS profile,
-       SUM(EXISTS (SELECT 1 FROM links l WHERE l.user_id = u.id)) AS first_link,
+       SUM(EXISTS (SELECT 1 FROM links l WHERE l.user_id = u.id AND l.deleted_at IS NULL)) AS first_link,
        SUM(EXISTS (SELECT 1 FROM events e WHERE e.user_id = u.id AND e.kind = 'view')) AS first_visit,
        SUM(EXISTS (SELECT 1 FROM payments p WHERE p.user_id = u.id AND p.status = 'success')) AS paid
      FROM users u WHERE u.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`, [days - 1])
@@ -1044,7 +1047,7 @@ app.get('/api/owner/export/:what.csv', auth, ownerOnly, async (req, res) => {
     const { scope: us, args: ua } = trafficFilter({ ...req.query, country: '', device: '', source: '' })
     const [rows] = await pool.query(
       `SELECT u.username, u.email, u.display_name AS name, u.account_type, u.category, u.layout AS template, u.email_verified,
-         u.onboarded_at IS NOT NULL AS onboarded, (SELECT COUNT(*) FROM links l WHERE l.user_id = u.id) AS links,
+         u.onboarded_at IS NOT NULL AS onboarded, (SELECT COUNT(*) FROM links l WHERE l.user_id = u.id AND l.deleted_at IS NULL) AS links,
          (SELECT GROUP_CONCAT(f.feature) FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > NOW())) AS paid_features,
          (SELECT COALESCE(SUM(p.amount_kobo), 0) / 100 FROM payments p WHERE p.user_id = u.id AND p.status = 'success') AS total_paid,
          DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i') AS joined, DATE_FORMAT(u.last_login_at, '%Y-%m-%d %H:%i') AS last_login, u.login_count

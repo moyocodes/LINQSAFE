@@ -23,11 +23,11 @@ export const TEMPLATES = [
   { id: 'classic', name: 'Classic', hint: 'Centered stack', theme: 'light', for: ['other', 'tech', 'personal'] },
   { id: 'grid', name: 'Grid', hint: 'Two-column tiles', theme: 'sage', for: ['retail', 'food', 'creative'] },
   { id: 'minimal', name: 'Minimal', hint: 'Clean text list', theme: 'light', for: ['tech', 'personal'] },
-  { id: 'cover', name: 'Cover', hint: 'Full photo header', theme: 'light', feature: 'tpl_cover', for: ['coaching', 'beauty', 'health', 'events'] },
-  { id: 'editorial', name: 'Editorial', hint: 'Paper & serif type', theme: 'light', feature: 'tpl_editorial', for: ['fashion', 'coaching', 'creative'] },
-  { id: 'search', name: 'Search & solve', hint: 'Problem → your answers', theme: 'light', feature: 'tpl_search', for: ['beauty', 'health', 'retail', 'coaching'] },
-  { id: 'backdrop', name: 'Photo background', hint: 'Your photo behind everything', theme: 'light', feature: 'tpl_backdrop', for: ['beauty', 'fashion', 'food', 'events', 'creative', 'personal'] },
-  { id: 'idcard', name: 'Profile card', hint: 'Polaroid + fact sheet', theme: 'light', feature: 'tpl_idcard', for: ['fashion', 'beauty', 'creative', 'personal'] },
+  { id: 'cover', name: 'Cover', hint: 'Full photo header', theme: 'light', feature: 'tpl_cover', photo: 'cover', for: ['coaching', 'beauty', 'health', 'events'] },
+  { id: 'editorial', name: 'Editorial', hint: 'Paper & serif type', theme: 'light', feature: 'tpl_editorial', photo: 'profile', for: ['fashion', 'coaching', 'creative'] },
+  { id: 'search', name: 'Search & solve', hint: 'Problem → your answers', theme: 'light', feature: 'tpl_search', photo: 'cover', for: ['beauty', 'health', 'retail', 'coaching'] },
+  { id: 'backdrop', name: 'Photo background', hint: 'Your photo behind everything', theme: 'light', feature: 'tpl_backdrop', photo: 'cover', for: ['beauty', 'fashion', 'food', 'events', 'creative', 'personal'] },
+  { id: 'idcard', name: 'Profile card', hint: 'Polaroid + fact sheet', theme: 'light', feature: 'tpl_idcard', photo: 'profile', for: ['fashion', 'beauty', 'creative', 'personal'] },
 ]
 
 // me.features is { featureKey: 'YYYY-MM-DD' (expiry) | null (no expiry) } for every active feature.

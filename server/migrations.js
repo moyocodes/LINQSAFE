@@ -219,6 +219,19 @@ const MIGRATIONS = [
       SET e.country = k.country
       WHERE e.country = '' AND e.visitor <> ''`)
   }],
+  [25, 'created / updated / deleted timestamps everywhere', async (db) => {
+    // updated_at moves on every change; deleted_at marks a soft delete (row kept, hidden from the app).
+    // events is an append-only log, so it keeps just created_at.
+    const touched = 'updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
+    for (const t of ['users', 'links', 'contact_messages', 'auth_tokens', 'user_features']) await addColumn(db, t, touched)
+    await addColumn(db, 'user_features', 'created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP')
+    await db.query('UPDATE user_features SET created_at = unlocked_at')
+    await addColumn(db, 'app_settings', 'created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP')
+    await addColumn(db, 'users', 'deleted_at DATETIME NULL')
+    await addColumn(db, 'links', 'deleted_at DATETIME NULL')
+    await db.query('UPDATE users SET updated_at = created_at')
+    await db.query('UPDATE links SET updated_at = created_at')
+  }],
 ]
 
 export async function migrate(pool) {

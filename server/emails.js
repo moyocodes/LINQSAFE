@@ -244,6 +244,22 @@ export function contactNotify({ name, email, message }) {
   }
 }
 
+// To the founder: someone just signed up.
+export function ownerSignup({ username, email, accountType, category, url }) {
+  return {
+    subject: `New sign-up: @${username}`,
+    html: layout({
+      preheader: `@${username} (${email}) just created a page.`,
+      eyebrow: 'New sign-up',
+      heading: `@${esc(username)} just joined`,
+      body: box([['Username', `@${esc(username)}`], ['Email', `<a href="mailto:${esc(email)}" style="color:${C.cobalt}">${esc(email)}</a>`],
+        ['Account', esc(accountType + (category ? ` · ${category}` : ''))], ['Page', `<a href="${esc(url)}" style="color:${C.cobalt}">${esc(url)}</a>`]])
+        + small('Sent to the founder for every new account.'),
+    }),
+    text: textOf([`New sign-up: @${username}`, `Email: ${email}`, `Account: ${accountType}${category ? ` · ${category}` : ''}`, `Page: ${url}`]),
+  }
+}
+
 // Sample data for previews.
 export const SAMPLES = {
   verifyEmail: [verifyEmail, { username: 'moyosore_james', url: 'https://linqsafe.com/verify?token=example' }],
@@ -254,5 +270,6 @@ export const SAMPLES = {
   featureExpiring: [featureExpiring, { name: 'Moyosore', feature: 'Cover template', until: new Date(Date.now() + 3 * 864e5) }],
   featureExpired: [featureExpired, { name: 'Moyosore', feature: 'Cover template' }],
   contactReceived: [contactReceived, { name: 'Ada', message: 'Hi! Can I use my own domain for my page?\n\nThanks.' }],
+  ownerSignup: [ownerSignup, { username: 'ada_bakes', email: 'ada@example.com', accountType: 'business', category: 'food', url: 'https://linqsafe.com/ada_bakes' }],
   contactNotify: [contactNotify, { name: 'Ada', email: 'ada@example.com', message: 'Hi! Can I use my own domain for my page?\n\nThanks.' }],
 }

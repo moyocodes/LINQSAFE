@@ -66,6 +66,18 @@ export default function Profile() {
   // ?embed=1 is the dashboard's live preview: no top bar or buttons; ?theme= previews an unsaved theme.
   const embed = params.get('embed') === '1'
   const themeParam = ['light', 'sage', 'blush', 'midnight', 'auto'].includes(params.get('theme')) ? params.get('theme') : null
+  if (error) return <NotFound message="This profile doesn't exist." />
+  if (!data)
+    return <div className="grid min-h-screen place-items-center"><Loader2 className="animate-spin text-muted-foreground" role="status" aria-label="Loading" /></div>
+
+  return <ProfileView data={data} layout={layout} theme={themeParam || data.theme} preview={preview} embed={embed} onLinkClick={trackClick} />
+}
+
+// The page itself, from data alone. The dashboard renders this directly as its instant live preview
+// (no network), passing unsaved edits as `data` and `onLinkClick` that doesn't count clicks.
+export function ProfileView({ data, layout, theme: chosen, preview = null, embed = false, onLinkClick = () => {} }) {
+  const name = data.display_name || data.username
+  const trackClick = onLinkClick
   const prefersDark = useMedia('(prefers-color-scheme: dark)')
   const midnight = {
     background: 'hsl(330 20% 8%)',
@@ -89,7 +101,6 @@ export default function Profile() {
     },
     midnight: { cls: '', vars: midnight },
   }
-  const chosen = themeParam || data?.theme
   const key = chosen === 'auto' ? (prefersDark ? 'midnight' : 'light') : chosen
   const theme = themes[key] || themes.light
   const themeStyle = theme.vars
@@ -99,10 +110,6 @@ export default function Profile() {
     grid: 'flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border bg-card/80 p-4 text-center font-semibold shadow-sm backdrop-blur',
     minimal: 'flex items-center justify-between border-b border-foreground/15 py-4 text-left font-medium',
   }[layout]
-
-  if (error) return <NotFound message="This profile doesn't exist." />
-  if (!data)
-    return <div className="grid min-h-screen place-items-center"><Loader2 className="animate-spin text-muted-foreground" role="status" aria-label="Loading" /></div>
 
   return (
     <div className={`relative min-h-screen overflow-hidden text-foreground ${dark ? '' : 'theme-light'} ${theme.cls}`} style={themeStyle}>
@@ -187,18 +194,18 @@ export default function Profile() {
         </motion.div>
         )}
 
-        <KindWords data={data} />
+        <KindWords data={data} onPhoto={layout === 'backdrop'} />
         <FounderNote data={data} name={name} />
 
-        {/* Every public page carries the linqsafe mark. */}
+        {/* Every public page carries the linqsafe mark. Its links open in a new tab so visitors keep this page. */}
         <footer className="relative z-10 flex flex-col items-center gap-2 pt-10 text-xs text-muted-foreground">
           <motion.div whileHover={{ y: -2, scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <Link to="/signup" className="inline-flex items-center gap-2 rounded-full border bg-card/90 py-1.5 pl-1.5 pr-3.5 font-medium text-foreground shadow-sm backdrop-blur">
+            <Link to="/signup" target="_blank" rel="noopener" className="inline-flex items-center gap-2 rounded-full border bg-card/90 py-1.5 pl-1.5 pr-3.5 font-medium text-foreground shadow-sm backdrop-blur">
               <LogoMark className="size-6" animate={false} />
               <span>Made with <Wordmark className="font-display font-bold" /></span>
             </Link>
           </motion.div>
-          <span><Link to="/signup" className="underline hover:text-foreground">Create your own page</Link><span className="mx-2">·</span><Link to="/privacy" className="hover:text-foreground">Privacy</Link></span>
+          <span className={layout === 'backdrop' ? 'rounded-full bg-black/55 px-3 py-1 text-white/90 backdrop-blur [&_a:hover]:!text-white' : ''}><Link to="/signup" target="_blank" rel="noopener" className="underline hover:text-foreground">Create your own page</Link><span className="mx-2">·</span><Link to="/privacy" target="_blank" rel="noopener" className="hover:text-foreground">Privacy</Link></span>
         </footer>
       </div>
     </div>

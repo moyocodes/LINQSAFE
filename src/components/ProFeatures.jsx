@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, CircleCheck, Crown, Eye, Lock, Loader2, Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { Check, CircleCheck, Crown, Eye, Image, Lock, Loader2, Plus, Sparkles, Trash2, UserRound, X } from 'lucide-react'
 import { api } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,8 +12,9 @@ import { LINK_TYPES, TypeBadge } from '@/lib/linkTypes'
 import { CATEGORIES, TEMPLATES, customCategoryText, has, isCustomCategory, makeCustomCategory, methodLabel, naira } from '@/lib/plans'
 
 export const PaidBadge = ({ unlocked }) => (
-  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset ${unlocked ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : 'bg-accent/10 text-accent ring-accent/20'}`}>
-    {unlocked ? <Check className="size-3" aria-hidden="true" /> : <Lock className="size-3" aria-hidden="true" />} {unlocked ? 'Unlocked' : 'Paid'}
+  <span title={unlocked ? 'Unlocked' : 'Paid'} className={`inline-flex shrink-0 items-center gap-1 rounded-full p-1 text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset sm:px-2 sm:py-0.5 ${unlocked ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' : 'bg-accent/10 text-accent ring-accent/20'}`}>
+    {unlocked ? <Check className="size-2.5 sm:size-3" aria-hidden="true" /> : <Lock className="size-2.5 sm:size-3" aria-hidden="true" />}
+    <span className="sr-only sm:not-sr-only">{unlocked ? 'Unlocked' : 'Paid'}</span>
   </span>
 )
 
@@ -37,8 +39,16 @@ export const useBilling = () => useContext(BillingCtx)
 
 export function BillingProvider({ me, onUnlocked, children }) {
   const [cfg, setCfg] = useState(null)
-  const [months, setMonths] = useState(1)
-  const [cart, setCart] = useState([]) // feature keys
+  // The cart (feature keys + months) lives only in this browser: kept across reloads, never sent to the
+  // server, and gone when the person clears their cookies/site data. Features they already own drop out.
+  const cartKey = `lqs-cart:${me?.username || ''}`
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(cartKey)) || {} } catch { return {} } })()
+  const [months, setMonths] = useState(() => ([1, 3, 6, 12].includes(saved.months) ? saved.months : 1))
+  const [cart, setCart] = useState(() => (Array.isArray(saved.items) ? saved.items.filter((k) => typeof k === 'string' && !has(me, k)) : []))
+  useEffect(() => {
+    try { cart.length ? localStorage.setItem(cartKey, JSON.stringify({ items: cart, months })) : localStorage.removeItem(cartKey) } catch { /* storage blocked */ }
+  }, [cart, months, cartKey])
+  useEffect(() => { if (cfg) setCart((c) => c.filter((k) => cfg.features.some((f) => f.key === k && f.forSale))) }, [cfg])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState('')
@@ -225,7 +235,10 @@ function MiniPreview({ id }) {
 }
 
 // Full-size preview of the user's own page in a template, in a phone frame (not saved).
-function TemplatePreview({ username, template, onClose, onUse, locked }) {
+// Phone-frame preview modal. Template tiles pass a template (with Use / Add); the dashboard's floating
+// Preview button passes `children` (your page rendered in place, no loading), `title` and `footer`.
+export function TemplatePreview({ username, template, onClose, onUse, locked, src, title, footer, children }) {
+  const name = title || template.name
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -233,30 +246,52 @@ function TemplatePreview({ username, template, onClose, onUse, locked }) {
   }, [onClose])
   return (
     <motion.div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-      <motion.div role="dialog" aria-modal="true" aria-label={`${template.name} preview`} onClick={(e) => e.stopPropagation()}
+      <motion.div role="dialog" aria-modal="true" aria-label={`${name} preview`} onClick={(e) => e.stopPropagation()}
         initial={{ y: 30, scale: 0.96 }} animate={{ y: 0, scale: 1 }} exit={{ y: 30, scale: 0.96 }} transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         className="flex max-h-full w-full max-w-sm flex-col items-center gap-3">
         <div className="flex w-full items-center justify-between text-white">
-          <p className="font-display text-lg font-semibold !text-white">{template.name}</p>
+          <p className="font-display text-lg font-semibold !text-white">{name}</p>
           <button type="button" onClick={onClose} aria-label="Close preview" className="grid size-9 place-items-center rounded-full bg-white/15 hover:bg-white/25"><X className="size-4" /></button>
         </div>
-        <div className="h-[min(640px,72vh)] w-full overflow-hidden rounded-[2rem] border-[6px] border-black bg-white shadow-2xl">
-          <iframe title={`${template.name} preview`} src={`/${username}?preview=${template.id}`} className="size-full" />
+        {/* translateZ(0) makes the frame the containing block for the page's position: fixed backgrounds. */}
+        <div className={`h-[min(640px,72vh)] w-full rounded-[2rem] border-[6px] border-black bg-white shadow-2xl ${children ? 'overflow-y-auto overflow-x-hidden overscroll-contain [transform:translateZ(0)]' : 'overflow-hidden'}`}>
+          {children || <iframe title={`${name} preview`} src={src || `/${username}?preview=${template.id}`} className="size-full" />}
         </div>
         <div className="flex w-full flex-wrap items-center justify-center gap-2">
-          {locked ? <UnlockChip feature={template.feature} /> : <Button onClick={onUse} className="bg-white text-black hover:bg-white/90"><Check /> Use this template</Button>}
+          {footer ?? (locked ? <UnlockChip feature={template.feature} /> : <Button onClick={onUse} className="bg-white text-black hover:bg-white/90"><Check /> Use this template</Button>)}
         </div>
       </motion.div>
     </motion.div>
   )
 }
 
-export function TemplatePicker({ value, onChange, me, category, accountType }) {
+const THEMES = [
+  ['light', 'Light', 'bg-white'], ['sage', 'Sage', 'bg-[#cfdcc8]'], ['midnight', 'Midnight', 'bg-[#1b2030]'],
+  ['blush', 'Blush', 'bg-[#f6d9d9]'], ['auto', 'Auto', 'bg-[linear-gradient(135deg,#fff_50%,#1b2030_50%)]'],
+]
+const PHOTO_TAG = { cover: [Image, 'Cover photo'], profile: [UserRound, 'Profile photo'] }
+
+// Template and theme in one picker: the theme row on top, the template tiles under it.
+export function TemplatePicker({ value, onChange, onUse, theme, onTheme, me, category, accountType }) {
   const fit = accountType === 'business' ? category : 'personal'
   const [previewing, setPreviewing] = useState(null)
   return (
-    <fieldset id="template" className="scroll-mt-24 space-y-2">
-      <legend className="label-form">Template</legend>
+    <fieldset id="template" className="scroll-mt-24 space-y-3 rounded-md border border-foreground/10 p-4">
+      <legend className="label-form px-1">Template &amp; theme</legend>
+      <div role="radiogroup" aria-label="Theme" className="space-y-1.5">
+        <p className="text-xs text-muted-foreground">Theme <span className="hidden sm:inline">(Auto follows each visitor's light or dark setting)</span></p>
+        <div className="flex flex-wrap gap-2">
+          {THEMES.map(([v, label, swatch]) => (
+            <label key={v} className="cursor-pointer">
+              <input type="radio" name="theme" value={v} checked={(theme || 'light') === v} onChange={() => onTheme(v)} className="peer sr-only" />
+              <span className="flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-xs font-semibold transition-colors peer-checked:border-foreground peer-checked:bg-muted peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[hsl(var(--ring))]">
+                <span className={`size-5 rounded-full ring-1 ring-inset ring-foreground/15 ${swatch}`} aria-hidden="true" />{label}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">Template</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {TEMPLATES.map((t) => {
           const locked = !!t.feature && !has(me, t.feature)
@@ -270,6 +305,11 @@ export function TemplatePicker({ value, onChange, me, category, accountType }) {
                 <MiniPreview id={t.id} />
                 <span className="mt-2 flex items-center justify-between gap-1 text-sm font-semibold">{t.name}{t.feature && <PaidBadge unlocked={!locked} />}</span>
                 <span className="block text-xs text-muted-foreground">{t.hint}</span>
+                {t.photo && (() => { const [Icon, text] = PHOTO_TAG[t.photo]; return (
+                  <span className={`mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${t.photo === 'cover' ? 'bg-cobalt/10 text-cobalt' : 'bg-rose/20 text-foreground'}`}>
+                    <Icon className="size-3" aria-hidden="true" /> {text}
+                  </span>
+                ) })()}
                 {recommended && <span className="mt-1 block text-[10px] font-semibold uppercase tracking-wider text-accent">Suits you</span>}
                 {me?.username && (
                   <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreviewing(t) }}
@@ -287,7 +327,7 @@ export function TemplatePicker({ value, onChange, me, category, accountType }) {
       <AnimatePresence>
         {previewing && (
           <TemplatePreview username={me.username} template={previewing} locked={!!previewing.feature && !has(me, previewing.feature)}
-            onClose={() => setPreviewing(null)} onUse={() => { onChange(previewing); setPreviewing(null) }} />
+            onClose={() => setPreviewing(null)} onUse={() => { (onUse || onChange)(previewing); setPreviewing(null) }} />
         )}
       </AnimatePresence>
     </fieldset>
@@ -373,13 +413,36 @@ export function SocialSuggestions({ links, onPick }) {
   )
 }
 
-// Keeps a section's Save button in view while you scroll through that section (and above the cart bar).
+// One Save button floating on the page (bottom-right, above the cart bar). Each section renders its
+// own, but only the section crossing the middle of the screen shows it, so it saves what you're editing.
 export function StickySave({ children, hint }) {
+  const marker = useRef(null)
+  const [active, setActive] = useState(false)
+  useEffect(() => {
+    const section = marker.current?.closest('.scroll-mt-24[id]') || marker.current?.parentElement
+    if (!section) return
+    const io = new IntersectionObserver(([e]) => setActive(e.isIntersecting), { rootMargin: '-45% 0px -45% 0px' })
+    io.observe(section)
+    return () => io.disconnect()
+  }, [])
   return (
-    <div className="sticky bottom-3 z-20 -mx-3 mt-2 flex items-center justify-end gap-3 rounded-md border border-foreground/10 bg-card/90 px-3 py-2 shadow-[0_10px_30px_-12px_hsl(20_30%_15%/.35)] backdrop-blur [body[data-cart]_&]:bottom-44">
-      {hint && <span className="mr-auto text-xs text-muted-foreground">{hint}</span>}
-      {children}
-    </div>
+    <>
+      <span ref={marker} hidden />
+      {createPortal(
+        <AnimatePresence>
+          {active && (
+            <motion.div initial={{ opacity: 0, y: 16, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.9 }}
+              className="pointer-events-none fixed bottom-5 right-4 z-40 flex flex-col items-end gap-1.5 sm:right-6 [body[data-cart]_&]:bottom-44">
+              {hint && <span className="rounded-full bg-card/90 px-2.5 py-1 text-[11px] text-muted-foreground shadow-sm backdrop-blur">{hint}</span>}
+              <div className="pointer-events-auto [&_button]:h-12 [&_button]:rounded-full [&_button]:px-6 [&_button]:shadow-[0_12px_30px_-8px_hsl(20_30%_15%/.5)] [&_button]:transition-transform [&_button:active]:scale-95">
+                {children}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </>
   )
 }
 

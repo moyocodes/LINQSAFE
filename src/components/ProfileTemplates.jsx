@@ -211,9 +211,13 @@ export function SearchTemplate({ data, name, onLinkClick }) {
   return (
     <motion.div variants={stagger(0.1)} initial="hidden" animate="show" className="-mx-4 -mt-6 sm:mx-0 sm:mt-0">
       <PhotoFill src={img} />
-      <div className="relative min-h-[40rem] overflow-hidden bg-gradient-to-b from-rose via-sand to-lilac px-6 pb-12 pt-28 text-center shadow-[0_40px_80px_-30px_rgb(0_0_0/.45)] sm:rounded-[2rem]">
-        {img && <img src={img} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/45" aria-hidden="true" />
+      <div className="relative min-h-[40rem] px-6 pb-12 pt-28 text-center">
+        {/* Only the photo layer fades out (bottom on phones; sides and bottom from tablet up), so it melts
+            into the blurred page background instead of sitting there as a hard-edged card. */}
+        <div aria-hidden="true" className="absolute inset-0 overflow-hidden bg-gradient-to-b from-rose via-sand to-lilac [mask-image:linear-gradient(to_bottom,black_75%,transparent)] sm:-inset-x-16 sm:[mask-composite:intersect] sm:[mask-image:linear-gradient(to_right,transparent,black_18%,black_82%,transparent),linear-gradient(to_bottom,black_70%,transparent)]">
+          {img && <img src={img} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover" />}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/40" />
+        </div>
         <div className="relative">
           <motion.h1 variants={fadeUp} className="text-3xl font-bold tracking-tight text-white drop-shadow">the search:</motion.h1>
           <motion.div variants={fadeUp} className="relative mx-auto mt-4 flex max-w-sm items-center gap-2 rounded-full bg-white px-5 py-3 text-left text-sm text-black shadow-lg">
@@ -249,7 +253,9 @@ export function SearchTemplate({ data, name, onLinkClick }) {
 }
 
 // Client messages as chat bubbles around a big headline (after the "i got a text" post style).
-export function KindWords({ data }) {
+// `onPhoto`: the page sits on a photo (Photo background), so the section gets its own dark glass panel
+// and white bubbles, and always reads whatever the picture behind it looks like.
+export function KindWords({ data, onPhoto = false }) {
   const items = data.testimonials || []
   if (!items.length) return null
   const half = Math.ceil(items.length / 2)
@@ -257,17 +263,17 @@ export function KindWords({ data }) {
     <motion.figure
       initial={{ opacity: 0, scale: 0.6, y: 20 }} whileInView={{ opacity: 1, scale: 1, y: 0 }} viewport={{ once: true }}
       transition={{ delay: i * 0.12, type: 'spring', stiffness: 260, damping: 16 }}
-      className={`relative max-w-[75%] rounded-2xl bg-accent/15 px-4 py-2.5 text-sm leading-snug text-foreground ${i % 2 ? 'ml-auto rotate-2' : '-rotate-2'}`}
+      className={`relative max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-snug ${onPhoto ? 'bg-white text-ink shadow-lg' : 'bg-accent/15 text-foreground'} ${i % 2 ? 'ml-auto rotate-2' : '-rotate-2'}`}
     >
       <blockquote>{t}</blockquote>
-      <span aria-hidden="true" className={`absolute -bottom-1.5 size-3 rotate-45 bg-accent/15 ${i % 2 ? 'right-6' : 'left-6'}`} />
+      <span aria-hidden="true" className={`absolute -bottom-1.5 size-3 rotate-45 ${onPhoto ? 'bg-white' : 'bg-accent/15'} ${i % 2 ? 'right-6' : 'left-6'}`} />
     </motion.figure>
   )
   return (
-    <section aria-label="What clients say" className="mt-12 space-y-3">
+    <section aria-label="What clients say" className={`mt-12 space-y-3 ${onPhoto ? 'rounded-3xl bg-black/55 p-5 ring-1 ring-white/15 backdrop-blur-xl' : ''}`}>
       {items.slice(0, half).map((t, i) => <Bubble key={i} t={t} i={i} />)}
       <motion.h2 initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
-        className="py-2 text-center font-display text-5xl font-extrabold lowercase leading-none tracking-tighter text-accent sm:text-6xl">
+        className={`py-2 text-center font-display text-5xl font-extrabold lowercase leading-none tracking-tighter sm:text-6xl ${onPhoto ? '!text-white drop-shadow-lg' : 'text-accent'}`}>
         i got a text
       </motion.h2>
       {items.slice(half).map((t, i) => <Bubble key={i + half} t={t} i={i + half} />)}
@@ -288,7 +294,7 @@ export function BackdropTemplate({ data, name, onLinkClick }) {
             initial={{ scale: 1.15, opacity: 0 }} animate={{ scale: blur ? 1.12 : 1.02, opacity: 1 }} transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
             className={`size-full object-cover ${blur ? 'blur-2xl saturate-150' : ''}`} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/35 to-black/70" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/55 to-black/80" />
       </div>
       <motion.div variants={stagger(0.08)} initial="hidden" animate="show" className="relative pt-8 text-center text-white">
         <motion.div variants={fadeUp} className="mx-auto size-28 overflow-hidden rounded-full ring-4 ring-white/70 shadow-2xl">
