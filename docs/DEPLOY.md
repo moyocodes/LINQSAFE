@@ -188,6 +188,8 @@ cPanel → **File Manager**:
 
 ### 4.6 Settings file
 
+Ready-to-fill templates are in the repo: **`.env.prod.example`** (for `linqsafe` and `linqsafe-admin`) and **`.env.dev.example`** (for `linqsafe-dev`). Copy the right one into a new `.env` in the app folder and replace the `<...>` values.
+
 In the app folder: **+ File** → name it `.env` → right-click → **Edit**. (Turn on *Settings → Show Hidden Files* to see it later.)
 
 ```env
