@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Globe, Headphones, Link2, Store } from 'lucide-react'
 import { siFacebook, siGithub, siInstagram, siPinterest, siSnapchat, siTiktok, siWhatsapp, siX, siYoutube } from 'simple-icons'
 
@@ -38,9 +39,24 @@ export function detectType(url) {
   }
 }
 
-export function TypeBadge({ type, className = 'size-9' }) {
+// Generic links (website, other, shop) show the site's own icon when it has one, via our server's cache.
+const FAVICON_TYPES = ['website', 'other', 'store']
+export const hostOf = (url) => { try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? u.hostname.replace(/^www\./, '') : '' } catch { return '' } }
+
+export function TypeBadge({ type, url, className = 'size-9' }) {
   const t = LINK_TYPES[type] || LINK_TYPES.website
   const Icon = t.icon
+  const host = url && FAVICON_TYPES.includes(type) ? hostOf(url) : ''
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [host])
+  if (host && !failed) {
+    return (
+      <span className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-white ring-1 ring-black/10 ${className}`} title={host}>
+        <img src={`/api/favicon/${host}`} alt="" loading="lazy" onError={() => setFailed(true)} className="size-[60%] object-contain" />
+        <span className="sr-only">{t.label}</span>
+      </span>
+    )
+  }
   return (
     <span className={`grid shrink-0 place-items-center rounded-full ${className}`} style={{ background: t.bg, color: t.fg || '#fff' }} title={t.label}>
       <Icon className="size-[52%]" aria-hidden="true" />

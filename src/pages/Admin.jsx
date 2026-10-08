@@ -34,7 +34,7 @@ function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDra
         >
           <GripVertical className="size-5" aria-hidden="true" />
         </button>
-        <TypeBadge type={link.type} />
+        <TypeBadge type={link.type} url={link.url} />
         <div className="grid flex-1 gap-2">
           <Input placeholder="Link title" aria-label={`Title for link ${index + 1}`} value={link.title} onChange={(e) => onChange({ title: e.target.value })} onBlur={onSave} />
           <Input placeholder="https://instagram.com/moyosore" aria-label={`URL for link ${index + 1}`} value={link.url} onChange={(e) => onChange({ url: e.target.value })}
@@ -504,7 +504,7 @@ export default function Admin() {
                 <AnimatePresence mode="wait" initial={false}>
                   {newLink.detected ? (
                     <motion.p key="yes" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-1 items-center gap-2 text-sm">
-                      <TypeBadge type={newLink.type} className="size-7" />
+                      <TypeBadge type={newLink.type} url={newLink.url} className="size-7" />
                       <span><span className="font-medium">{LINK_TYPES[newLink.type].label}</span> link detected</span>
                     </motion.p>
                   ) : (

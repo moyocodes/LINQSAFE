@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { SITE } from '@/config'
 
 // Hub mark: one centre linking out to three nodes ("one link for everything").
+// Colours come from --logo-* in styles.css: cobalt tile in light mode, cream tile with cobalt wiring in dark mode.
 export function LogoMark({ className = 'size-9', animate = true }) {
   const draw = (i) => ({
     initial: animate ? { pathLength: 0 } : false,
@@ -18,22 +19,27 @@ export function LogoMark({ className = 'size-9', animate = true }) {
     <svg viewBox="0 0 64 64" className={className} role="img" aria-label={`${SITE.name} logo`}>
       <defs>
         <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#F2D29A" />
-          <stop offset="1" stopColor="#F2A07E" />
+          <stop offset="0" style={{ stopColor: 'var(--logo-a)' }} />
+          <stop offset="1" style={{ stopColor: 'var(--logo-b)' }} />
         </linearGradient>
       </defs>
-      <rect width="64" height="64" rx="16" fill="#2B4FAF" />
+      <rect width="64" height="64" rx="16" style={{ fill: 'var(--logo-tile)' }} />
       <g stroke="url(#logo-g)" strokeWidth="4" strokeLinecap="round" fill="none">
         <motion.path d="M32 34V16" {...draw(0)} />
         <motion.path d="M32 34 17 44" {...draw(1)} />
         <motion.path d="M32 34l15 10" {...draw(2)} />
       </g>
       <circle cx="32" cy="34" r="7" fill="url(#logo-g)" />
-      <motion.circle cx="32" cy="14" r="5" fill="#F2D29A" style={{ transformOrigin: '32px 14px' }} {...pop(0)} />
-      <motion.circle cx="15" cy="45" r="5" fill="#6CC3BA" style={{ transformOrigin: '15px 45px' }} {...pop(1)} />
-      <motion.circle cx="49" cy="45" r="5" fill="#F2D29A" style={{ transformOrigin: '49px 45px' }} {...pop(2)} />
+      <motion.circle cx="32" cy="14" r="5" style={{ fill: 'var(--logo-a)', transformOrigin: '32px 14px' }} {...pop(0)} />
+      <motion.circle cx="15" cy="45" r="5" style={{ fill: 'var(--logo-c)', transformOrigin: '15px 45px' }} {...pop(1)} />
+      <motion.circle cx="49" cy="45" r="5" style={{ fill: 'var(--logo-a)', transformOrigin: '49px 45px' }} {...pop(2)} />
     </svg>
   )
+}
+
+// The wordmark is "linqsafe." with an accent full stop.
+export function Wordmark({ className = '' }) {
+  return <span className={className}>{SITE.name}<span className="text-accent">.</span></span>
 }
 
 export default function Logo() {
@@ -42,7 +48,7 @@ export default function Logo() {
       <motion.span whileHover={{ rotate: 12, scale: 1.08 }} whileTap={{ scale: 0.92 }} transition={{ type: 'spring', stiffness: 300, damping: 12 }} className="block">
         <LogoMark />
       </motion.span>
-      {SITE.name}
+      <Wordmark />
     </Link>
   )
 }

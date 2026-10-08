@@ -58,6 +58,12 @@
   }
   /* Headings on always-dark/coloured cards take the card's text colour, not the page's. */
   .bg-cta :is(h1, h2, h3), .bg-ink :is(h1, h2, h3) { color: inherit; }
+  /* The dashboard video is cream + cobalt; in dark mode invert it (cream → deep navy) and turn the hue back so blue stays blue. */
+  :root[data-theme='dark'] .ambient-media { filter: invert(1) hue-rotate(180deg) saturate(1.2); opacity: .35; }
+  /* Logo colours: light = cobalt tile, warm wiring; dark = cream tile, cobalt wiring. */
+  :root { --logo-tile: #2B4FAF; --logo-a: #F2D29A; --logo-b: #F2A07E; --logo-c: #6CC3BA; }
+  :root[data-theme='dark'] { --logo-tile: #F6F3EE; --logo-a: #2B4FAF; --logo-b: #4F6FD0; --logo-c: #E07A55; }
+  .theme-light { --logo-tile: #2B4FAF; --logo-a: #F2D29A; --logo-b: #F2A07E; --logo-c: #6CC3BA; }
   /* Set for ~400ms by the appearance toggle so the switch fades instead of snapping. */
   .theme-fade, .theme-fade *, .theme-fade *::before, .theme-fade *::after {
     transition: background-color .35s ease, border-color .35s ease, color .35s ease, fill .35s ease, box-shadow .35s ease !important;

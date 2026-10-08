@@ -6,6 +6,7 @@
 // generated here too. dev.* and admin.* hosts are never indexed.
 import fs from 'node:fs'
 import path from 'node:path'
+import { ogAvailable, ogSignature } from './og.js'
 
 const NAME = 'linqsafe'
 const TAGLINE = 'One link for everything you share'
@@ -36,7 +37,7 @@ export function baseUrl(req) {
   return `${req.protocol}://${req.get('host')}`
 }
 
-function block({ title, desc, url, image, imageAlt, type = 'website', noindex, ld = [] }) {
+function block({ title, desc, url, image, imageAlt, type = 'website', noindex, ld = [], square = false }) {
   return [
     `<title>${esc(title)}</title>`,
     `<meta name="description" content="${esc(desc)}" />`,
@@ -48,9 +49,11 @@ function block({ title, desc, url, image, imageAlt, type = 'website', noindex, l
     `<meta property="og:description" content="${esc(desc)}" />`,
     `<meta property="og:url" content="${esc(url)}" />`,
     `<meta property="og:image" content="${esc(image)}" />`,
+    `<meta property="og:image:secure_url" content="${esc(image)}" />`,
+    ...(square ? [] : ['<meta property="og:image:type" content="image/png" />', '<meta property="og:image:width" content="1200" />', '<meta property="og:image:height" content="630" />']),
     `<meta property="og:image:alt" content="${esc(imageAlt || title)}" />`,
     '<meta property="og:locale" content="en_NG" />',
-    `<meta name="twitter:card" content="${image.endsWith('/og-image.png') ? 'summary_large_image' : 'summary'}" />`,
+    `<meta name="twitter:card" content="${square ? 'summary' : 'summary_large_image'}" />`,
     `<meta name="twitter:title" content="${esc(title)}" />`,
     `<meta name="twitter:description" content="${esc(desc)}" />`,
     `<meta name="twitter:image" content="${esc(image)}" />`,
@@ -121,7 +124,13 @@ export function createSeo({ pool, dist }) {
       },
     }]
     return {
-      html: block({ title: `${name} (@${u.username}) · ${NAME}`, desc, url, image: avatar || image, imageAlt: `${name}'s profile picture`, type: 'profile', noindex, ld }),
+      // A branded 1200×630 card (logo, photo, name, icons) when the renderer is installed; else the photo or site image.
+      html: block({
+        title: `${name} (@${u.username}) · ${NAME}`, desc, url, type: 'profile', noindex, ld,
+        ...(ogAvailable()
+          ? { image: `${base}/og/${u.username}.png?v=${ogSignature(u)}`, imageAlt: `${name} on ${NAME}` }
+          : { image: avatar || image, imageAlt: `${name}'s profile picture`, square: !!avatar }),
+      }),
       status: 200,
     }
   }
@@ -153,6 +162,7 @@ export function createSeo({ pool, dist }) {
       'Allow: /',
       ...['/admin', '/owner', '/api/', '/billing/', '/verify', '/forgot-password', '/reset-password'].map((d) => `Disallow: ${d}`),
       'Allow: /api/u/', // profile pictures used in previews
+      'Allow: /og/', // link-preview cards
       '',
       `Sitemap: ${baseUrl(req)}/sitemap.xml`,
       '',

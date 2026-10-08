@@ -8,3 +8,4 @@ linqsafe-*.zip
 !.env.prod.example
 !.env.dev.example
 email-previews/
+public/media/*.source.*

@@ -142,7 +142,7 @@ function Footer() {
       <motion.p aria-hidden="true"
         initial={{ y: '40%', opacity: 0 }} whileInView={{ y: '18%', opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
         className="pointer-events-none select-none text-center font-display text-[22vw] font-extrabold leading-[0.8] tracking-tighter text-transparent [-webkit-text-stroke:1px_hsl(36_30%_90%/.12)] [background:linear-gradient(to_bottom,hsl(36_30%_90%/.10),transparent_75%)] [-webkit-background-clip:text] [background-clip:text]">
-        {SITE.name}
+        {SITE.name}.
       </motion.p>
     </footer>
   )

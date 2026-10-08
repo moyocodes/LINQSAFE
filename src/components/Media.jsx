@@ -22,9 +22,9 @@ export function AmbientVideo({ src, poster, className = '' }) {
   return (
     <div aria-hidden="true" className={`pointer-events-none fixed inset-0 -z-10 overflow-hidden ${className}`}>
       {!failed && (reduce
-        ? <img src={poster} alt="" onError={() => setFailed(true)} className="size-full object-cover opacity-40" />
-        : <video src={src} poster={poster} autoPlay muted loop playsInline preload="metadata" onError={() => setFailed(true)} className="size-full object-cover opacity-40" />)}
-      <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/85 to-background" />
+        ? <img src={poster} alt="" onError={() => setFailed(true)} className="ambient-media size-full object-cover opacity-70" />
+        : <video src={src} poster={poster} autoPlay muted loop playsInline preload="metadata" onError={() => setFailed(true)} className="ambient-media size-full object-cover opacity-70" />)}
+      <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/55 to-background/80" />
     </div>
   )
 }

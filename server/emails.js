@@ -64,7 +64,7 @@ function layout({ preheader, eyebrow, heading, body, footnote, person }) {
     <tr><td style="padding:0 0 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
       <td style="padding:0 8px 20px">
         <a href="${app}" style="text-decoration:none"><img src="${app}/icon-192.png" width="36" height="36" alt="linqsafe" style="vertical-align:middle;border:0;border-radius:9px">
-        <span style="vertical-align:middle;margin-left:10px;font:700 20px ${SANS};color:${C.ink}">linqsafe</span></a>
+        <span style="vertical-align:middle;margin-left:10px;font:700 20px ${SANS};color:${C.ink}">linqsafe<span style="color:#2B4FAF">.</span></span></a>
       </td>
       ${personChip(person)}
     </tr></table></td></tr>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowUpRight, MessageCircle, MousePointer2, Search } from 'lucide-react'
-import { LINK_TYPES, SOCIAL_KEYS } from '@/lib/linkTypes'
+import { LINK_TYPES, SOCIAL_KEYS, TypeBadge } from '@/lib/linkTypes'
 import { fadeUp, stagger } from '@/lib/motion'
 
 // Pro profile templates (Cover, Editorial, Profile card) plus pieces any layout can use:
@@ -10,6 +10,18 @@ import { fadeUp, stagger } from '@/lib/motion'
 const firstName = (n) => n.split(/\s+/)[0]
 const socialsOf = (links) => links.filter((l) => SOCIAL_KEYS.includes(l.type))
 const linkProps = (l, onClick) => ({ href: l.url, target: '_blank', rel: 'noopener noreferrer', onClick: () => onClick(l.id) })
+// Fills the whole page behind photo templates with a soft, blurred copy of the photo (so wide screens
+// don't show empty sides). Fixed, behind the template column.
+export function PhotoFill({ src }) {
+  if (!src) return null
+  return (
+    <div aria-hidden="true" className="fixed inset-0 -z-10 overflow-hidden">
+      <img src={src} alt="" referrerPolicy="no-referrer" className="size-full scale-110 object-cover opacity-70 blur-3xl saturate-150" />
+      <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/10 to-white/40" />
+    </div>
+  )
+}
+
 const NewTab = () => <span className="sr-only"> (opens in a new tab)</span>
 
 export function WhatsAppButton({ number, name, className = '' }) {
@@ -64,7 +76,8 @@ export function FounderNote({ data, name }) {
 export function CoverTemplate({ data, name, onLinkClick }) {
   const img = data.cover_url || data.avatar_url
   return (
-    <motion.div variants={stagger(0.08)} initial="hidden" animate="show" className="-mx-4 -mt-6 text-center">
+    <motion.div variants={stagger(0.08)} initial="hidden" animate="show" className="-mx-4 -mt-6 overflow-hidden text-center sm:mx-0 sm:mt-0 sm:rounded-[2rem] sm:shadow-[0_40px_80px_-30px_rgb(0_0_0/.45)]">
+      <PhotoFill src={img} />
       <div className="relative h-[30rem] overflow-hidden bg-gradient-to-br from-rose via-sand to-accent/70">
         {img && (
           <motion.img src={img} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover"
@@ -196,8 +209,9 @@ export function SearchTemplate({ data, name, onLinkClick }) {
   const img = data.cover_url || data.avatar_url
   const tilts = [-4, 3, -2, 5, -3]
   return (
-    <motion.div variants={stagger(0.1)} initial="hidden" animate="show" className="-mx-4 -mt-6">
-      <div className="relative min-h-[40rem] overflow-hidden bg-gradient-to-b from-rose via-sand to-lilac px-6 pb-10 pt-16 text-center">
+    <motion.div variants={stagger(0.1)} initial="hidden" animate="show" className="-mx-4 -mt-6 sm:mx-0 sm:mt-0">
+      <PhotoFill src={img} />
+      <div className="relative min-h-[40rem] overflow-hidden bg-gradient-to-b from-rose via-sand to-lilac px-6 pb-12 pt-28 text-center shadow-[0_40px_80px_-30px_rgb(0_0_0/.45)] sm:rounded-[2rem]">
         {img && <img src={img} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover" />}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/45" aria-hidden="true" />
         <div className="relative">
@@ -221,7 +235,8 @@ export function SearchTemplate({ data, name, onLinkClick }) {
                 initial={{ opacity: 0, scale: 0.6, rotate: 0 }} animate={{ opacity: 1, scale: 1, rotate: tilts[i % tilts.length] }}
                 transition={{ delay: 0.4 + i * 0.12 + (reduce ? 0 : query.length * 0.055), type: 'spring', stiffness: 260, damping: 14 }}
                 whileHover={{ rotate: 0, scale: 1.06 }}
-                className="rounded-2xl bg-white/95 px-4 py-3 text-sm font-semibold text-black shadow-xl">
+                className="inline-flex items-center gap-2 rounded-2xl bg-white/95 py-2.5 pl-2.5 pr-4 text-sm font-semibold text-black shadow-xl">
+                <TypeBadge type={l.type} url={l.url} className="size-7" />
                 {l.title}<NewTab />
               </motion.a>
             ))}
@@ -329,12 +344,11 @@ export function GridTemplate({ data, name, onLinkClick }) {
       <WhatsAppButton number={data.whatsapp} name={name} className="mt-3" />
       <div className="mt-3 grid grid-cols-2 gap-3">
         {data.links.map((l, i) => {
-          const Icon = LINK_TYPES[l.type]?.icon || ArrowUpRight
           return (
             <motion.a key={l.id} variants={fadeUp} {...linkProps(l, onLinkClick)} whileHover={{ y: -3, rotate: i % 2 ? 0.6 : -0.6 }} whileTap={{ scale: 0.97 }}
               style={{ background: tint(l.type) }}
               className={`relative flex flex-col justify-between overflow-hidden rounded-3xl border p-4 font-semibold ${i === 0 ? 'col-span-2 min-h-36' : 'aspect-square'}`}>
-              <span className="grid size-11 place-items-center rounded-2xl text-white shadow-sm" style={{ background: LINK_TYPES[l.type]?.bg || '#261F1C' }}><Icon className="size-5" aria-hidden="true" /></span>
+              <TypeBadge type={l.type} url={l.url} className="size-11 shadow-sm" />
               <span className={i === 0 ? 'text-xl' : 'text-sm leading-snug'}>{l.title}</span>
               <ArrowUpRight className="absolute right-3 top-3 size-4 opacity-50" aria-hidden="true" /><NewTab />
             </motion.a>

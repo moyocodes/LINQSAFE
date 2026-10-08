@@ -11,7 +11,7 @@ import { fadeUp, stagger } from '@/lib/motion'
 import { useTitle } from '@/lib/useTitle'
 import { SITE } from '@/config'
 import { SOCIAL_KEYS, TypeBadge } from '@/lib/linkTypes'
-import { LogoMark } from '@/components/Logo'
+import { LogoMark, Wordmark } from '@/components/Logo'
 import { FounderNote, KindWords, PROFILE_TEMPLATES, WhatsAppButton } from '@/components/ProfileTemplates'
 
 const visitorTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch { return '' } })()
@@ -113,7 +113,7 @@ export default function Profile() {
       )}
       {!dark && <MotionBackdrop palette={key === 'blush' ? 'blush' : key === 'sage' ? 'sage' : 'fresh'} />}
       <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col px-4 py-6">
-        <div className={`flex items-center justify-between ${embed ? 'hidden' : ''} ${['cover', 'search'].includes(layout) ? 'relative z-20 mb-[-4rem] [&_a]:bg-card/90' : ''}`}>
+        <div className={`flex items-center justify-between ${embed ? 'hidden' : ''} ${['cover', 'search'].includes(layout) ? 'relative z-20 mb-[-4rem] sm:mb-[-4.5rem] sm:px-4 sm:pt-4' : ''} ${['cover', 'search', 'backdrop'].includes(layout) ? '[&_a]:border-white/60 [&_a]:bg-white/85 [&_a]:text-ink [&_button]:border-white/60 [&_button]:bg-white/85 [&_button]:text-ink [&_a]:shadow-lg [&_button]:shadow-lg' : ''}`}>
           {isSignedIn() ? (
             <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} whileHover={{ x: -2 }}>
               <Link to="/admin" className="inline-flex h-10 items-center gap-1.5 rounded-md border bg-card/80 px-3.5 text-sm font-medium backdrop-blur hover:bg-card">
@@ -177,7 +177,7 @@ export default function Profile() {
                 className={`group relative overflow-hidden transition-shadow hover:shadow-md ${linkClass}`}
               >
                 <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-foreground/15 to-transparent opacity-0 transition-none group-hover:animate-[shimmer_0.9s_ease-out] group-hover:opacity-100" />
-                <TypeBadge type={l.type} className={layout === 'grid' ? 'size-9' : 'size-8'} />
+                <TypeBadge type={l.type} url={l.url} className={layout === 'grid' ? 'size-9' : 'size-8'} />
                 <span className={layout === 'grid' ? '' : layout === 'minimal' ? 'flex-1' : 'flex-1 text-center'}>{l.title}<span className="sr-only"> (opens in a new tab)</span></span>
                 <ExternalLink className={`size-4 text-muted-foreground ${layout === 'grid' ? 'absolute right-2.5 top-2.5 size-3.5' : ''}`} aria-hidden="true" />
               </motion.a>
@@ -195,7 +195,7 @@ export default function Profile() {
           <motion.div whileHover={{ y: -2, scale: 1.03 }} whileTap={{ scale: 0.97 }}>
             <Link to="/signup" className="inline-flex items-center gap-2 rounded-full border bg-card/90 py-1.5 pl-1.5 pr-3.5 font-medium text-foreground shadow-sm backdrop-blur">
               <LogoMark className="size-6" animate={false} />
-              <span>Made with <b className="font-display">{SITE.name}</b></span>
+              <span>Made with <Wordmark className="font-display font-bold" /></span>
             </Link>
           </motion.div>
           <span><Link to="/signup" className="underline hover:text-foreground">Create your own page</Link><span className="mx-2">·</span><Link to="/privacy" className="hover:text-foreground">Privacy</Link></span>

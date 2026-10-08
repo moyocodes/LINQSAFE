@@ -15,6 +15,7 @@ import { pool } from './db.js'
 import { send } from './mailer.js'
 import * as Email from './emails.js'
 import { createSeo, indexable } from './seo.js'
+import { createOg } from './og.js'
 import { DURATIONS, FEATURES, FEATURE_KEYS, LAYOUT_FEATURE, featureByKey, pricing } from './features.js'
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -361,6 +362,28 @@ function validUrl(value) {
 
 // ---- Auth ----
 app.get('/api/health', (req, res) => res.json({ ok: true }))
+
+// A website's icon for "Website"/"Other" links, fetched by our server and cached, so visitors' browsers
+// never contact a third party. 404 when the site has none (the app then shows a generic globe).
+const favicons = new Map() // host → { buf, type, at } | { missing, at }
+app.get('/api/favicon/:host', async (req, res) => {
+  const host = String(req.params.host || '').toLowerCase()
+  if (!/^(?=.{3,253}$)([a-z0-9-]+\.)+[a-z]{2,}$/.test(host) || /^(localhost|127\.|10\.|192\.168\.)/.test(host)) return res.status(400).end()
+  let hit = favicons.get(host)
+  if (!hit || Date.now() - hit.at > 86_400_000) {
+    hit = { missing: true, at: Date.now() }
+    try {
+      const r = await fetch(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`, { signal: AbortSignal.timeout(3000) })
+      const type = r.headers.get('content-type') || ''
+      const buf = Buffer.from(await r.arrayBuffer())
+      if (r.ok && type.startsWith('image/') && buf.length > 0 && buf.length < 200_000) hit = { buf, type, at: Date.now() }
+    } catch { /* offline or slow: treat as missing for now */ }
+    if (favicons.size > 1000) favicons.delete(favicons.keys().next().value)
+    favicons.set(host, hit)
+  }
+  if (hit.missing) return res.status(404).set('Cache-Control', 'public, max-age=3600').end()
+  res.type(hit.type).set('Cache-Control', 'public, max-age=86400').send(hit.buf)
+})
 
 // Is a username free? Used by the "claim your link" box on the home page.
 app.get('/api/username/:name', async (req, res) => {
@@ -1058,6 +1081,7 @@ app.use((req, res, next) => {
 app.get('/robots.txt', seo.robots)
 app.get('/sitemap.xml', seo.sitemap)
 app.get('/api/u/:username/avatar', seo.avatar)
+app.get('/og/:username.png', createOg({ pool }).image)
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }))
 
