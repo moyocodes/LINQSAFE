@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, Reorder, motion, useDragControls } from 'framer-motion'
-import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, Menu, UserRound, Share2, Smartphone, X, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, GripVertical, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
+import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, UserRound, Share2, Smartphone, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, GripVertical, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
 import { api, logout, setSignedIn } from '@/api'
 import ShareButton from '@/ShareButton'
 import { Button } from '@/components/ui/button'
@@ -168,7 +168,7 @@ const SECTIONS = [
   ['note', "Founder's note", Feather], ['testimonials', 'Kind words', MessageSquareQuote], ['payments', 'Payments', Crown],
 ]
 
-// Which dashboard section is on screen (shared by the desktop list and the mobile toolbar).
+// Which dashboard section is on screen (desktop jump-to list).
 function useActiveSection() {
   const [active, setActive] = useState('overview')
   useEffect(() => {
@@ -217,101 +217,21 @@ function SectionList({ active, onPick, layoutPrefix }) {
   )
 }
 
-// Slide-in panel from the left or right edge. Esc, the backdrop or a swipe toward the edge closes it.
-function Drawer({ open, onClose, side = 'left', label, children }) {
-  const panel = useRef(null)
-  useEffect(() => {
-    if (!open) return
-    const key = (e) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', key)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    setTimeout(() => panel.current?.focus(), 50)
-    return () => { window.removeEventListener('keydown', key); document.body.style.overflow = prev }
-  }, [open, onClose])
-  const from = side === 'left' ? '-100%' : '100%'
+// Phones & tablets: a sticky, sideways-scrolling row of plain anchor links (CSS only).
+function MobileSectionNav() {
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div className="fixed inset-0 z-[55] lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <button type="button" aria-label="Close" className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={onClose} />
-          <motion.div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label}
-            initial={{ x: from }} animate={{ x: 0 }} exit={{ x: from }} transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-            drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={side === 'left' ? { left: 0.6, right: 0 } : { left: 0, right: 0.6 }}
-            onDragEnd={(_, i) => ((side === 'left' ? i.offset.x < -90 : i.offset.x > 90) && onClose())}
-            className={`absolute inset-y-0 ${side === 'left' ? 'left-0 rounded-r-3xl' : 'right-0 rounded-l-3xl'} flex w-[min(86vw,360px)] flex-col overflow-y-auto bg-background shadow-2xl outline-none`}>
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <p className="font-display text-lg font-semibold">{label}</p>
-              <Button variant="ghost" size="icon" onClick={onClose} aria-label={`Close ${label.toLowerCase()}`}><X /></Button>
-            </div>
-            <div className="flex-1 p-4">{children}</div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  )
-}
-
-// Phones & tablets: a sticky toolbar under the site nav. Sections open in a left drawer, the live
-// preview in a right drawer; the middle shows where you are, with a progress line.
-function MobileToolbar({ me, profileUrl, onLogout }) {
-  const [active, go] = useActiveSection()
-  const [left, setLeft] = useState(false)
-  const [right, setRight] = useState(false)
-  const i = Math.max(0, SECTIONS.findIndex(([id]) => id === active))
-  const [, label, Icon] = SECTIONS[i]
-  return (
-    <>
-      <div className="sticky top-16 z-30 -mx-4 border-b border-foreground/10 bg-background/85 backdrop-blur-md lg:hidden">
-        <div className="flex items-center gap-2 px-3 py-2">
-          <motion.button type="button" whileTap={{ scale: 0.92 }} onClick={() => setLeft(true)} aria-label="Open sections"
-            className="flex h-10 items-center gap-1.5 rounded-full border bg-card px-3 text-sm font-semibold shadow-sm">
-            <Menu className="size-4" aria-hidden="true" /> Sections
-          </motion.button>
-          <div className="min-w-0 flex-1 text-center">
-            <AnimatePresence mode="wait">
-              <motion.p key={active} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}
-                className="flex items-center justify-center gap-1.5 truncate text-sm font-semibold">
-                <Icon className="size-4 shrink-0 text-accent" aria-hidden="true" /><span className="truncate">{label}</span>
-              </motion.p>
-            </AnimatePresence>
-            <p className="font-mono text-[10px] text-muted-foreground">{i + 1} / {SECTIONS.length}</p>
-          </div>
-          <motion.button type="button" whileTap={{ scale: 0.92 }} onClick={() => setRight(true)} aria-label="Open live preview"
-            className="flex h-10 items-center gap-1.5 rounded-full bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm">
-            <Smartphone className="size-4" aria-hidden="true" /> Preview
-          </motion.button>
-        </div>
-        <div className="h-0.5 bg-foreground/5">
-          <motion.div className="h-full origin-left bg-gradient-to-r from-accent via-rose to-lilac" animate={{ scaleX: (i + 1) / SECTIONS.length }} transition={{ type: 'spring', stiffness: 200, damping: 30 }} />
-        </div>
-      </div>
-
-      <Drawer open={left} onClose={() => setLeft(false)} side="left" label="Sections">
-        <SectionList active={active} onPick={(id) => { setLeft(false); setTimeout(() => go(id), 250) }} layoutPrefix="drawer" />
-        <div className="mt-5 space-y-2 border-t pt-4">
-          <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium hover:bg-muted">
-            <ExternalLink className="size-4" aria-hidden="true" /> Open my page
-          </a>
-          <Link to="/admin/analytics" className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium hover:bg-muted">
-            <BarChart3 className="size-4" aria-hidden="true" /> Analytics
-          </Link>
-          {me.is_owner && (
-            <Link to="/owner" className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium text-accent hover:bg-muted">
-              <Crown className="size-4" aria-hidden="true" /> Founder dashboard
-            </Link>
-          )}
-          <button type="button" onClick={onLogout} className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
-            <LogOut className="size-4" aria-hidden="true" /> Log out
-          </button>
-        </div>
-      </Drawer>
-
-      <Drawer open={right} onClose={() => setRight(false)} side="right" label="Live preview">
-        <Preview me={me} />
-        <PreviewToolbar me={me} url={profileUrl} canQr={has(me, 'qr_code')} />
-      </Drawer>
-    </>
+    <nav aria-label="Dashboard sections" className="sticky top-16 z-30 -mx-4 border-b border-foreground/10 bg-background/90 backdrop-blur lg:hidden">
+      <ul className="flex snap-x gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {[...SECTIONS, ['preview', 'Preview', Smartphone]].map(([id, label, Icon]) => (
+          <li key={id} className="shrink-0 snap-start">
+            <a href={`#${id}`}
+              className="flex items-center gap-1.5 whitespace-nowrap rounded-full border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground active:bg-muted">
+              <Icon className="size-3.5" aria-hidden="true" /> {label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   )
 }
 
@@ -463,7 +383,7 @@ export default function Admin() {
   return (
     <BillingProvider me={me} onUnlocked={loadMe}>
     <AmbientVideo src="/media/dashboard-loop.mp4" poster="/media/dashboard-poster.jpg" />
-    <div className="container relative grid grid-cols-1 gap-8 py-10 pb-40 lg:grid-cols-[minmax(0,1fr)_300px] [&>*]:min-w-0">
+    <div className="container relative grid grid-cols-1 gap-8 py-10 pb-24 lg:pb-40 lg:grid-cols-[minmax(0,1fr)_300px] [&>*]:min-w-0">
       <p role="status" aria-live="polite" className="sr-only">{announce}</p>
       {!me.onboarded_at && <Onboarding me={me} onDone={() => loadMe()} />}
       <div className="space-y-6">
@@ -472,7 +392,7 @@ export default function Admin() {
           <Button variant="ghost" size="sm" onClick={() => logout().then(() => navigate('/'))}><LogOut /> Log out</Button>
         </div>
 
-        <MobileToolbar me={me} profileUrl={profileUrl} onLogout={() => logout().then(() => navigate('/'))} />
+        <MobileSectionNav />
 
         {(!me.email || !me.email_verified) && <VerifyBanner email={me.email} onChanged={(r) => setMe({ ...me, email: r.email, email_verified: r.email_verified })} />}
 
@@ -660,12 +580,13 @@ export default function Admin() {
         <PaymentHistory />
       </div>
 
-      <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:block">
-        <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4 [scrollbar-width:thin]">
-          <p className="mb-3 text-center text-sm font-medium text-muted-foreground">Live preview <span className="font-normal">(click to open your page)</span></p>
+      {/* Desktop: sticky side column. Mobile: stacks under the editor (the Preview chip jumps here). */}
+      <motion.aside id="preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="scroll-mt-32 border-t pt-8 lg:scroll-mt-0 lg:border-t-0 lg:pt-0">
+        <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pb-4 lg:[scrollbar-width:thin]">
+          <p className="mb-3 text-center text-sm font-medium text-muted-foreground">Live preview <span className="font-normal">(tap to open your page)</span></p>
           <Preview me={me} />
           <PreviewToolbar me={me} url={profileUrl} canQr={has(me, 'qr_code')} />
-          <SectionNav />
+          <div className="hidden lg:block"><SectionNav /></div>
         </div>
       </motion.aside>
 
