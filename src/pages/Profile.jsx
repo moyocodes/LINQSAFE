@@ -138,7 +138,13 @@ export function ProfileView({ data, layout, theme: chosen, preview = null, embed
                 <ArrowLeft className="size-4" aria-hidden="true" /> Back to dashboard
               </Link>
             </motion.div>
-          ) : <span />}
+          ) : (
+            // A small linqsafe mark for visitors; opens the site in a new tab so they keep this page.
+            <Link to="/" target="_blank" rel="noopener" aria-label="Made with linqsafe" title="Made with linqsafe"
+              className="grid size-8 place-items-center rounded-lg opacity-70 transition-opacity hover:opacity-100">
+              <LogoMark className="size-5" animate={false} />
+            </Link>
+          )}
           <ShareButton url={location.href} title={name} />
         </div>
 
