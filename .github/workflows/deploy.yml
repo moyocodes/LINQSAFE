@@ -42,8 +42,8 @@ jobs:
       JWT_SECRET: ci-only-secret-not-used-anywhere-else
       PORT: 3001
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: Start API
@@ -61,8 +61,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }} # shows the deploy history per stage on GitHub
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
 
