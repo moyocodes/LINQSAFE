@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, Reorder, motion, useDragControls } from 'framer-motion'
-import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, UserRound, Share2, Smartphone, X, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, GripVertical, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
+import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, Menu, UserRound, Share2, Smartphone, X, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, GripVertical, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
 import { api, logout, setSignedIn } from '@/api'
 import ShareButton from '@/ShareButton'
 import { Button } from '@/components/ui/button'
@@ -168,8 +168,8 @@ const SECTIONS = [
   ['note', "Founder's note", Feather], ['testimonials', 'Kind words', MessageSquareQuote], ['payments', 'Payments', Crown],
 ]
 
-// Jump-to menu for the dashboard: highlights the section currently on screen.
-function SectionNav({ variant = 'list' }) {
+// Which dashboard section is on screen (shared by the desktop list and the mobile toolbar).
+function useActiveSection() {
   const [active, setActive] = useState('overview')
   useEffect(() => {
     const els = SECTIONS.map(([id]) => document.getElementById(id)).filter(Boolean)
@@ -180,49 +180,147 @@ function SectionNav({ variant = 'list' }) {
     els.forEach((el) => io.observe(el))
     return () => io.disconnect()
   }, [])
-  const go = (e, id) => {
-    e.preventDefault()
+  const go = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     setActive(id)
   }
-  if (variant === 'chips') return (
-    <nav aria-label="Dashboard sections" className="sticky top-16 z-30 -mx-4 overflow-x-auto border-b border-foreground/10 bg-background/90 px-4 py-2 backdrop-blur [scrollbar-width:none] lg:hidden">
-      <ul className="flex gap-1.5">
-        {SECTIONS.map(([id, label]) => (
-          <li key={id}>
-            <a href={`#${id}`} onClick={(e) => go(e, id)} aria-current={active === id ? 'true' : undefined}
-              className={`relative block whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${active === id ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-              {active === id && <motion.span layoutId="chip-active" className="absolute inset-0 rounded-full bg-primary" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
-              <span className="relative">{label}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  )
+  return [active, go]
+}
+
+// Desktop jump-to menu.
+function SectionNav() {
+  const [active, go] = useActiveSection()
   return (
     <motion.nav aria-label="Dashboard sections" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
       className="paper mt-5 rounded-md p-2">
       <p className="label-form px-2 pb-1 pt-1">Jump to</p>
-      <ul>
-        {SECTIONS.map(([id, label, Icon]) => (
-          <li key={id}>
-            <a href={`#${id}`} onClick={(e) => go(e, id)} aria-current={active === id ? 'true' : undefined}
-              className={`relative flex items-center gap-2.5 rounded-[3px] px-2 py-1.5 text-sm transition-colors ${active === id ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-              {active === id && <motion.span layoutId="nav-active" className="absolute inset-0 rounded-[3px] bg-accent/[0.08]" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
-              {active === id && <motion.span layoutId="nav-bar" className="absolute inset-y-1 left-0 w-[2px] rounded-full bg-saffron" />}
-              <Icon className="relative size-4 shrink-0" aria-hidden="true" />
-              <span className="relative">{label}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
+      <SectionList active={active} onPick={go} layoutPrefix="nav" />
     </motion.nav>
   )
 }
 
-function VerifyBanner({ email }) {
+function SectionList({ active, onPick, layoutPrefix }) {
+  return (
+    <ul>
+      {SECTIONS.map(([id, label, Icon]) => (
+        <li key={id}>
+          <a href={`#${id}`} onClick={(e) => { e.preventDefault(); onPick(id) }} aria-current={active === id ? 'true' : undefined}
+            className={`relative flex items-center gap-2.5 rounded-[3px] px-2 py-2 text-sm transition-colors ${active === id ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+            {active === id && <motion.span layoutId={`${layoutPrefix}-active`} className="absolute inset-0 rounded-[3px] bg-accent/[0.08]" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
+            {active === id && <motion.span layoutId={`${layoutPrefix}-bar`} className="absolute inset-y-1 left-0 w-[2px] rounded-full bg-saffron" />}
+            <Icon className="relative size-4 shrink-0" aria-hidden="true" />
+            <span className="relative">{label}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// Slide-in panel from the left or right edge. Esc, the backdrop or a swipe toward the edge closes it.
+function Drawer({ open, onClose, side = 'left', label, children }) {
+  const panel = useRef(null)
+  useEffect(() => {
+    if (!open) return
+    const key = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', key)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    setTimeout(() => panel.current?.focus(), 50)
+    return () => { window.removeEventListener('keydown', key); document.body.style.overflow = prev }
+  }, [open, onClose])
+  const from = side === 'left' ? '-100%' : '100%'
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div className="fixed inset-0 z-[55] lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <button type="button" aria-label="Close" className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={onClose} />
+          <motion.div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label}
+            initial={{ x: from }} animate={{ x: 0 }} exit={{ x: from }} transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+            drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={side === 'left' ? { left: 0.6, right: 0 } : { left: 0, right: 0.6 }}
+            onDragEnd={(_, i) => ((side === 'left' ? i.offset.x < -90 : i.offset.x > 90) && onClose())}
+            className={`absolute inset-y-0 ${side === 'left' ? 'left-0 rounded-r-3xl' : 'right-0 rounded-l-3xl'} flex w-[min(86vw,360px)] flex-col overflow-y-auto bg-background shadow-2xl outline-none`}>
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <p className="font-display text-lg font-semibold">{label}</p>
+              <Button variant="ghost" size="icon" onClick={onClose} aria-label={`Close ${label.toLowerCase()}`}><X /></Button>
+            </div>
+            <div className="flex-1 p-4">{children}</div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+// Phones & tablets: a sticky toolbar under the site nav. Sections open in a left drawer, the live
+// preview in a right drawer; the middle shows where you are, with a progress line.
+function MobileToolbar({ me, profileUrl, onLogout }) {
+  const [active, go] = useActiveSection()
+  const [left, setLeft] = useState(false)
+  const [right, setRight] = useState(false)
+  const i = Math.max(0, SECTIONS.findIndex(([id]) => id === active))
+  const [, label, Icon] = SECTIONS[i]
+  return (
+    <>
+      <div className="sticky top-16 z-30 -mx-4 border-b border-foreground/10 bg-background/85 backdrop-blur-md lg:hidden">
+        <div className="flex items-center gap-2 px-3 py-2">
+          <motion.button type="button" whileTap={{ scale: 0.92 }} onClick={() => setLeft(true)} aria-label="Open sections"
+            className="flex h-10 items-center gap-1.5 rounded-full border bg-card px-3 text-sm font-semibold shadow-sm">
+            <Menu className="size-4" aria-hidden="true" /> Sections
+          </motion.button>
+          <div className="min-w-0 flex-1 text-center">
+            <AnimatePresence mode="wait">
+              <motion.p key={active} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}
+                className="flex items-center justify-center gap-1.5 truncate text-sm font-semibold">
+                <Icon className="size-4 shrink-0 text-accent" aria-hidden="true" /><span className="truncate">{label}</span>
+              </motion.p>
+            </AnimatePresence>
+            <p className="font-mono text-[10px] text-muted-foreground">{i + 1} / {SECTIONS.length}</p>
+          </div>
+          <motion.button type="button" whileTap={{ scale: 0.92 }} onClick={() => setRight(true)} aria-label="Open live preview"
+            className="flex h-10 items-center gap-1.5 rounded-full bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm">
+            <Smartphone className="size-4" aria-hidden="true" /> Preview
+          </motion.button>
+        </div>
+        <div className="h-0.5 bg-foreground/5">
+          <motion.div className="h-full origin-left bg-gradient-to-r from-accent via-rose to-lilac" animate={{ scaleX: (i + 1) / SECTIONS.length }} transition={{ type: 'spring', stiffness: 200, damping: 30 }} />
+        </div>
+      </div>
+
+      <Drawer open={left} onClose={() => setLeft(false)} side="left" label="Sections">
+        <SectionList active={active} onPick={(id) => { setLeft(false); setTimeout(() => go(id), 250) }} layoutPrefix="drawer" />
+        <div className="mt-5 space-y-2 border-t pt-4">
+          <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium hover:bg-muted">
+            <ExternalLink className="size-4" aria-hidden="true" /> Open my page
+          </a>
+          <Link to="/admin/analytics" className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium hover:bg-muted">
+            <BarChart3 className="size-4" aria-hidden="true" /> Analytics
+          </Link>
+          {me.is_owner && (
+            <Link to="/owner" className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium text-accent hover:bg-muted">
+              <Crown className="size-4" aria-hidden="true" /> Founder dashboard
+            </Link>
+          )}
+          <button type="button" onClick={onLogout} className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+            <LogOut className="size-4" aria-hidden="true" /> Log out
+          </button>
+        </div>
+      </Drawer>
+
+      <Drawer open={right} onClose={() => setRight(false)} side="right" label="Live preview">
+        <Preview me={me} />
+        <PreviewToolbar me={me} url={profileUrl} canQr={has(me, 'qr_code')} />
+      </Drawer>
+    </>
+  )
+}
+
+function VerifyBanner({ email, onChanged }) {
   const [state, setState] = useState('idle')
+  const [editing, setEditing] = useState(!email)
+  const [value, setValue] = useState(email || '')
+  const [error, setError] = useState('')
+  useEffect(() => { setEditing(!email); setValue(email || '') }, [email])
   async function resend() {
     setState('sending')
     try {
@@ -232,13 +330,41 @@ function VerifyBanner({ email }) {
       setState('error')
     }
   }
+  async function save(e) {
+    e.preventDefault()
+    setError(''); setState('saving')
+    try {
+      const r = await api('/account/email', { method: 'POST', body: { email: value } })
+      setState('sent'); setEditing(false)
+      onChanged?.(r)
+    } catch (err) { setError(err.message); setState('idle') }
+  }
   return (
-    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} role="status"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-      <span className="flex items-center gap-2"><MailWarning className="size-4 shrink-0" aria-hidden="true" />Confirm <strong>{email}</strong> so you can reset your password if you forget it.</span>
-      <Button size="sm" variant="outline" onClick={resend} disabled={state === 'sending' || state === 'sent'}>
-        {state === 'sent' ? 'Email sent, check your inbox' : state === 'error' ? 'Try again' : 'Resend email'}
-      </Button>
+    <motion.div id="email" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} role="status"
+      className="scroll-mt-24 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+      {editing ? (
+        <form onSubmit={save} className="space-y-2">
+          <p className="flex items-center gap-2"><MailWarning className="size-4 shrink-0" aria-hidden="true" />
+            {email ? 'Change your email. We will send a confirmation link.' : <span><strong>Add your email.</strong> You need it to pay for features and to reset your password.</span>}</p>
+          <div className="flex flex-wrap gap-2">
+            <Input type="email" required autoComplete="email" placeholder="you@example.com" value={value} onChange={(e) => setValue(e.target.value)}
+              aria-label="Email address" aria-invalid={!!error} className="h-10 min-w-0 flex-1 bg-white text-ink" />
+            <Button size="sm" className="h-10" disabled={state === 'saving'}>{state === 'saving' ? <Loader2 className="animate-spin" /> : 'Save email'}</Button>
+            {email && <Button type="button" size="sm" variant="ghost" className="h-10" onClick={() => setEditing(false)}>Cancel</Button>}
+          </div>
+          {error && <p className="text-xs font-medium text-red-800" role="alert">{error}</p>}
+        </form>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="flex items-center gap-2"><MailWarning className="size-4 shrink-0" aria-hidden="true" />Confirm <strong>{email}</strong> so you can pay and reset your password.</span>
+          <span className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={resend} disabled={state === 'sending' || state === 'sent'}>
+              {state === 'sent' ? 'Email sent, check your inbox' : state === 'error' ? 'Try again' : 'Resend email'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Change email</Button>
+          </span>
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -250,7 +376,6 @@ export default function Admin() {
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const [profileError, setProfileError] = useState('')
-  const [sheet, setSheet] = useState(false)
   const urlInput = useRef(null)
   const [adding, setAdding] = useState(false)
   const [announce, setAnnounce] = useState('')
@@ -347,9 +472,9 @@ export default function Admin() {
           <Button variant="ghost" size="sm" onClick={() => logout().then(() => navigate('/'))}><LogOut /> Log out</Button>
         </div>
 
-        <SectionNav variant="chips" />
+        <MobileToolbar me={me} profileUrl={profileUrl} onLogout={() => logout().then(() => navigate('/'))} />
 
-        {me.email && !me.email_verified && <VerifyBanner email={me.email} />}
+        {(!me.email || !me.email_verified) && <VerifyBanner email={me.email} onChanged={(r) => setMe({ ...me, email: r.email, email_verified: r.email_verified })} />}
 
         <div id="overview" className="grid scroll-mt-24 grid-cols-2 gap-4">
           {[
@@ -544,32 +669,6 @@ export default function Admin() {
         </div>
       </motion.aside>
 
-      {/* Phones & tablets: the preview lives in a slide-up sheet. */}
-      <motion.button
-        type="button" onClick={() => setSheet(true)} initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.92 }}
-        className="fixed bottom-5 right-5 z-40 flex [body[data-cart]_&]:bottom-44 items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-xl lg:hidden"
-      >
-        <Smartphone className="size-4" aria-hidden="true" /> Preview
-      </motion.button>
-      <AnimatePresence>
-        {sheet && (
-          <motion.div className="fixed inset-0 z-50 lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <button type="button" aria-label="Close preview" className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSheet(false)} />
-            <motion.div role="dialog" aria-modal="true" aria-label="Live preview"
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-              drag="y" dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.6 }} onDragEnd={(_, i) => i.offset.y > 120 && setSheet(false)}
-              className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-3xl bg-background px-4 pb-8 pt-3">
-              <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-foreground/20" aria-hidden="true" />
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-semibold">Live preview</p>
-                <Button variant="ghost" size="icon" onClick={() => setSheet(false)} aria-label="Close preview"><X /></Button>
-              </div>
-              <Preview me={me} />
-              <PreviewToolbar me={me} url={profileUrl} canQr={has(me, 'qr_code')} />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
     </BillingProvider>
   )

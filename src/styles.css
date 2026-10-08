@@ -119,6 +119,8 @@
   h1 { font-variation-settings: 'SOFT' 100, 'WONK' 1; }
   :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
   ::selection { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+  /* No sideways scrolling from decorative glows; `clip` (unlike `hidden`) keeps position: sticky working. */
+  html, body { overflow-x: clip; }
   html { scroll-behavior: smooth; }
 }
 

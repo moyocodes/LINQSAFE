@@ -185,7 +185,7 @@ function StepCard({ s, i, cta }) {
 // No card: the hub sits on the page itself, over a soft pastel glow that fades out with no edges.
 const Panel = ({ className = '', children }) => (
   <div className={`relative ${className}`}>
-    <div aria-hidden="true" className="pointer-events-none absolute -inset-10 -z-10 opacity-80 blur-2xl [background:radial-gradient(closest-side_at_60%_35%,rgb(242_160_126/.30),transparent),radial-gradient(closest-side_at_35%_70%,rgb(147_172_207/.45),transparent),radial-gradient(closest-side_at_50%_50%,rgb(108_195_186/.18),transparent)]" />
+    <div aria-hidden="true" className="pointer-events-none absolute -inset-y-10 inset-x-0 -z-10 opacity-80 blur-2xl sm:-inset-x-10 [background:radial-gradient(closest-side_at_60%_35%,rgb(242_160_126/.30),transparent),radial-gradient(closest-side_at_35%_70%,rgb(147_172_207/.45),transparent),radial-gradient(closest-side_at_50%_50%,rgb(108_195_186/.18),transparent)]" />
     {children}
   </div>
 )

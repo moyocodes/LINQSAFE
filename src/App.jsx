@@ -36,11 +36,14 @@ function AdminHostApp() {
   )
 }
 
+// ?embed=1 is the dashboard's live preview inside an iframe: no stage badge or cookie notice there.
+const EMBED = new URLSearchParams(window.location.search).get('embed') === '1'
+
 export default function App() {
   return (
     <Suspense fallback={null}>
-      <StageBadge />
-      {!IS_ADMIN_HOST && <CookieNotice />}
+      {!EMBED && <StageBadge />}
+      {!IS_ADMIN_HOST && !EMBED && <CookieNotice />}
       {IS_ADMIN_HOST ? <AdminHostApp /> : (
       <Routes>
         <Route element={<Layout />}>

@@ -456,6 +456,24 @@ app.post('/api/verify-email/send', auth, authLimiter, async (req, res) => {
   res.json({ ok: true })
 })
 
+// Add or change the account's email (e.g. an older account whose unconfirmed email was taken by a newer
+// signup). It starts unconfirmed and a confirmation email goes out. Needed for payments and password resets.
+app.post('/api/account/email', auth, authLimiter, async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return res.status(400).json({ error: 'Please enter a valid email address' })
+  const [[user]] = await pool.query('SELECT id, username, email, email_verified FROM users WHERE id = ?', [req.userId])
+  if (user.email === email) {
+    if (!user.email_verified) await sendVerification(req, user)
+    return res.json({ ok: true, email, email_verified: !!user.email_verified })
+  }
+  const [[taken]] = await pool.query('SELECT id FROM users WHERE email = ? AND email_verified = 1 AND id <> ? LIMIT 1', [email, req.userId])
+  if (taken) return res.status(409).json({ error: 'That email is already confirmed on another account. Log in to that one, or use a different email.' })
+  await pool.query('UPDATE users SET email = NULL WHERE email = ? AND email_verified = 0 AND id <> ?', [email, req.userId])
+  await pool.query('UPDATE users SET email = ?, email_verified = 0 WHERE id = ?', [email, req.userId])
+  await sendVerification(req, { ...user, email })
+  res.json({ ok: true, email, email_verified: false })
+})
+
 app.post('/api/verify-email', authLimiter, async (req, res) => {
   const userId = await consumeToken(req.body?.token, 'verify')
   if (!userId) return res.status(400).json({ error: 'This link is invalid or has expired. Request a new one from your dashboard.' })
@@ -563,7 +581,7 @@ app.post('/api/billing/checkout', auth, async (req, res) => {
   }
   const total = items.reduce((t, i) => t + i.price, 0)
   const [[user]] = await pool.query('SELECT id, email, username FROM users WHERE id = ?', [req.userId])
-  if (!user.email) return res.status(400).json({ error: 'Add an email address to your account first' })
+  if (!user.email) return res.status(400).json({ error: 'Add your email first: use the yellow box at the top of your dashboard' })
   // Our own reference, sent to Paystack so both sides use the same one: LQS-<time>-<random>.
   const reference = `LQS-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
   await pool.query(

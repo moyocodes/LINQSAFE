@@ -151,6 +151,18 @@ test('analytics: unique visitors with consent, owner and bots excluded', async (
   assert.equal(lines.length, 5, 'header + 3 views + 1 click')
 })
 
+test('account email can be added or changed (needed for payments)', async () => {
+  const api = client()
+  await signUp(api)
+  assert.equal((await api('POST', '/account/email', { email: 'not-an-email' })).status, 400)
+  const mail = `qa_${rand()}@example.com`
+  const r = await api('POST', '/account/email', { email: mail })
+  assert.equal(r.status, 200)
+  const me = await api('GET', '/me')
+  assert.equal(me.body.email, mail)
+  assert.equal(!!me.body.email_verified, false, 'a changed email starts unconfirmed')
+})
+
 test('founder dashboard is closed to normal users', async () => {
   const api = client()
   await signUp(api)
