@@ -24,14 +24,17 @@ The database schema is created and updated automatically on start (`server/migra
 Docker is **not** needed for local development or for Vercel. It's an alternative way to run everything in containers, or to deploy to a Docker-based host.
 
 **Whole stack (app + MySQL):**
+
 ```bash
 docker compose up --build    # site + API at http://localhost:3001
 ```
+
 `docker-compose.yml` starts MySQL 8.4 (data kept in a `db-data` volume) and the app, using the values in `.env`. Inside Docker the app reaches the database at `db`, not `localhost`. The compose file sets that for you.
 
 **App image only** (when your database is hosted elsewhere):
+
 ```bash
-docker build -t linqsafe --build-arg VITE_APP_STAGE=prod .
+docker build -t linqsafe --build-arg APP_STAGE=prod .
 docker run -p 3001:3001 --env-file .env linqsafe
 ```
 
@@ -39,7 +42,8 @@ docker run -p 3001:3001 --env-file .env linqsafe
 
 ## Deploy
 
-- **Vercel (main path):** import the repo. `vercel.json` routes `/api/*` to the Express app as a serverless function (`api/index.js`) and serves the built site. Set the environment variables per stage. See *Stages* in PROJECT.md.
+- **Namecheap cPanel (live site):** `npm run package`, upload `linqsafe-deploy.zip`, run it as a cPanel Node.js App with startup file `app.cjs`. Step-by-step in PROJECT.md → *Namecheap (cPanel)*.
+- **Vercel:** import the repo. `vercel.json` routes `/api/*` to the Express app as a serverless function (`api/index.js`) and serves the built site. Set the environment variables per stage. See _Stages_ in PROJECT.md.
 - **Docker hosts** (Render, Railway, Fly, a VPS): build from the `Dockerfile`, set the same environment variables, health check path `/api/health`.
 - **Any Node host:** build `npm ci && npm run build`, start `npm start`.
 
@@ -47,18 +51,18 @@ In production the server refuses to start without a real `JWT_SECRET` (`openssl 
 
 ## Scripts
 
-| Command | Does |
-|---|---|
-| `npm run dev` | API + site with live reload |
-| `npm run build` | Build the frontend into `dist/` |
-| `npm start` | Production server (API + `dist/`) |
-| `npm test` | API tests against the running dev server |
-| `npm run owner` | Verify the owner email and unlock every feature (local) |
-| `npm run set-plan -- <username> <free\|pro>` | `pro` unlocks every feature by hand (no expiry) |
+| Command                                      | Does                                                    |
+| -------------------------------------------- | ------------------------------------------------------- |
+| `npm run dev`                                | API + site with live reload                             |
+| `npm run build`                              | Build the frontend into `dist/`                         |
+| `npm start`                                  | Production server (API + `dist/`)                       |
+| `npm test`                                   | API tests against the running dev server                |
+| `npm run owner`                              | Verify the owner email and unlock every feature (local) |
+| `npm run set-plan -- <username> <free\|pro>` | `pro` unlocks every feature by hand (no expiry)         |
 
 ## Environment variables
 
-See [`.env.example`](.env.example) for the full list with comments: database, `JWT_SECRET`, `APP_URL`, Resend, `OWNER_EMAIL` / `ADMIN_HOST`, Paystack (`PAYSTACK_SECRET_KEY`, `VITE_PAYSTACK_PUBLIC_KEY`), default feature prices (`PRICE_*`, `DISCOUNT_*`), `VITE_APP_STAGE`.
+See [`.env.example`](.env.example) for the full list with comments: database, `JWT_SECRET`, `APP_URL`, Resend, `OWNER_EMAIL` / `ADMIN_HOST`, Paystack (`PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`), default feature prices (`PRICE_*`, `DISCOUNT_*`), `APP_STAGE`.
 
 ## Accessibility
 

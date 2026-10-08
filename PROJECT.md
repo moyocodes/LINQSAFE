@@ -9,6 +9,7 @@ This guide explains what the product does, how it's built, how to run it in each
 ## 1. What the product does
 
 ### For visitors (public profile, `/:username`)
+
 - A profile page with photo, name, bio, topics, social badges and links.
 - **7 templates**: Classic, Grid, Minimal (free); Cover, Editorial, Search & solve, Profile card (paid).
 - **5 themes**: Light, Sage, Blush, Midnight, Auto (follows the visitor's light/dark setting).
@@ -16,6 +17,7 @@ This guide explains what the product does, how it's built, how to run it in each
 - Pages can show a **Founder's note** (paid) (paper-style letter with signature) and **Kind words** (client testimonials as chat bubbles).
 
 ### For page owners (dashboard, `/admin`)
+
 - **Onboarding** after the first login: account type (personal or business), business category and optional WhatsApp, profile basics, socials, template.
 - Add, edit, drag-to-reorder and delete links. Pasting a URL detects the platform (Instagram, TikTok, YouTube, and others). Unknown URLs ask for a type.
 - Social link suggestions (one tap to start an Instagram, TikTok, … link).
@@ -25,21 +27,23 @@ This guide explains what the product does, how it's built, how to run it in each
 - Email verification, forgot/reset password, log in with username or email.
 
 ### For the founder (`/owner`, or the `admin.` subdomain)
+
 - Whole-site numbers: users, signups per day, paying users, revenue, business counts, traffic, top pages, countries, business categories, templates in use, latest signups with last login, contact messages.
 - Only the `OWNER_EMAIL` account can open it, and only after that email is verified.
 
 ### Free and paid features
+
 Everyone gets a free page. On top of that, each extra feature is **bought separately for 1, 3, 6 or 12 months**: no subscription and no bundle. Buying again adds time to what's left.
 
-| Free | Paid features (each sold on its own) |
-|---|---|
-| Up to 3 links | Unlimited links |
-| Classic, Grid, Minimal templates | Cover, Editorial, Search & solve, Profile card templates (one purchase each) |
+| Free                                                             | Paid features (each sold on its own)                                             |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Up to 3 links                                                    | Unlimited links                                                                  |
+| Classic, Grid, Minimal templates                                 | Cover, Editorial, Search & solve, Profile card templates (one purchase each)     |
 | All themes, WhatsApp button, analytics for the last 7 or 30 days | Founder's note · Kind words (testimonials) · QR code download · 90-day analytics |
 
 The dashboard has a **Features** checklist. Unlocked features are ticked and show their expiry. Locked ones are struck through, with a price for the chosen period and an **Unlock** button.
 
-**Prices:** each feature has a monthly price in naira, plus optional discounts for 3, 6 and 12 months. The founder sets them in the founder dashboard (*Pricing*), and saved values are stored in `app_settings`. `.env` values (`PRICE_<FEATURE>`, `DISCOUNT_3M/6M/12M`) are the fallback. A feature with no price isn't for sale. The list of features lives in `server/features.js`.
+**Prices:** each feature has a monthly price in naira, plus optional discounts for 3, 6 and 12 months. The founder sets them in the founder dashboard (_Pricing_), and saved values are stored in `app_settings`. `.env` values (`PRICE_<FEATURE>`, `DISCOUNT_3M/6M/12M`) are the fallback. A feature with no price isn't for sale. The list of features lives in `server/features.js`.
 
 **Payments: Paystack (naira).** "Unlock" starts a Paystack checkout for that feature and period. The feature switches on only after the server verifies the payment with Paystack, on the return page (`/billing/callback`) and again through the signed webhook (`/api/billing/webhook`), so it still works if the buyer closes the tab. Every checkout is recorded in `payments` with a LinqSafe reference and, once verified, how the customer paid (card type and last 4, bank transfer, USSD, bank). The founder dashboard lists payments with method breakdowns, and customers see their own receipts under Features. and access is stored in `user_features` with an `expires_at`. When a feature expires, the page quietly falls back to the free version. `npm run set-plan -- <username> pro` grants every feature with no expiry, for you or for comps.
 
@@ -49,22 +53,22 @@ Limits are enforced on the server (`server/app.js`) as well as in the UI.
 
 ## 2. Tech stack
 
-| Layer | Tool | Why |
-|---|---|---|
-| Frontend | **React 18** + **Vite 5** | Fast dev server, simple build to static files |
-| Routing | React Router 6 | `/:username` profiles plus app pages |
-| Styling | **Tailwind CSS 3** + CSS variables | Design tokens in `src/styles.css`; shadcn-style UI components in `src/components/ui` |
-| Animation | **Framer Motion** (UI), **GSAP ScrollTrigger** (scroll-clip section), **three.js** (3D tree) | Motion respects "reduce motion" settings |
-| Icons | lucide-react | Consistent line icons |
-| Backend | **Node 22** + **Express 4** | JSON API under `/api` |
-| Database | **MySQL 8** (`mysql2`) | Versioned migrations in `server/migrations.js` |
-| Auth | bcrypt passwords, JWT in an **httpOnly cookie** | Scripts can't read the session; SameSite=Lax blocks CSRF |
-| Email | **Resend** HTTP API | Verify and reset emails; printed to the console in local dev |
-| Payments | **Paystack** | Naira checkout, server-side verification, signed webhook |
-| QR codes | `qrcode` | Generated in the browser |
-| Hosting | **Vercel** (frontend + serverless API) | Main deployment path |
-| Containers (optional) | **Docker** + Docker Compose | Alternative for Docker hosts or running app + MySQL together; not used in local dev or on Vercel |
-| Site analytics | **Vercel Web Analytics** + in-house `events` table | Vercel for site traffic; in-house for each user's page |
+| Layer                 | Tool                                                                                         | Why                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Frontend              | **React 18** + **Vite 5**                                                                    | Fast dev server, simple build to static files                                                    |
+| Routing               | React Router 6                                                                               | `/:username` profiles plus app pages                                                             |
+| Styling               | **Tailwind CSS 3** + CSS variables                                                           | Design tokens in `src/styles.css`; shadcn-style UI components in `src/components/ui`             |
+| Animation             | **Framer Motion** (UI), **GSAP ScrollTrigger** (scroll-clip section), **three.js** (3D tree) | Motion respects "reduce motion" settings                                                         |
+| Icons                 | lucide-react                                                                                 | Consistent line icons                                                                            |
+| Backend               | **Node 22** + **Express 4**                                                                  | JSON API under `/api`                                                                            |
+| Database              | **MySQL 8** (`mysql2`)                                                                       | Versioned migrations in `server/migrations.js`                                                   |
+| Auth                  | bcrypt passwords, JWT in an **httpOnly cookie**                                              | Scripts can't read the session; SameSite=Lax blocks CSRF                                         |
+| Email                 | **Resend** HTTP API                                                                          | Verify and reset emails; printed to the console in local dev                                     |
+| Payments              | **Paystack**                                                                                 | Naira checkout, server-side verification, signed webhook                                         |
+| QR codes              | `qrcode`                                                                                     | Generated in the browser                                                                         |
+| Hosting               | **Vercel** (frontend + serverless API)                                                       | Main deployment path                                                                             |
+| Containers (optional) | **Docker** + Docker Compose                                                                  | Alternative for Docker hosts or running app + MySQL together; not used in local dev or on Vercel |
+| Site analytics        | **Vercel Web Analytics** + in-house `events` table                                           | Vercel for site traffic; in-house for each user's page                                           |
 
 ---
 
@@ -86,6 +90,7 @@ Express app  (server/app.js)
 - **Vercel:** `api/index.js` exports the same Express app as one serverless function. `vercel.json` sends `/api/*` to it and everything else to `index.html`.
 
 ### Folder map
+
 ```
 api/index.js            Vercel serverless entry
 server/app.js           all API routes
@@ -119,6 +124,7 @@ The full schema is in [`server/schema.sql`](server/schema.sql). The main tables:
 - **schema_migrations**: which migrations have run.
 
 **To change the schema:** append a new step to `MIGRATIONS` in `server/migrations.js` with the next number. Never edit or reorder old steps. Then refresh `schema.sql`:
+
 ```
 mysqldump -u root -p --no-data linktree > server/schema.sql
 ```
@@ -127,24 +133,69 @@ mysqldump -u root -p --no-data linktree > server/schema.sql
 
 ## 5. Stages: local, dev, prod
 
-| Stage | Main site | Founder console | Database | Branch |
-|---|---|---|---|---|
-| **local** | `localhost:5173` | `admin.localhost:5173` | local MySQL | any |
-| **dev** | `dev.linqsafe.com` | `admin-dev.linqsafe.com` | separate dev MySQL | `dev` |
-| **prod** | `linqsafe.com` | `admin.linqsafe.com` | production MySQL | `main` |
+| Stage     | Main site          | Founder console          | Database           | Branch |
+| --------- | ------------------ | ------------------------ | ------------------ | ------ |
+| **local** | `localhost:5173`   | `admin.localhost:5173`   | local MySQL        | any    |
+| **dev**   | `dev.linqsafe.com` | `admin-dev.linqsafe.com` | separate dev MySQL | `dev`  |
+| **prod**  | `linqsafe.com`     | `admin.linqsafe.com`     | production MySQL   | `main` |
 
 A small **LOCAL** or **DEV** badge shows in the corner outside prod, so stages are never confused.
 
 ### Local
+
 ```bash
 cp .env.example .env        # fill in DB_* and JWT_SECRET
 npm install
 npm run dev                 # API on :3001, site on :5173
 npm run owner               # after signing up with OWNER_EMAIL: verifies it and unlocks every feature
 ```
+
 Verify and reset emails are printed in the terminal running `npm run dev`.
 
-### Dev and prod on Vercel
+### Namecheap (cPanel) — the live site
+linqsafe.com runs on Namecheap shared hosting: one Node.js app (cPanel **Setup Node.js App**, Phusion Passenger) serves the API and the website, and talks to cPanel's MySQL on `localhost`.
+
+**One-time setup**
+1. **Database** — cPanel → *MySQL Databases*: create a database and a user, add the user to the database with **All Privileges**. Note the full names (cPanel prefixes them, e.g. `linqqkto_linqsafe`).
+2. **Upload** — on your computer run `npm run package` → `linqsafe-deploy.zip`. In cPanel → *File Manager*, create a folder **outside** `public_html` (e.g. `/home/linqqkto/linqsafe`), upload the zip there and **Extract** it.
+3. **Settings file** — in that folder create `.env` (File Manager → + File):
+   ```
+   NODE_ENV=production
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_USER=linqqkto_youruser
+   DB_PASSWORD=...
+   DB_NAME=linqqkto_linqsafe
+   JWT_SECRET=...            # openssl rand -hex 32
+   APP_URL=https://linqsafe.com
+   OWNER_EMAIL=moyosorejames@gmail.com
+   PAYSTACK_SECRET_KEY=sk_live_...   # sk_test_ until you've done a test payment
+   PAYSTACK_PUBLIC_KEY=pk_live_...   # pk_test_ with the test secret key
+   RESEND_API_KEY=...        # optional; without it emails go to the app log
+   MAIL_FROM=linqsafe <support@linqsafe.com>
+   ```
+4. **Create the app** — cPanel → *Setup Node.js App* → **Create Application**:
+   - Node.js version: the newest offered (20 or later)
+   - Application mode: **Production**
+   - Application root: `linqsafe` (the folder from step 2)
+   - Application URL: `linqsafe.com`
+   - Application startup file: `app.cjs`
+   - **Create**, then **Run NPM Install**, then **Restart**.
+5. **Domain** — linqsafe.com must point at this hosting, not Vercel. In Namecheap → Domain List → Manage: nameservers **Namecheap Web Hosting DNS** (or an A record `@` → your hosting IP). Remove the domain from the Vercel project.
+6. **Check** — open `https://linqsafe.com/api/health` → `{"ok":true}`. The first start creates all database tables automatically.
+7. **Owner access** — sign up with `OWNER_EMAIL`, then confirm your email (or in *Setup Node.js App* open the terminal command shown at the top, `cd linqsafe`, and run `npm run owner`).
+8. **Paystack** — Settings → API Keys & Webhooks → webhook URL `https://linqsafe.com/api/billing/webhook`.
+
+**Updating the live site**: `npm run package`, upload and extract over the old files (your `.env` stays), *Setup Node.js App* → **Run NPM Install** if dependencies changed → **Restart**.
+
+**Logs**: errors are written to `stderr.log` in the app folder (File Manager).
+
+**Notes**: country analytics use the visitor's time zone here (there's no Vercel location header). The founder console on `admin.linqsafe.com` needs its own subdomain pointed at the same app; until then use `linqsafe.com/owner`.
+
+### Alternative: Vercel
+(Only if the database is reachable from the internet — Namecheap's isn't, which is why the live site runs on cPanel.)
+
+
 1. Push the repo to GitHub and import it in Vercel. The framework is detected as Vite and `vercel.json` handles the rest.
 2. Create two hosted MySQL databases (dev and prod). PlanetScale, Aiven or TiDB Cloud all work. Set `DB_SSL=true`.
 3. In **Vercel → Settings → Environment Variables**, set these for **Production** and **Preview** separately:
@@ -153,9 +204,9 @@ Verify and reset emails are printed in the terminal running `npm run dev`.
    - `APP_URL` (e.g. `https://linqsafe.com`)
    - `RESEND_API_KEY`, `MAIL_FROM`
    - `OWNER_EMAIL`, `ADMIN_HOST` (e.g. `admin.linqsafe.com`)
-   - `PAYSTACK_SECRET_KEY` (`sk_test_…` for dev, `sk_live_…` for prod), optional `VITE_PAYSTACK_PUBLIC_KEY`
+   - `PAYSTACK_SECRET_KEY` (`sk_test_…` for dev, `sk_live_…` for prod), optional `PAYSTACK_PUBLIC_KEY`
    - Optional starting prices `PRICE_<FEATURE>` and `DISCOUNT_3M/6M/12M` (you can set them in the founder dashboard instead)
-   - `VITE_APP_STAGE` (`prod` or `dev`)
+   - `APP_STAGE` (`prod` or `dev`)
 4. **Domains:** add `linqsafe.com` and `admin.linqsafe.com` to Production. Add `dev.linqsafe.com` and `admin-dev.linqsafe.com`, then assign them to the `dev` git branch.
 5. In **Paystack → Settings → API Keys & Webhooks**, set the webhook URL to `https://linqsafe.com/api/billing/webhook` (live) and the dev URL in test mode.
 6. Turn on **Analytics** in the Vercel project for site-wide traffic stats.
@@ -163,55 +214,57 @@ Verify and reset emails are printed in the terminal running `npm run dev`.
 ---
 
 ### Docker (optional)
+
 Docker isn't used for local development (`npm run dev` runs Node and MySQL directly) or on Vercel. It's there for two cases:
 
 1. **Run the whole stack in containers:** `docker compose up --build` starts MySQL 8.4 (data in the `db-data` volume) and the app on `http://localhost:3001`, using `.env`. The compose file points the app at the `db` container.
 2. **Deploy to a Docker host** (Render, Railway, Fly, a VPS) with a hosted database:
    ```bash
-   docker build -t linqsafe --build-arg VITE_APP_STAGE=prod .
+   docker build -t linqsafe --build-arg APP_STAGE=prod .
    docker run -p 3001:3001 --env-file .env linqsafe
    ```
 
-**How the image is built (`Dockerfile`):** stage 1 (`node:22-alpine`) runs `npm ci` and `npm run build`, with `VITE_APP_STAGE` passed as a build argument because Vite bakes it in. Stage 2 copies in only production dependencies, `server/` and `dist/`, runs as the non-root `node` user, exposes port 3001, and checks `/api/health` every 30 seconds. `.dockerignore` keeps `.env`, `node_modules`, docs and tests out of the image, so secrets come from the environment at run time.
+**How the image is built (`Dockerfile`):** stage 1 (`node:22-alpine`) runs `npm ci` and `npm run build`, with `APP_STAGE` passed as a build argument because Vite bakes it in. Stage 2 copies in only production dependencies, `server/` and `dist/`, runs as the non-root `node` user, exposes port 3001, and checks `/api/health` every 30 seconds. `.dockerignore` keeps `.env`, `node_modules`, docs and tests out of the image, so secrets come from the environment at run time.
 
 ## 6. Environment variables
 
-| Variable | Where | Purpose |
-|---|---|---|
-| `DB_HOST` `DB_PORT` `DB_USER` `DB_PASSWORD` `DB_NAME` `DB_SSL` | server | MySQL connection |
-| `JWT_SECRET` | server | Signs session cookies. **Required in production** |
-| `PORT` | server | Local API port (3001) |
-| `APP_URL` | server | Base URL for links in emails |
-| `RESEND_API_KEY` `MAIL_FROM` | server | Sending email |
-| `OWNER_EMAIL` | server | Founder dashboard access |
-| `ADMIN_HOST` | server | Locks the founder API to the admin subdomain |
-| `PAYSTACK_SECRET_KEY` | server | Paystack API + webhook signature check |
-| `PRICE_<FEATURE>` | server | Default monthly price per feature (naira); founder dashboard overrides |
-| `DISCOUNT_3M` `DISCOUNT_6M` `DISCOUNT_12M` | server | Default % off for longer periods |
-| `VITE_PAYSTACK_PUBLIC_KEY` | frontend | Only needed for Paystack's in-page popup (not used yet) |
-| `CORS_ORIGIN` | server | Only if the frontend is on a different origin |
-| `VITE_APP_STAGE` | frontend (build) | `local` / `dev` / `prod` badge |
-| `VITE_ADMIN_HOST` | frontend (build) | Custom founder hostnames (optional) |
+| Variable                                                       | Where            | Purpose                                                                |
+| -------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------- |
+| `DB_HOST` `DB_PORT` `DB_USER` `DB_PASSWORD` `DB_NAME` `DB_SSL` | server           | MySQL connection                                                       |
+| `JWT_SECRET`                                                   | server           | Signs session cookies. **Required in production**                      |
+| `PORT`                                                         | server           | Local API port (3001)                                                  |
+| `APP_URL`                                                      | server           | Base URL for links in emails                                           |
+| `RESEND_API_KEY` `MAIL_FROM`                                   | server           | Sending email                                                          |
+| `OWNER_EMAIL`                                                  | server           | Founder dashboard access                                               |
+| `ADMIN_HOST`                                                   | server           | Locks the founder API to the admin subdomain                           |
+| `PAYSTACK_SECRET_KEY`                                          | server           | Paystack API + webhook signature check                                 |
+| `PRICE_<FEATURE>`                                              | server           | Default monthly price per feature (naira); founder dashboard overrides |
+| `DISCOUNT_3M` `DISCOUNT_6M` `DISCOUNT_12M`                     | server           | Default % off for longer periods                                       |
+| `PAYSTACK_PUBLIC_KEY`                                          | frontend         | Only needed for Paystack's in-page popup (not used yet)                |
+| `CORS_ORIGIN`                                                  | server           | Only if the frontend is on a different origin                          |
+| `APP_STAGE`                                                    | frontend (build) | `local` / `dev` / `prod` badge                                         |
+| `ADMIN_HOST`                                                   | frontend (build) | Custom founder hostnames (optional)                                    |
 
 ---
 
 ## 7. Scripts
 
-| Command | Does |
-|---|---|
-| `npm run dev` | API + site with live reload |
-| `npm run build` | Builds the frontend into `dist/` |
-| `npm start` | Production server (serves API + `dist/`) |
-| `npm run set-plan -- <username> <free\|pro>` | Change a plan by hand |
-| `npm run owner` | Verify the owner email and unlock every feature (local setup) |
-| `npm test` | API tests against the running dev server (`API_URL` to point elsewhere; never prod) |
+| Command                                      | Does                                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `npm run dev`                                | API + site with live reload                                                         |
+| `npm run build`                              | Builds the frontend into `dist/`                                                    |
+| `npm start`                                  | Production server (serves API + `dist/`)                                            |
+| `npm run set-plan -- <username> <free\|pro>` | Change a plan by hand                                                               |
+| `npm run owner`                              | Verify the owner email and unlock every feature (local setup)                       |
+| `npm test`                                   | API tests against the running dev server (`API_URL` to point elsewhere; never prod) |
 
 ---
 
 ## 8. Security notes
+
 - Passwords are bcrypt-hashed. Sessions are httpOnly, SameSite=Lax cookies, Secure in production.
 - A password reset signs out every other session (`token_version`).
-- Signing up with an email that an *unverified* account holds releases it to the new signup, so nobody can squat someone else's email.
+- Signing up with an email that an _unverified_ account holds releases it to the new signup, so nobody can squat someone else's email.
 - Social badges must match the URL's real domain (no "Instagram" badge on a phishing page).
 - The anonymous visitor cookie (`lh_vid`) is only set after a visitor accepts the cookie notice. Without consent, views are still counted, just not as unique visitors.
 - Rate limits: auth 30 per 15 minutes, clicks 30 per minute, contact 5 per hour, API 300 per minute.
@@ -220,12 +273,14 @@ Docker isn't used for local development (`npm run dev` runs Node and MySQL direc
 ---
 
 ## 9. Design system
+
 - **Palette** (`src/styles.css`): beige background, espresso text and primary, **maroon accent** used mostly at low opacity (`bg-accent/10`). Supporting tints: `rose`, `lilac`, `sand`, `mist` (dusty blue). No greens.
 - **Section moods:** blush hero → aubergine-night 3D story → dusty-blue showcase → lilac/peach feature cards → wine call-to-action → espresso footer.
 - **Fonts:** Bricolage Grotesque (headings), Inter (body), Cormorant Garamond (editorial serif), Allura (signatures), IBM Plex Mono (profile card).
 - **Motion:** spring-based hover and press on buttons and cards, scroll reveals, a scroll-clip panel, and the 3D link tree. Everything respects `prefers-reduced-motion`.
 
 ### Prompts for matching animations and images
+
 Use these with an AI video or image tool (Meta AI, Runway, Sora, Midjourney). Each keeps to the site palette: beige `#F6F1EA`, espresso `#2A201C`, maroon `#6B2433`, blush `#F2CDD3`, lilac `#DCD5EE`, sand `#E9D6BF`, dusty blue `#B4C4D6`.
 
 1. **Hero loop:** "Slow, seamless 6-second loop of soft blush and lilac light blooms drifting across a warm beige paper background, subtle film grain, gentle parallax, calm and premium, no text, 16:9."
@@ -247,6 +302,7 @@ Use these with an AI video or image tool (Meta AI, Runway, Sora, Midjourney). Ea
 **Built but only checked by compiling:** the new templates, onboarding wizard, founder dashboard UI, footer, pricing page and admin subdomain routing need a visual pass in the browser.
 
 **Open:**
+
 - **Payments:** checkout was tested against Paystack's test API (a real checkout page is created with the right amount). A full test payment (pay → callback → feature unlocked → webhook) still needs doing once in the browser, then again on dev with the webhook URL set.
 - **Browser tests:** `tests/api.test.js` covers the API (10 tests). A browser smoke test (e.g. Playwright) for onboarding and templates would be the next layer. Sign-ups are rate-limited (30 per 15 minutes), so running `npm test` many times in a row will start failing with 429s.
 - **Image storage:** pictures are stored in the database as small data URLs, which is fine at small scale. Move to object storage (Vercel Blob, S3, Cloudinary) as you grow.

@@ -452,7 +452,8 @@ app.post('/api/onboarding/complete', auth, async (req, res) => {
 
 app.get('/api/billing/config', async (req, res) => {
   const p = await currentPricing()
-  res.json({ enabled: !!PAYSTACK_KEY, currency: 'NGN', durations: DURATIONS, discounts: p.discounts, features: p.catalog() })
+  // Public key is safe to expose; read at runtime so cPanel's .env is enough (no rebuild needed).
+  res.json({ enabled: !!PAYSTACK_KEY, publicKey: process.env.PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY || '', currency: 'NGN', durations: DURATIONS, discounts: p.discounts, features: p.catalog() })
 })
 
 app.post('/api/billing/checkout', auth, async (req, res) => {

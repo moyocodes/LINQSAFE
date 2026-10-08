@@ -1,199 +1,708 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<title>linqsafe: build guide</title>
-<style>
-  @page { size: A4; margin: 18mm 16mm; }
-  :root { --ink:#2a201c; --muted:#6b5f58; --accent:#6b2433; --sand:#efe3d3; --rose:#f6dfe3; --line:#e2d7cc; }
-  * { box-sizing: border-box; }
-  body { font: 10.5pt/1.55 -apple-system, "Inter", "Segoe UI", sans-serif; color: var(--ink); margin: 0; }
-  h1 { font-size: 30pt; line-height: 1.05; margin: 0 0 6pt; letter-spacing: -0.02em; }
-  h2 { font-size: 15pt; margin: 22pt 0 6pt; color: var(--accent); break-after: avoid; }
-  h3 { font-size: 11.5pt; margin: 14pt 0 4pt; break-after: avoid; }
-  p, li { margin: 0 0 5pt; }
-  ul, ol { padding-left: 16pt; margin: 0 0 8pt; }
-  code, pre { font: 9pt/1.45 "SF Mono", Menlo, monospace; }
-  code { background: var(--sand); padding: 0 3pt; border-radius: 3pt; }
-  pre { background: #2a201c; color: #f6efe7; padding: 8pt 10pt; border-radius: 6pt; white-space: pre-wrap; break-inside: avoid; margin: 4pt 0 10pt; }
-  table { width: 100%; border-collapse: collapse; margin: 6pt 0 12pt; font-size: 9.5pt; break-inside: avoid; }
-  th, td { text-align: left; vertical-align: top; padding: 4pt 6pt; border-bottom: 1px solid var(--line); }
-  th { color: var(--muted); font-weight: 600; }
-  .cover { background: linear-gradient(135deg, var(--rose), var(--sand)); border-radius: 12pt; padding: 26pt 24pt; margin-bottom: 16pt; }
-  .cover p { color: var(--muted); font-size: 11.5pt; max-width: 32em; }
-  .tag { display: inline-block; font-size: 8pt; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 8pt; }
-  .step { border-left: 3pt solid var(--accent); padding: 2pt 0 2pt 10pt; margin: 12pt 0; break-inside: avoid; }
-  .step h3 { margin-top: 0; }
-  .prompt { background: var(--rose); border-radius: 6pt; padding: 6pt 9pt; font-size: 9.5pt; margin: 4pt 0 0; }
-  .prompt b { color: var(--accent); }
-  .note { background: var(--sand); border-radius: 6pt; padding: 7pt 10pt; font-size: 9.5pt; break-inside: avoid; }
-  .page-break { break-before: page; }
-  .toc li { margin-bottom: 2pt; }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="utf-8" />
+    <title>linqsafe: build guide</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 18mm 16mm;
+      }
+      :root {
+        --ink: #2a201c;
+        --muted: #6b5f58;
+        --accent: #6b2433;
+        --sand: #efe3d3;
+        --rose: #f6dfe3;
+        --line: #e2d7cc;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font:
+          10.5pt/1.55 -apple-system,
+          "Inter",
+          "Segoe UI",
+          sans-serif;
+        color: var(--ink);
+        margin: 0;
+      }
+      h1 {
+        font-size: 30pt;
+        line-height: 1.05;
+        margin: 0 0 6pt;
+        letter-spacing: -0.02em;
+      }
+      h2 {
+        font-size: 15pt;
+        margin: 22pt 0 6pt;
+        color: var(--accent);
+        break-after: avoid;
+      }
+      h3 {
+        font-size: 11.5pt;
+        margin: 14pt 0 4pt;
+        break-after: avoid;
+      }
+      p,
+      li {
+        margin: 0 0 5pt;
+      }
+      ul,
+      ol {
+        padding-left: 16pt;
+        margin: 0 0 8pt;
+      }
+      code,
+      pre {
+        font:
+          9pt/1.45 "SF Mono",
+          Menlo,
+          monospace;
+      }
+      code {
+        background: var(--sand);
+        padding: 0 3pt;
+        border-radius: 3pt;
+      }
+      pre {
+        background: #2a201c;
+        color: #f6efe7;
+        padding: 8pt 10pt;
+        border-radius: 6pt;
+        white-space: pre-wrap;
+        break-inside: avoid;
+        margin: 4pt 0 10pt;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 6pt 0 12pt;
+        font-size: 9.5pt;
+        break-inside: avoid;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 4pt 6pt;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .cover {
+        background: linear-gradient(135deg, var(--rose), var(--sand));
+        border-radius: 12pt;
+        padding: 26pt 24pt;
+        margin-bottom: 16pt;
+      }
+      .cover p {
+        color: var(--muted);
+        font-size: 11.5pt;
+        max-width: 32em;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 8pt;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 8pt;
+      }
+      .step {
+        border-left: 3pt solid var(--accent);
+        padding: 2pt 0 2pt 10pt;
+        margin: 12pt 0;
+        break-inside: avoid;
+      }
+      .step h3 {
+        margin-top: 0;
+      }
+      .prompt {
+        background: var(--rose);
+        border-radius: 6pt;
+        padding: 6pt 9pt;
+        font-size: 9.5pt;
+        margin: 4pt 0 0;
+      }
+      .prompt b {
+        color: var(--accent);
+      }
+      .note {
+        background: var(--sand);
+        border-radius: 6pt;
+        padding: 7pt 10pt;
+        font-size: 9.5pt;
+        break-inside: avoid;
+      }
+      .page-break {
+        break-before: page;
+      }
+      .toc li {
+        margin-bottom: 2pt;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="cover">
+      <div class="tag">Build guide</div>
+      <h1>How linqsafe is built, and how to build one yourself</h1>
+      <p>
+        A step-by-step walkthrough of the stack behind linqsafe, a link-in-bio
+        platform with themes, templates, analytics, paid add-on features bought
+        through Paystack, and a founder dashboard. Follow it in order to
+        recreate a project like this from an empty folder.
+      </p>
+    </div>
 
-<div class="cover">
-  <div class="tag">Build guide</div>
-  <h1>How linqsafe is built, and how to build one yourself</h1>
-  <p>A step-by-step walkthrough of the stack behind linqsafe, a link-in-bio platform with themes, templates, analytics, paid add-on features bought through Paystack, and a founder dashboard. Follow it in order to recreate a project like this from an empty folder.</p>
-</div>
+    <h2>Contents</h2>
+    <ol class="toc">
+      <li>What you're building</li>
+      <li>The stack, in plain words</li>
+      <li>What to install and sign up for</li>
+      <li>Step-by-step build (14 steps)</li>
+      <li>Going live: local, dev and prod</li>
+      <li>Launch checklist</li>
+    </ol>
 
-<h2>Contents</h2>
-<ol class="toc">
-  <li>What you're building</li>
-  <li>The stack, in plain words</li>
-  <li>What to install and sign up for</li>
-  <li>Step-by-step build (14 steps)</li>
-  <li>Going live: local, dev and prod</li>
-  <li>Launch checklist</li>
-</ol>
+    <h2>1. What you're building</h2>
+    <p>
+      A website where anyone can sign up, pick a username, and get a page at
+      <code>linqsafe.com/username</code> that lists their links. Owners manage
+      the page from a dashboard; visitors see a fast, good-looking profile.
+    </p>
+    <table>
+      <tr>
+        <th>Part</th>
+        <th>What it does</th>
+      </tr>
+      <tr>
+        <td>Public profile</td>
+        <td>
+          Photo, bio, social icons, links, WhatsApp button. 7 templates, 5
+          themes.
+        </td>
+      </tr>
+      <tr>
+        <td>Dashboard</td>
+        <td>
+          Onboarding wizard, add/reorder links, live phone preview, profile and
+          photo, analytics.
+        </td>
+      </tr>
+      <tr>
+        <td>Paid features</td>
+        <td>
+          Unlimited links, premium templates, founder's note, testimonials, QR
+          code, each bought on its own for 1, 3, 6 or 12 months in naira via
+          Paystack. Prices set by the founder.
+        </td>
+      </tr>
+      <tr>
+        <td>Founder dashboard</td>
+        <td>
+          Whole-site stats on an <code>admin.</code> subdomain, only for the
+          owner's email.
+        </td>
+      </tr>
+    </table>
 
-<h2>1. What you're building</h2>
-<p>A website where anyone can sign up, pick a username, and get a page at <code>linqsafe.com/username</code> that lists their links. Owners manage the page from a dashboard; visitors see a fast, good-looking profile.</p>
-<table>
-  <tr><th>Part</th><th>What it does</th></tr>
-  <tr><td>Public profile</td><td>Photo, bio, social icons, links, WhatsApp button. 7 templates, 5 themes.</td></tr>
-  <tr><td>Dashboard</td><td>Onboarding wizard, add/reorder links, live phone preview, profile and photo, analytics.</td></tr>
-  <tr><td>Paid features</td><td>Unlimited links, premium templates, founder's note, testimonials, QR code, each bought on its own for 1, 3, 6 or 12 months in naira via Paystack. Prices set by the founder.</td></tr>
-  <tr><td>Founder dashboard</td><td>Whole-site stats on an <code>admin.</code> subdomain, only for the owner's email.</td></tr>
-</table>
+    <h2>2. The stack, in plain words</h2>
+    <table>
+      <tr>
+        <th>Piece</th>
+        <th>Tool</th>
+        <th>What it's for</th>
+      </tr>
+      <tr>
+        <td>Language</td>
+        <td>JavaScript (Node.js 22)</td>
+        <td>One language for the website and the server.</td>
+      </tr>
+      <tr>
+        <td>Website (frontend)</td>
+        <td>React 18 + Vite</td>
+        <td>
+          React builds the pages from components; Vite runs it while you work
+          and bundles it for launch.
+        </td>
+      </tr>
+      <tr>
+        <td>Pages &amp; URLs</td>
+        <td>React Router</td>
+        <td>
+          Decides which page shows for <code>/login</code>, <code>/admin</code>,
+          <code>/username</code>.
+        </td>
+      </tr>
+      <tr>
+        <td>Styling</td>
+        <td>Tailwind CSS</td>
+        <td>
+          Style with short class names; colours live in one file as variables.
+        </td>
+      </tr>
+      <tr>
+        <td>Animation</td>
+        <td>Framer Motion, GSAP, three.js</td>
+        <td>
+          Framer for hovers, reveals and transitions; GSAP for scroll effects;
+          three.js for the 3D tree.
+        </td>
+      </tr>
+      <tr>
+        <td>Icons</td>
+        <td>lucide-react</td>
+        <td>Clean line icons.</td>
+      </tr>
+      <tr>
+        <td>Server (backend)</td>
+        <td>Express</td>
+        <td>
+          Answers requests like "save this link" or "log me in" under
+          <code>/api</code>.
+        </td>
+      </tr>
+      <tr>
+        <td>Database</td>
+        <td>MySQL 8</td>
+        <td>Stores users, links, analytics events and payments.</td>
+      </tr>
+      <tr>
+        <td>Passwords &amp; login</td>
+        <td>bcrypt + JWT in an httpOnly cookie</td>
+        <td>
+          Passwords are scrambled before saving; the login lives in a cookie
+          page scripts can't read.
+        </td>
+      </tr>
+      <tr>
+        <td>Email</td>
+        <td>Resend</td>
+        <td>Sends "confirm your email" and "reset password" messages.</td>
+      </tr>
+      <tr>
+        <td>Payments</td>
+        <td>Paystack</td>
+        <td>
+          Takes naira payments (card, transfer, USSD) and tells the server when
+          someone paid.
+        </td>
+      </tr>
+      <tr>
+        <td>Hosting</td>
+        <td>Vercel</td>
+        <td>
+          Puts the site online, runs the server as a "serverless function",
+          handles domains.
+        </td>
+      </tr>
+      <tr>
+        <td>Hosted database</td>
+        <td>PlanetScale, Aiven or TiDB Cloud</td>
+        <td>MySQL in the cloud for dev and prod.</td>
+      </tr>
+      <tr>
+        <td>Containers (optional)</td>
+        <td>Docker + Docker Compose</td>
+        <td>
+          Packs the app into one image for Docker hosts, or runs app + MySQL
+          together. Not needed for local dev or Vercel.
+        </td>
+      </tr>
+    </table>
 
-<h2>2. The stack, in plain words</h2>
-<table>
-  <tr><th>Piece</th><th>Tool</th><th>What it's for</th></tr>
-  <tr><td>Language</td><td>JavaScript (Node.js 22)</td><td>One language for the website and the server.</td></tr>
-  <tr><td>Website (frontend)</td><td>React 18 + Vite</td><td>React builds the pages from components; Vite runs it while you work and bundles it for launch.</td></tr>
-  <tr><td>Pages &amp; URLs</td><td>React Router</td><td>Decides which page shows for <code>/login</code>, <code>/admin</code>, <code>/username</code>.</td></tr>
-  <tr><td>Styling</td><td>Tailwind CSS</td><td>Style with short class names; colours live in one file as variables.</td></tr>
-  <tr><td>Animation</td><td>Framer Motion, GSAP, three.js</td><td>Framer for hovers, reveals and transitions; GSAP for scroll effects; three.js for the 3D tree.</td></tr>
-  <tr><td>Icons</td><td>lucide-react</td><td>Clean line icons.</td></tr>
-  <tr><td>Server (backend)</td><td>Express</td><td>Answers requests like "save this link" or "log me in" under <code>/api</code>.</td></tr>
-  <tr><td>Database</td><td>MySQL 8</td><td>Stores users, links, analytics events and payments.</td></tr>
-  <tr><td>Passwords &amp; login</td><td>bcrypt + JWT in an httpOnly cookie</td><td>Passwords are scrambled before saving; the login lives in a cookie page scripts can't read.</td></tr>
-  <tr><td>Email</td><td>Resend</td><td>Sends "confirm your email" and "reset password" messages.</td></tr>
-  <tr><td>Payments</td><td>Paystack</td><td>Takes naira payments (card, transfer, USSD) and tells the server when someone paid.</td></tr>
-  <tr><td>Hosting</td><td>Vercel</td><td>Puts the site online, runs the server as a "serverless function", handles domains.</td></tr>
-  <tr><td>Hosted database</td><td>PlanetScale, Aiven or TiDB Cloud</td><td>MySQL in the cloud for dev and prod.</td></tr>
-  <tr><td>Containers (optional)</td><td>Docker + Docker Compose</td><td>Packs the app into one image for Docker hosts, or runs app + MySQL together. Not needed for local dev or Vercel.</td></tr>
-</table>
+    <h2>3. What to install and sign up for</h2>
+    <ul>
+      <li>
+        <b>On your computer:</b> Node.js 22 (via nvm), MySQL 8 (<code
+          >brew install mysql</code
+        >
+        on Mac), Git, VS Code. Docker Desktop only if you want the optional
+        container setup.
+      </li>
+      <li>
+        <b>Accounts:</b> GitHub (code), Vercel (hosting), a hosted MySQL
+        provider, Resend (email), Paystack (payments), a domain name.
+      </li>
+    </ul>
+    <div class="note">
+      Tip: each step below ends with a <b>prompt</b> you can give an AI coding
+      assistant (like Claude Code) to do that step for you. Run them one at a
+      time and check the result before moving on.
+    </div>
 
-<h2>3. What to install and sign up for</h2>
-<ul>
-  <li><b>On your computer:</b> Node.js 22 (via nvm), MySQL 8 (<code>brew install mysql</code> on Mac), Git, VS Code. Docker Desktop only if you want the optional container setup.</li>
-  <li><b>Accounts:</b> GitHub (code), Vercel (hosting), a hosted MySQL provider, Resend (email), Paystack (payments), a domain name.</li>
-</ul>
-<div class="note">Tip: each step below ends with a <b>prompt</b> you can give an AI coding assistant (like Claude Code) to do that step for you. Run them one at a time and check the result before moving on.</div>
+    <h2 class="page-break">4. Step-by-step build</h2>
 
-<h2 class="page-break">4. Step-by-step build</h2>
-
-<div class="step"><h3>Step 1: Create the project</h3>
-<pre>npm create vite@latest linqsafe -- --template react
+    <div class="step">
+      <h3>Step 1: Create the project</h3>
+      <pre>
+npm create vite@latest linqsafe -- --template react
 cd linqsafe &amp;&amp; npm install
-npm install react-router-dom framer-motion lucide-react</pre>
-<p>You now have a React site at <code>localhost:5173</code>.</p>
-<p class="prompt"><b>Prompt:</b> "Set up React Router with pages for Home, Login, Signup, Dashboard (/admin), Contact, Terms, Privacy and a public profile at /:username."</p></div>
+npm install react-router-dom framer-motion lucide-react</pre
+      >
+      <p>You now have a React site at <code>localhost:5173</code>.</p>
+      <p class="prompt">
+        <b>Prompt:</b> "Set up React Router with pages for Home, Login, Signup,
+        Dashboard (/admin), Contact, Terms, Privacy and a public profile at
+        /:username."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 2: Styling and design tokens</h3>
-<p>Install Tailwind, then define your colours once as CSS variables (<code>--background</code>, <code>--foreground</code>, <code>--accent</code> …) in <code>src/styles.css</code>. Add Google Fonts. Build small reusable components: Button, Card, Input, Label.</p>
-<pre>npm install -D tailwindcss@3 postcss autoprefixer
-npx tailwindcss init -p</pre>
-<p class="prompt"><b>Prompt:</b> "Add Tailwind with shadcn-style Button, Card, Input and Label components. Palette: warm beige background, espresso text, maroon accent used at low opacity, plus rose, lilac, sand and dusty-blue tints. Fonts: Bricolage Grotesque for headings, Inter for body."</p></div>
+    <div class="step">
+      <h3>Step 2: Styling and design tokens</h3>
+      <p>
+        Install Tailwind, then define your colours once as CSS variables
+        (<code>--background</code>, <code>--foreground</code>,
+        <code>--accent</code> …) in <code>src/styles.css</code>. Add Google
+        Fonts. Build small reusable components: Button, Card, Input, Label.
+      </p>
+      <pre>
+npm install -D tailwindcss@3 postcss autoprefixer
+npx tailwindcss init -p</pre
+      >
+      <p class="prompt">
+        <b>Prompt:</b> "Add Tailwind with shadcn-style Button, Card, Input and
+        Label components. Palette: warm beige background, espresso text, maroon
+        accent used at low opacity, plus rose, lilac, sand and dusty-blue tints.
+        Fonts: Bricolage Grotesque for headings, Inter for body."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 3: Server and database</h3>
-<pre>npm install express mysql2 dotenv helmet compression express-rate-limit express-async-errors</pre>
-<p>Create <code>server/app.js</code> (the routes), <code>server/db.js</code> (the connection) and <code>server/migrations.js</code>: a numbered list of database changes that run once each. Add a Vite proxy so <code>/api</code> calls reach the server in development.</p>
-<p class="prompt"><b>Prompt:</b> "Add an Express API under /api with a MySQL pool, versioned migrations recorded in a schema_migrations table, security headers with helmet, and rate limiting. Proxy /api from Vite to port 3001."</p></div>
+    <div class="step">
+      <h3>Step 3: Server and database</h3>
+      <pre>
+npm install express mysql2 dotenv helmet compression express-rate-limit express-async-errors</pre
+      >
+      <p>
+        Create <code>server/app.js</code> (the routes),
+        <code>server/db.js</code> (the connection) and
+        <code>server/migrations.js</code>: a numbered list of database changes
+        that run once each. Add a Vite proxy so <code>/api</code> calls reach
+        the server in development.
+      </p>
+      <p class="prompt">
+        <b>Prompt:</b> "Add an Express API under /api with a MySQL pool,
+        versioned migrations recorded in a schema_migrations table, security
+        headers with helmet, and rate limiting. Proxy /api from Vite to port
+        3001."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 4: Sign-up and log-in</h3>
-<pre>npm install bcryptjs jsonwebtoken</pre>
-<p>Hash passwords with bcrypt. On log-in, put a signed JWT in an <b>httpOnly, SameSite=Lax</b> cookie (never in localStorage). Allow log-in with username or email. Record <code>last_login_at</code>.</p>
-<p class="prompt"><b>Prompt:</b> "Add register, login and logout endpoints using bcrypt and a JWT in an httpOnly cookie. Put Log in and Create account as two tabs on one card, each at its own URL."</p></div>
+    <div class="step">
+      <h3>Step 4: Sign-up and log-in</h3>
+      <pre>npm install bcryptjs jsonwebtoken</pre>
+      <p>
+        Hash passwords with bcrypt. On log-in, put a signed JWT in an
+        <b>httpOnly, SameSite=Lax</b> cookie (never in localStorage). Allow
+        log-in with username or email. Record <code>last_login_at</code>.
+      </p>
+      <p class="prompt">
+        <b>Prompt:</b> "Add register, login and logout endpoints using bcrypt
+        and a JWT in an httpOnly cookie. Put Log in and Create account as two
+        tabs on one card, each at its own URL."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 5: Links</h3>
-<p>Endpoints to add, edit, delete and reorder links. Detect the platform from the URL (instagram.com → Instagram) and show a coloured badge; ask the user to pick a type when it's unknown. On the server, reject a social badge that doesn't match the real domain.</p>
-<p class="prompt"><b>Prompt:</b> "Build a links CRUD with drag-to-reorder in the dashboard, platform detection from the URL with brand-coloured badges, and one-tap suggestions for socials not yet added."</p></div>
+    <div class="step">
+      <h3>Step 5: Links</h3>
+      <p>
+        Endpoints to add, edit, delete and reorder links. Detect the platform
+        from the URL (instagram.com → Instagram) and show a coloured badge; ask
+        the user to pick a type when it's unknown. On the server, reject a
+        social badge that doesn't match the real domain.
+      </p>
+      <p class="prompt">
+        <b>Prompt:</b> "Build a links CRUD with drag-to-reorder in the
+        dashboard, platform detection from the URL with brand-coloured badges,
+        and one-tap suggestions for socials not yet added."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 6: Public profile, themes and templates</h3>
-<p>The page at <code>/:username</code> loads the profile and renders one of several templates (Classic, Grid, Minimal, Cover, Editorial, Search &amp; solve, Profile card) in one of several themes. Add a live phone preview in the dashboard.</p>
-<p class="prompt"><b>Prompt:</b> "Create a public profile page with selectable templates and themes (Light, Sage, Blush, Midnight, Auto dark). Add a sticky phone preview in the dashboard with a toolbar: Open, Copy, Share, QR, Stats."</p></div>
+    <div class="step">
+      <h3>Step 6: Public profile, themes and templates</h3>
+      <p>
+        The page at <code>/:username</code> loads the profile and renders one of
+        several templates (Classic, Grid, Minimal, Cover, Editorial, Search
+        &amp; solve, Profile card) in one of several themes. Add a live phone
+        preview in the dashboard.
+      </p>
+      <p class="prompt">
+        <b>Prompt:</b> "Create a public profile page with selectable templates
+        and themes (Light, Sage, Blush, Midnight, Auto dark). Add a sticky phone
+        preview in the dashboard with a toolbar: Open, Copy, Share, QR, Stats."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 7: Onboarding</h3>
-<p>After the first log-in, show a 5-step wizard: personal or business → business category and optional WhatsApp → name, bio, photo → socials → template. Save <code>onboarded_at</code> so it shows only once.</p>
-<p class="prompt"><b>Prompt:</b> "Add a step-by-step onboarding modal on first login with progress bar, back/next, skip, and save everything at the end."</p></div>
+    <div class="step">
+      <h3>Step 7: Onboarding</h3>
+      <p>
+        After the first log-in, show a 5-step wizard: personal or business →
+        business category and optional WhatsApp → name, bio, photo → socials →
+        template. Save <code>onboarded_at</code> so it shows only once.
+      </p>
+      <p class="prompt">
+        <b>Prompt:</b> "Add a step-by-step onboarding modal on first login with
+        progress bar, back/next, skip, and save everything at the end."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 8: Animation</h3>
-<pre>npm install gsap three</pre>
-<p>Use Framer Motion for hover/press springs, staggered reveals and page transitions; GSAP ScrollTrigger for the scroll-clip panel; three.js (loaded lazily) for the 3D tree. Respect "reduce motion" settings everywhere.</p>
-<p class="prompt"><b>Prompt:</b> "Animate the hero headline word by word with a rotating highlighted word, add a looping 3-step story inside the hero phone, and a section whose rounded panel opens to full width on scroll using GSAP ScrollTrigger."</p></div>
+    <div class="step">
+      <h3>Step 8: Animation</h3>
+      <pre>npm install gsap three</pre>
+      <p>
+        Use Framer Motion for hover/press springs, staggered reveals and page
+        transitions; GSAP ScrollTrigger for the scroll-clip panel; three.js
+        (loaded lazily) for the 3D tree. Respect "reduce motion" settings
+        everywhere.
+      </p>
+      <p class="prompt">
+        <b>Prompt:</b> "Animate the hero headline word by word with a rotating
+        highlighted word, add a looping 3-step story inside the hero phone, and
+        a section whose rounded panel opens to full width on scroll using GSAP
+        ScrollTrigger."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 9: Your own analytics</h3>
-<p>An <code>events</code> table gets one row per view or click: referring site, device type, country (from Vercel's <code>x-vercel-ip-country</code> header) and a random visitor id from a cookie, so refreshes and repeat visits count once. Don't store IP addresses. Skip bots and the owner's own visits. Chart it in the dashboard.</p>
-<p class="prompt"><b>Prompt:</b> "Build in-house analytics: record views and clicks with referrer, device, country and an anonymous visitor cookie; show views, unique visitors, clicks, CTR, a daily chart, top links, countries, sources and devices."</p></div>
+    <div class="step">
+      <h3>Step 9: Your own analytics</h3>
+      <p>
+        An <code>events</code> table gets one row per view or click: referring
+        site, device type, country (from Vercel's
+        <code>x-vercel-ip-country</code> header) and a random visitor id from a
+        cookie, so refreshes and repeat visits count once. Don't store IP
+        addresses. Skip bots and the owner's own visits. Chart it in the
+        dashboard.
+      </p>
+      <p class="prompt">
+        <b>Prompt:</b> "Build in-house analytics: record views and clicks with
+        referrer, device, country and an anonymous visitor cookie; show views,
+        unique visitors, clicks, CTR, a daily chart, top links, countries,
+        sources and devices."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 10: Email</h3>
-<p>Sign up at Resend, verify your domain, and send emails with one <code>fetch</code> call. Store only a hash of each one-time token, with an expiry. In development, print emails to the terminal instead.</p>
-<p class="prompt"><b>Prompt:</b> "Add email verification and forgot/reset password using Resend. Tokens are single-use, hashed and expire. A reset signs out other sessions."</p></div>
+    <div class="step">
+      <h3>Step 10: Email</h3>
+      <p>
+        Sign up at Resend, verify your domain, and send emails with one
+        <code>fetch</code> call. Store only a hash of each one-time token, with
+        an expiry. In development, print emails to the terminal instead.
+      </p>
+      <p class="prompt">
+        <b>Prompt:</b> "Add email verification and forgot/reset password using
+        Resend. Tokens are single-use, hashed and expire. A reset signs out
+        other sessions."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 11: Paid features and Paystack</h3>
-<p>List the paid features in one file (<code>server/features.js</code>). Store what each user has bought in a <code>user_features</code> table with an <code>expires_at</code>, and check it on the server before allowing a paid action (4th link, premium template, founder's note…). Prices are a monthly amount per feature plus discounts for 3, 6 and 12 months. The founder edits them in the dashboard (an <code>app_settings</code> table), with <code>.env</code> as the fallback. Payment flow:</p>
-<ol>
-  <li>"Unlock" on a feature → server calls Paystack <code>transaction/initialize</code> with the price and puts the feature and months in the metadata → user goes to Paystack checkout.</li>
-  <li>Paystack sends them back to <code>/billing/callback?reference=…</code> → server calls <code>transaction/verify</code> → if paid in full, unlock the feature (or add the months to what's left).</li>
-  <li>Paystack also calls your <b>webhook</b> (<code>/api/billing/webhook</code>, signed with your secret key) so the feature still unlocks if the customer closes the tab.</li>
-</ol>
-<p>In the dashboard, show a checklist of every feature: ticked with an expiry date when unlocked, struck through with a price and an Unlock button when not.</p>
-<p class="prompt"><b>Prompt:</b> "Add pay-per-feature: each feature can be bought for 1, 3, 6 or 12 months via Paystack, verified on the server and by signed webhook, stored with an expiry. Show a feature checklist in the dashboard (locked ones struck through) and a pricing editor in the founder dashboard."</p></div>
+    <div class="step">
+      <h3>Step 11: Paid features and Paystack</h3>
+      <p>
+        List the paid features in one file (<code>server/features.js</code>).
+        Store what each user has bought in a <code>user_features</code> table
+        with an <code>expires_at</code>, and check it on the server before
+        allowing a paid action (4th link, premium template, founder's note…).
+        Prices are a monthly amount per feature plus discounts for 3, 6 and 12
+        months. The founder edits them in the dashboard (an
+        <code>app_settings</code> table), with <code>.env</code> as the
+        fallback. Payment flow:
+      </p>
+      <ol>
+        <li>
+          "Unlock" on a feature → server calls Paystack
+          <code>transaction/initialize</code> with the price and puts the
+          feature and months in the metadata → user goes to Paystack checkout.
+        </li>
+        <li>
+          Paystack sends them back to
+          <code>/billing/callback?reference=…</code> → server calls
+          <code>transaction/verify</code> → if paid in full, unlock the feature
+          (or add the months to what's left).
+        </li>
+        <li>
+          Paystack also calls your
+          <b>webhook</b> (<code>/api/billing/webhook</code>, signed with your
+          secret key) so the feature still unlocks if the customer closes the
+          tab.
+        </li>
+      </ol>
+      <p>
+        In the dashboard, show a checklist of every feature: ticked with an
+        expiry date when unlocked, struck through with a price and an Unlock
+        button when not.
+      </p>
+      <p class="prompt">
+        <b>Prompt:</b> "Add pay-per-feature: each feature can be bought for 1,
+        3, 6 or 12 months via Paystack, verified on the server and by signed
+        webhook, stored with an expiry. Show a feature checklist in the
+        dashboard (locked ones struck through) and a pricing editor in the
+        founder dashboard."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 12: Founder dashboard on a subdomain</h3>
-<p>One endpoint returns whole-site numbers, allowed only for <code>OWNER_EMAIL</code> after that email is verified. The frontend checks the hostname: on <code>admin.linqsafe.com</code> it shows only the founder dashboard and log-in. Setting <code>ADMIN_HOST</code> makes the server refuse founder requests from any other host.</p>
-<p class="prompt"><b>Prompt:</b> "Create a founder dashboard (users, signups per day, paying users, revenue, business counts, traffic, countries, categories, latest signups with last login, contact messages) served on the admin subdomain and locked to my verified email."</p></div>
+    <div class="step">
+      <h3>Step 12: Founder dashboard on a subdomain</h3>
+      <p>
+        One endpoint returns whole-site numbers, allowed only for
+        <code>OWNER_EMAIL</code> after that email is verified. The frontend
+        checks the hostname: on <code>admin.linqsafe.com</code> it shows only
+        the founder dashboard and log-in. Setting <code>ADMIN_HOST</code> makes
+        the server refuse founder requests from any other host.
+      </p>
+      <p class="prompt">
+        <b>Prompt:</b> "Create a founder dashboard (users, signups per day,
+        paying users, revenue, business counts, traffic, countries, categories,
+        latest signups with last login, contact messages) served on the admin
+        subdomain and locked to my verified email."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 13: Make it deployable to Vercel</h3>
-<p>Split the server into <code>server/app.js</code> (exports the app) and <code>server/index.js</code> (starts it locally). Add <code>api/index.js</code> that exports the app for Vercel, and a <code>vercel.json</code> that sends <code>/api/*</code> to it and everything else to <code>index.html</code>. Add <code>@vercel/analytics</code> for site-wide traffic.</p></div>
+    <div class="step">
+      <h3>Step 13: Make it deployable to Vercel</h3>
+      <p>
+        Split the server into <code>server/app.js</code> (exports the app) and
+        <code>server/index.js</code> (starts it locally). Add
+        <code>api/index.js</code> that exports the app for Vercel, and a
+        <code>vercel.json</code> that sends <code>/api/*</code> to it and
+        everything else to <code>index.html</code>. Add
+        <code>@vercel/analytics</code> for site-wide traffic.
+      </p>
+    </div>
 
-<div class="step"><h3>Optional: Docker</h3>
-<p>Only needed if you'll host on a Docker platform (Render, Railway, Fly, a VPS) or want everything in containers. Install Docker Desktop, then:</p>
-<ul>
-  <li><b>Dockerfile</b>, two stages: (1) <code>node:22-alpine</code> installs everything and runs <code>npm run build</code>; (2) a slim image with production dependencies, <code>server/</code> and <code>dist/</code>, running as the non-root <code>node</code> user on port 3001 with a health check on <code>/api/health</code>.</li>
-  <li><b>.dockerignore</b>: keep <code>.env</code>, <code>node_modules</code>, docs and tests out of the image. Secrets are passed in at run time.</li>
-  <li><b>docker-compose.yml</b>: a <code>db</code> service (MySQL 8.4 with a volume and a health check) and an <code>app</code> service that waits for it and connects to host <code>db</code>.</li>
-</ul>
-<pre>docker compose up --build                     # app + MySQL on http://localhost:3001
-docker build -t linqsafe --build-arg VITE_APP_STAGE=prod .
-docker run -p 3001:3001 --env-file .env linqsafe   # app only, hosted DB</pre>
-<p class="prompt"><b>Prompt:</b> "Add a two-stage Dockerfile for the Vite frontend and Express API (non-root user, health check), a .dockerignore, and a docker-compose.yml with MySQL 8.4 and the app."</p></div>
+    <div class="step">
+      <h3>Optional: Docker</h3>
+      <p>
+        Only needed if you'll host on a Docker platform (Render, Railway, Fly, a
+        VPS) or want everything in containers. Install Docker Desktop, then:
+      </p>
+      <ul>
+        <li>
+          <b>Dockerfile</b>, two stages: (1)
+          <code>node:22-alpine</code> installs everything and runs
+          <code>npm run build</code>; (2) a slim image with production
+          dependencies, <code>server/</code> and <code>dist/</code>, running as
+          the non-root <code>node</code> user on port 3001 with a health check
+          on <code>/api/health</code>.
+        </li>
+        <li>
+          <b>.dockerignore</b>: keep <code>.env</code>,
+          <code>node_modules</code>, docs and tests out of the image. Secrets
+          are passed in at run time.
+        </li>
+        <li>
+          <b>docker-compose.yml</b>: a <code>db</code> service (MySQL 8.4 with a
+          volume and a health check) and an <code>app</code> service that waits
+          for it and connects to host <code>db</code>.
+        </li>
+      </ul>
+      <pre>
+docker compose up --build                     # app + MySQL on http://localhost:3001
+docker build -t linqsafe --build-arg APP_STAGE=prod .
+docker run -p 3001:3001 --env-file .env linqsafe   # app only, hosted DB</pre
+      >
+      <p class="prompt">
+        <b>Prompt:</b> "Add a two-stage Dockerfile for the Vite frontend and
+        Express API (non-root user, health check), a .dockerignore, and a
+        docker-compose.yml with MySQL 8.4 and the app."
+      </p>
+    </div>
 
-<div class="step"><h3>Step 14: Polish</h3>
-<p>Disclaimers where info becomes public, an onboarding-friendly empty state, a stage badge (LOCAL/DEV), a footer, a pricing page, and accessibility (labels, focus rings, keyboard reordering, alt text).</p></div>
+    <div class="step">
+      <h3>Step 14: Polish</h3>
+      <p>
+        Disclaimers where info becomes public, an onboarding-friendly empty
+        state, a stage badge (LOCAL/DEV), a footer, a pricing page, and
+        accessibility (labels, focus rings, keyboard reordering, alt text).
+      </p>
+    </div>
 
-<h2 class="page-break">5. Going live: local, dev and prod</h2>
-<table>
-  <tr><th>Stage</th><th>Site</th><th>Founder console</th><th>Database</th><th>Git branch</th></tr>
-  <tr><td>Local</td><td>localhost:5173</td><td>admin.localhost:5173</td><td>MySQL on your computer</td><td>any</td></tr>
-  <tr><td>Dev</td><td>dev.linqsafe.com</td><td>admin-dev.linqsafe.com</td><td>hosted dev DB</td><td><code>dev</code></td></tr>
-  <tr><td>Prod</td><td>linqsafe.com</td><td>admin.linqsafe.com</td><td>hosted prod DB</td><td><code>main</code></td></tr>
-</table>
-<ol>
-  <li>Push the code to GitHub. In Vercel, <b>Add New → Project</b> and import the repo.</li>
-  <li>Create two hosted MySQL databases (dev, prod).</li>
-  <li>In Vercel → Settings → Environment Variables, add each variable twice, once for <b>Production</b> and once for <b>Preview</b>: <code>DB_*</code>, <code>DB_SSL=true</code>, <code>JWT_SECRET</code>, <code>APP_URL</code>, <code>RESEND_API_KEY</code>, <code>MAIL_FROM</code>, <code>OWNER_EMAIL</code>, <code>ADMIN_HOST</code>, <code>PAYSTACK_SECRET_KEY</code> (test key for dev, live key for prod), optional default prices <code>PRICE_*</code> / <code>DISCOUNT_*</code>, <code>VITE_APP_STAGE</code>.</li>
-  <li>Vercel → Domains: add the prod domains to Production; add the dev domains and assign them to the <code>dev</code> branch.</li>
-  <li>Paystack → Settings → API Keys &amp; Webhooks: set the webhook URL to <code>https://linqsafe.com/api/billing/webhook</code> (and the dev one in test mode).</li>
-  <li>Resend: verify your domain so emails don't land in spam.</li>
-  <li>Turn on Vercel Analytics for the project.</li>
-</ol>
+    <h2 class="page-break">5. Going live: local, dev and prod</h2>
+    <table>
+      <tr>
+        <th>Stage</th>
+        <th>Site</th>
+        <th>Founder console</th>
+        <th>Database</th>
+        <th>Git branch</th>
+      </tr>
+      <tr>
+        <td>Local</td>
+        <td>localhost:5173</td>
+        <td>admin.localhost:5173</td>
+        <td>MySQL on your computer</td>
+        <td>any</td>
+      </tr>
+      <tr>
+        <td>Dev</td>
+        <td>dev.linqsafe.com</td>
+        <td>admin-dev.linqsafe.com</td>
+        <td>hosted dev DB</td>
+        <td><code>dev</code></td>
+      </tr>
+      <tr>
+        <td>Prod</td>
+        <td>linqsafe.com</td>
+        <td>admin.linqsafe.com</td>
+        <td>hosted prod DB</td>
+        <td><code>main</code></td>
+      </tr>
+    </table>
+    <ol>
+      <li>
+        Push the code to GitHub. In Vercel, <b>Add New → Project</b> and import
+        the repo.
+      </li>
+      <li>Create two hosted MySQL databases (dev, prod).</li>
+      <li>
+        In Vercel → Settings → Environment Variables, add each variable twice,
+        once for <b>Production</b> and once for <b>Preview</b>:
+        <code>DB_*</code>, <code>DB_SSL=true</code>, <code>JWT_SECRET</code>,
+        <code>APP_URL</code>, <code>RESEND_API_KEY</code>,
+        <code>MAIL_FROM</code>, <code>OWNER_EMAIL</code>,
+        <code>ADMIN_HOST</code>, <code>PAYSTACK_SECRET_KEY</code> (test key for
+        dev, live key for prod), optional default prices <code>PRICE_*</code> /
+        <code>DISCOUNT_*</code>, <code>APP_STAGE</code>.
+      </li>
+      <li>
+        Vercel → Domains: add the prod domains to Production; add the dev
+        domains and assign them to the <code>dev</code> branch.
+      </li>
+      <li>
+        Paystack → Settings → API Keys &amp; Webhooks: set the webhook URL to
+        <code>https://linqsafe.com/api/billing/webhook</code> (and the dev one
+        in test mode).
+      </li>
+      <li>Resend: verify your domain so emails don't land in spam.</li>
+      <li>Turn on Vercel Analytics for the project.</li>
+    </ol>
 
-<h2>6. Launch checklist</h2>
-<ul>
-  <li>A long random <code>JWT_SECRET</code> per stage (<code>openssl rand -hex 32</code>).</li>
-  <li>Owner account created with <code>OWNER_EMAIL</code> and the email verified.</li>
-  <li>One full Paystack test payment on dev: checkout → callback → feature unlocked → webhook received.</li>
-  <li>Sign-up, verify email, reset password tested with a real inbox.</li>
-  <li>Privacy policy mentions the analytics cookie, hosted images and Paystack; add a cookie notice if you have EU/UK visitors.</li>
-  <li>Database backups switched on at your MySQL host.</li>
-  <li>Test on a real phone: onboarding, preview sheet, each template.</li>
-</ul>
-
-</body>
+    <h2>6. Launch checklist</h2>
+    <ul>
+      <li>
+        A long random <code>JWT_SECRET</code> per stage (<code
+          >openssl rand -hex 32</code
+        >).
+      </li>
+      <li>
+        Owner account created with <code>OWNER_EMAIL</code> and the email
+        verified.
+      </li>
+      <li>
+        One full Paystack test payment on dev: checkout → callback → feature
+        unlocked → webhook received.
+      </li>
+      <li>Sign-up, verify email, reset password tested with a real inbox.</li>
+      <li>
+        Privacy policy mentions the analytics cookie, hosted images and
+        Paystack; add a cookie notice if you have EU/UK visitors.
+      </li>
+      <li>Database backups switched on at your MySQL host.</li>
+      <li>Test on a real phone: onboarding, preview sheet, each template.</li>
+    </ul>
+  </body>
 </html>
