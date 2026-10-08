@@ -472,7 +472,7 @@ app.post('/api/account/email', auth, authLimiter, async (req, res) => {
     return res.json({ ok: true, email, email_verified: !!user.email_verified })
   }
   const [[taken]] = await pool.query('SELECT id FROM users WHERE email = ? AND email_verified = 1 AND id <> ? LIMIT 1', [email, req.userId])
-  if (taken) return res.status(409).json({ error: 'That email is already confirmed on another account. Log in to that one, or use a different email.' })
+  if (taken) return res.status(409).json({ error: 'That email is already verified on another account. Log in to that one, or use a different email.' })
   await pool.query('UPDATE users SET email = NULL WHERE email = ? AND email_verified = 0 AND id <> ?', [email, req.userId])
   await pool.query('UPDATE users SET email = ?, email_verified = 0 WHERE id = ?', [email, req.userId])
   await sendVerification(req, { ...user, email })
@@ -746,7 +746,7 @@ app.get('/api/u/:username', async (req, res) => {
   // (the owner gets a reason instead of a plain "not found").
   if (!user.email_verified) {
     const own = (await sessionUserId(req)) === user.id
-    return res.status(404).json({ error: own ? 'Your page goes live once you confirm your email. Check your inbox, or resend the link from your dashboard.' : 'Profile not found' })
+    return res.status(404).json({ error: own ? 'Your page goes live once you verify your email. Check your inbox, or resend the link from your dashboard.' : 'Profile not found' })
   }
   delete user.email_verified
   // Anything not unlocked falls back to the free version instead of breaking the page.

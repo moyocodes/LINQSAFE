@@ -198,7 +198,7 @@ test('a page is a 404 until its owner confirms their email', async () => {
   assert.equal((await client()('GET', `/u/${username}`)).status, 404)
   const own = await owner('GET', `/u/${username}`)
   assert.equal(own.status, 404)
-  assert.match(own.body.error, /confirm your email/i)
+  assert.match(own.body.error, /verify your email/i)
   await (await db()).query('UPDATE users SET email_verified = 1 WHERE username = ?', [username])
   assert.equal((await client()('GET', `/u/${username}`)).status, 200)
 })

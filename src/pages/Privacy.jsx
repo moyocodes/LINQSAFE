@@ -18,7 +18,7 @@ export default function Privacy() {
       </ul>
 
       <h2>How we use it</h2>
-      <p>To run the Service, show your public page, provide your analytics, send account emails (such as confirming your email or resetting your password), process payments, respond to your messages, and protect against abuse. We do not sell your personal information.</p>
+      <p>To run the Service, show your public page, provide your analytics, send account emails (such as verifying your email or resetting your password), process payments, respond to your messages, and protect against abuse. We do not sell your personal information.</p>
 
       <h2>Cookies and local storage</h2>
       <ul>

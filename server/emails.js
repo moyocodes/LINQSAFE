@@ -92,15 +92,15 @@ const textOf = (lines) => [...lines, '', '—', 'linqsafe · linqsafe.com · sup
 
 export function verifyEmail({ username, url }) {
   return {
-    subject: 'Confirm your email for linqsafe',
+    subject: 'Verify your email for linqsafe',
     html: layout({
-      preheader: 'One tap to confirm, so you can always get back into your page.',
+      preheader: 'One tap to verify and your page goes live.',
       eyebrow: 'Welcome',
       heading: `Welcome, @${esc(username)}`,
-      body: p('Your page is ready. Confirm this is your email so you can reset your password if you ever forget it.') + button('Confirm my email', url) + linkFallback(url) + small('This link works for 24 hours.'),
-      footnote: "Didn't sign up for linqsafe? You can ignore this email; nothing happens without confirming.",
+      body: p('Your page is ready. Verify this is your email to make it public, and so you can reset your password if you ever forget it.') + button('Verify my email', url) + linkFallback(url) + small('This link works for 24 hours.'),
+      footnote: "Didn't sign up for linqsafe? You can ignore this email; nothing happens without verifying.",
     }),
-    text: textOf([`Welcome, @${username}`, '', 'Your page is ready. Confirm this is your email so you can reset your password if you ever forget it.', '', `Confirm my email: ${url}`, '', 'This link works for 24 hours.', "Didn't sign up? Ignore this email."]),
+    text: textOf([`Welcome, @${username}`, '', 'Your page is ready. Verify this is your email to make it public, and so you can reset your password if you ever forget it.', '', `Verify my email: ${url}`, '', 'This link works for 24 hours.', "Didn't sign up? Ignore this email."]),
   }
 }
 
@@ -110,9 +110,9 @@ export function welcome({ name, username, person }) {
   return {
     subject: "You're all set. Here's how to make your page shine",
     html: layout({
-      preheader: 'Your email is confirmed. Three quick things that make a page work.',
+      preheader: 'Your email is verified and your page is live. Three quick things that make a page work.',
       person,
-      eyebrow: 'Email confirmed',
+      eyebrow: 'Email verified',
       heading: `You're all set, ${esc(name)}`,
       body: p(`Your page lives at <a href="${page}" style="color:${C.cobalt};font-weight:600">${esc(page.replace(/^https?:\/\//, ''))}</a>. Three things that make it work:`)
         + steps([

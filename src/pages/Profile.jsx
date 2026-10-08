@@ -72,7 +72,7 @@ export default function Profile() {
   // ?embed=1 is the dashboard's live preview: no top bar or buttons; ?theme= previews an unsaved theme.
   const embed = params.get('embed') === '1'
   const themeParam = ['light', 'sage', 'blush', 'midnight', 'auto'].includes(params.get('theme')) ? params.get('theme') : null
-  if (error) return <NotFound message={/confirm your email/i.test(error) ? error : "This profile doesn't exist."} />
+  if (error) return <NotFound message={/verify your email/i.test(error) ? error : "This profile doesn't exist."} />
   if (!data)
     return <PageLoader className="min-h-screen" />
 

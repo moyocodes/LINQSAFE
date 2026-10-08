@@ -331,7 +331,7 @@ function YouCard({ me, setMe }) {
           <div className="min-w-0">
             <p className="truncate font-semibold">{me.display_name || `@${me.username}`}</p>
             <Link to={`/${me.username}`} target="_blank" className="block truncate text-sm text-accent hover:underline">{location.host}/{me.username}</Link>
-            <p className="break-all text-sm text-muted-foreground">{me.email || 'No email yet'}{me.email && <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold ${me.email_verified ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>{me.email_verified ? 'Verified' : 'Not confirmed'}</span>}</p>
+            <p className="break-all text-sm text-muted-foreground">{me.email || 'No email yet'}{me.email && <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-semibold ${me.email_verified ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>{me.email_verified ? 'Verified' : 'Not verified'}</span>}</p>
           </div>
         </div>
 
@@ -397,7 +397,7 @@ function VerifyBanner({ email, onChanged }) {
       {editing ? (
         <form onSubmit={save} className="space-y-2">
           <p className="flex items-center gap-2"><MailWarning className="size-4 shrink-0" aria-hidden="true" />
-            {email ? 'Change your email. We will send a confirmation link.' : <span><strong>Add your email.</strong> Your page goes public once you confirm it, and you need it to pay and to reset your password.</span>}</p>
+            {email ? 'Change your email. We will send a verification link.' : <span><strong>Add your email.</strong> Your page goes public once you verify it, and you need it to pay and to reset your password.</span>}</p>
           <div className="flex flex-wrap gap-2">
             <Input type="email" required autoComplete="email" placeholder="you@example.com" value={value} onChange={(e) => setValue(e.target.value)}
               aria-label="Email address" aria-invalid={!!error} className="h-10 min-w-0 flex-1 bg-white text-ink" />
@@ -408,7 +408,7 @@ function VerifyBanner({ email, onChanged }) {
         </form>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="flex min-w-0 items-start gap-2"><MailWarning className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">Confirm <strong className="break-all">{email}</strong> to make your page public. Until then your link shows “not found”. You also need it to pay and reset your password.</span></span>
+          <span className="flex min-w-0 items-start gap-2"><MailWarning className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span className="min-w-0">Verify <strong className="break-all">{email}</strong> to make your page public. Until then your link shows “not found”. You also need it to pay and reset your password.</span></span>
           <span className="flex gap-2">
             <Button size="sm" variant="outline" onClick={resend} disabled={state === 'sending' || state === 'sent'}>
               {state === 'sent' ? 'Email sent, check your inbox' : state === 'error' ? 'Try again' : 'Resend email'}
@@ -455,6 +455,19 @@ export default function Admin() {
   useEffect(() => {
     loadMe().catch(() => navigate('/login'))
   }, [navigate]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Verified the email in another tab (from the email link)? When you come back here, pick that up so the
+  // "Verify your email" banner goes away. Only the email fields are refreshed, so unsaved edits stay.
+  const unverified = me && me.email && !me.email_verified
+  useEffect(() => {
+    if (!unverified) return
+    const check = () => document.visibilityState === 'visible' && api('/me')
+      .then((m) => m.email_verified && setMe((cur) => ({ ...cur, email: m.email, email_verified: m.email_verified })))
+      .catch(() => {})
+    window.addEventListener('focus', check)
+    document.addEventListener('visibilitychange', check)
+    return () => { window.removeEventListener('focus', check); document.removeEventListener('visibilitychange', check) }
+  }, [unverified])
 
   if (!me)
     return <PageLoader label="Loading your dashboard" />

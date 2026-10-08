@@ -21,7 +21,7 @@ function Shell({ children }) {
 }
 
 export function VerifyEmail() {
-  useTitle('Confirm email')
+  useTitle('Verify email')
   const [params] = useSearchParams()
   const [state, setState] = useState('working')
   const [error, setError] = useState('')
@@ -37,16 +37,16 @@ export function VerifyEmail() {
     <Shell>
       <Card>
         <CardContent className="py-10 text-center" role="status">
-          {state === 'working' && <Loader2 className="mx-auto size-10 animate-spin text-muted-foreground" aria-label="Confirming" />}
+          {state === 'working' && <Loader2 className="mx-auto size-10 animate-spin text-muted-foreground" aria-label="Verifying" />}
           {state === 'done' && (<>
             <CheckCircle2 className="mx-auto size-12 text-emerald-700" aria-hidden="true" />
-            <h1 className="mt-4 text-xl font-semibold">Email confirmed</h1>
+            <h1 className="mt-4 text-xl font-semibold">Email verified</h1>
             <p className="mt-1 text-muted-foreground">Thanks! Your account is all set.</p>
             <Button asChild className="mt-6"><Link to="/admin">Go to dashboard</Link></Button>
           </>)}
           {state === 'error' && (<>
             <XCircle className="mx-auto size-12 text-destructive" aria-hidden="true" />
-            <h1 className="mt-4 text-xl font-semibold">Couldn't confirm</h1>
+            <h1 className="mt-4 text-xl font-semibold">Couldn't verify</h1>
             <p className="mt-1 text-muted-foreground">{error}</p>
             <Button asChild variant="outline" className="mt-6"><Link to="/admin">Go to dashboard</Link></Button>
           </>)}
