@@ -17,8 +17,8 @@ import { fadeUp, stagger } from "@/lib/motion";
 import { useTitle } from "@/lib/useTitle";
 import { SITE } from "@/config";
 
-// three.js is heavy; load it after the hero has painted.
-const TreeStory = lazy(() => import("@/components/TreeStory"));
+import ClaimLink from "@/components/ClaimLink";
+const HubStory = lazy(() => import("@/components/HubStory"));
 
 function PhoneDemo() {
   const mx = useMotionValue(0);
@@ -53,6 +53,7 @@ function PhoneDemo() {
         className="mx-auto mb-4 block h-1.5 w-16 rounded-full bg-foreground/80"
       />
       <HeroPhoneStory />
+      <ClaimLink className="mt-3 border-t border-foreground/10 pt-3" />
     </motion.div>
   );
 }
@@ -100,9 +101,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* The tree story sits in an inset panel so it reads as one more card on the page. */}
+      {/* The connector hub sits in an inset panel so it reads as one more card on the page. */}
       <Suspense fallback={<div className="h-screen" />}>
-        <TreeStory />
+        <HubStory />
       </Suspense>
 
       <FeatureBento />

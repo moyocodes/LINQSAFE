@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { BarList, BestTime, CLICKS, Kpi, LineChart, NewVsReturning, VIEWS, WeekSummary, flag, pct, regionName, sourceName } from '@/pages/Analytics'
 import { CATEGORIES, TEMPLATES, categoryLabel } from '@/lib/plans'
 import { TypeBadge } from '@/lib/linkTypes'
+import { InfoTip } from '@/components/ui/info-tip'
 
 const tplName = Object.fromEntries(TEMPLATES.map((t) => [t.id, t.name]))
 // Every filter the founder traffic view understands; they live in the URL so a view can be bookmarked or shared.
@@ -63,7 +64,7 @@ export default function OwnerTraffic() {
     <section className="space-y-6" aria-labelledby="traffic-title">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow">Traffic</p>
+          <p className="eyebrow flex items-center gap-1.5">Traffic <InfoTip>Your own visits while signed in, bots, and refreshes within 30 minutes aren't counted. Filters on account, category, template and plan look at the page owner; country, device and source look at the visit.</InfoTip></p>
           <h2 id="traffic-title" className="font-display text-2xl font-semibold tracking-tight">Every page, every visit</h2>
           <p className="text-sm text-muted-foreground">The same analytics users see for their page, across the whole site. Filter by anything below.</p>
         </div>
@@ -134,17 +135,17 @@ export default function OwnerTraffic() {
           <WeekSummary week={data.week} subject={filters.user ? `/${filters.user}` : active.length ? 'These pages' : 'linqsafe pages'} own="the" />
 
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
-            <Kpi icon={Eye} label="Page views" value={data.views.toLocaleString()} />
-            <Kpi icon={Users} label="Unique visitors" value={data.visitors.toLocaleString()} />
-            <Kpi icon={MousePointerClick} label="Link clicks" value={data.clicks.toLocaleString()} />
-            <Kpi icon={Percent} label="Click-through rate" value={ctr} />
-            <Kpi icon={QrCode} label="QR code scans" value={data.qrScans.toLocaleString()} />
-            <Kpi icon={LayoutTemplate} label="Pages visited" value={data.activePages.toLocaleString()} />
+            <Kpi icon={Eye} label="Page views" info="Profile page loads matching the filters. Your own visits while signed in, bots, and refreshes within 30 minutes aren't counted." value={data.views.toLocaleString()} />
+            <Kpi icon={Users} label="Unique visitors" info="Distinct visitor cookies matching the filters. Only visitors who accepted the cookie notice are counted." value={data.visitors.toLocaleString()} />
+            <Kpi icon={MousePointerClick} label="Link clicks" info="Taps on links and social icons on the filtered pages." value={data.clicks.toLocaleString()} />
+            <Kpi icon={Percent} label="Click-through rate" info="Link clicks ÷ page views. 20% means one click for every five views." value={ctr} />
+            <Kpi icon={QrCode} label="QR code scans" info="Views that came from a downloaded QR code (its link carries ?src=qr)." value={data.qrScans.toLocaleString()} />
+            <Kpi icon={LayoutTemplate} label="Pages visited" info="Pages that got at least one view in this view." value={data.activePages.toLocaleString()} />
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Views and clicks</CardTitle>
+              <CardTitle className="flex items-center gap-2">Views and clicks <InfoTip>Views and clicks per day in the range (days run on the server's calendar).</InfoTip></CardTitle>
               <CardDescription className="flex flex-wrap gap-4">
                 <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded" style={{ background: VIEWS }} />Views</span>
                 <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded" style={{ background: CLICKS }} />Clicks</span>
@@ -155,18 +156,18 @@ export default function OwnerTraffic() {
 
           <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="size-5" aria-hidden="true" /> Best time to post</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="size-5" aria-hidden="true" /> Best time to post <InfoTip>Views + clicks grouped by weekday and hour, shifted into your own time zone. The darkest cell is the busiest hour.</InfoTip></CardTitle></CardHeader>
               <CardContent><BestTime heat={data.heat} /></CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><Repeat className="size-5" aria-hidden="true" /> New vs returning</CardTitle>
+              <CardHeader><CardTitle className="flex items-center gap-2"><Repeat className="size-5" aria-hidden="true" /> New vs returning <InfoTip>Counted visitors only (cookie accepted). Returning = seen on any page before this range, or on 2+ different days inside it. Everyone else is new.</InfoTip></CardTitle>
                 <CardDescription>Across the whole site: a visitor seen on another day, on any page, is returning.</CardDescription></CardHeader>
               <CardContent><NewVsReturning audience={data.audience} /></CardContent>
             </Card>
           </div>
 
           <Card>
-            <CardHeader><CardTitle>Pages</CardTitle><CardDescription>Most-visited pages in this view. Click a name to see only that page.</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2">Pages <InfoTip>Per page in this view: views, distinct visitors, clicks, and CTR (clicks ÷ views).</InfoTip></CardTitle><CardDescription>Most-visited pages in this view. Click a name to see only that page.</CardDescription></CardHeader>
             <CardContent className="overflow-x-auto">
               {data.pages.length ? (
                 <table className="w-full min-w-[32rem] text-sm">
@@ -193,7 +194,7 @@ export default function OwnerTraffic() {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><MousePointerClick className="size-5" aria-hidden="true" /> Top links</CardTitle>
+              <CardHeader><CardTitle className="flex items-center gap-2"><MousePointerClick className="size-5" aria-hidden="true" /> Top links <InfoTip>Most-clicked links. The % is the link's clicks ÷ all page views in this view.</InfoTip></CardTitle>
                 <CardDescription>Clicks, and share of all page views in this view.</CardDescription></CardHeader>
               <CardContent>
                 <BarList color={CLICKS} empty="No clicks yet."
@@ -201,28 +202,28 @@ export default function OwnerTraffic() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle>Clicks by platform</CardTitle><CardDescription>Which kinds of links people tap.</CardDescription></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2">Clicks by platform <InfoTip>Clicks grouped by the link's detected type (Instagram, Shop…).</InfoTip></CardTitle><CardDescription>Which kinds of links people tap.</CardDescription></CardHeader>
               <CardContent>
                 <BarList color={CLICKS} empty="No clicks yet."
                   rows={data.linkTypes.map((t) => ({ key: t.name || 'link', label: t.name ? t.name[0].toUpperCase() + t.name.slice(1) : 'Link', n: t.n, icon: <TypeBadge type={t.name} className="size-5" /> }))} />
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><Globe2 className="size-5" aria-hidden="true" /> Countries</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2"><Globe2 className="size-5" aria-hidden="true" /> Countries <InfoTip>From Cloudflare's visitor-country header when present, otherwise the visitor's browser time zone. Unknown = neither available.</InfoTip></CardTitle></CardHeader>
               <CardContent>
                 <BarList empty="No visits yet." rows={data.countries.map((c) => ({ key: c.name || 'xx', label: c.name ? regionName(c.name) : 'Unknown', n: c.n, icon: <span aria-hidden="true">{c.name ? flag(c.name) : '🌐'}</span> }))} />
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle>Where visitors come from</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2">Where visitors come from <InfoTip>The website the visitor came from (the referrer). Direct = no referrer, e.g. typed, apps that hide it, or QR.</InfoTip></CardTitle></CardHeader>
               <CardContent><BarList empty="No visits yet." rows={data.referrers.map((r) => ({ key: r.name || 'direct', label: sourceName(r.name), n: r.n }))} /></CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="flex items-center gap-2"><Smartphone className="size-5" aria-hidden="true" /> Devices</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2"><Smartphone className="size-5" aria-hidden="true" /> Devices <InfoTip>From the browser's user agent: mobile, tablet or desktop.</InfoTip></CardTitle></CardHeader>
               <CardContent><BarList empty="No visits yet." rows={data.devices.map((d) => ({ key: d.name || 'x', label: d.name ? d.name[0].toUpperCase() + d.name.slice(1) : 'Unknown', n: d.n }))} /></CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle>Views by account and template</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2">Views by account and template <InfoTip>Views split by the page owner's account type, then by their current template.</InfoTip></CardTitle></CardHeader>
               <CardContent className="space-y-5">
                 <BarList empty="No visits yet." rows={data.byAccount.map((a) => ({ key: a.name, label: a.name === 'business' ? 'Business pages' : 'Personal pages', n: a.n }))} />
                 <BarList empty="" rows={data.byTemplate.map((t) => ({ key: t.name, label: tplName[t.name] || t.name, n: t.n }))} />

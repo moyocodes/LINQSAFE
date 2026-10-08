@@ -9,7 +9,7 @@
 | Test site | https://dev.linqsafe.com |
 | Repo | https://github.com/moyocodes/LINQSAFE |
 
-**Stack:** React 18 · Vite · Tailwind CSS · Framer Motion · GSAP · three.js · Node 22 · Express · MySQL 8 · Paystack · Resend · Namecheap cPanel · GitHub Actions
+**Stack:** React 18 · Vite · Tailwind CSS · Framer Motion · GSAP · Node 22 · Express · MySQL 8 · Paystack · Resend · Namecheap cPanel · GitHub Actions
 
 **Docs:** [PROJECT.md](PROJECT.md) (features, architecture, database, design system) · [docs/DEPLOY.md](docs/DEPLOY.md) (step-by-step hosting, deploys, troubleshooting) · [docs/linqsafe-Build-Guide.pdf](docs/linqsafe-Build-Guide.pdf) (how to build a project like this)
 
@@ -18,10 +18,13 @@
 ## Features
 
 - **Public profile** (`/:username`): photo, bio, topics, real brand icons for socials, links, WhatsApp button for businesses. 8 templates (incl. Photo background, blurred or sharp), 5 themes (incl. auto dark).
-- **Dashboard** (`/admin`): onboarding wizard, drag-to-reorder links with platform detection, live phone preview, analytics (views, unique visitors, clicks, CTR, QR scans, best time to post, new vs returning, link conversion, countries, sources, devices) with **CSV export**. Light/dark/system toggle.
+- **Home page:** hero phone with a live *Claim your link* box (checks the username, then opens sign-up with it filled in), a scroll-driven connector hub, and a features row that slides sideways as you scroll.
+- **Dashboard** (`/admin`): onboarding wizard, drag-to-reorder links with platform detection, a live phone preview that shows your real page in the template and theme you pick (before saving), photo upload right under photo templates, analytics (views, unique visitors, clicks, CTR, QR scans, best time to post, new vs returning, link conversion, countries, sources, devices) with **CSV export**. Light/dark/system toggle.
 - **Paid features**, each bought for 1, 3, 6 or 12 months via **Paystack** (no subscription): unlimited links, premium templates, founder's note, testimonials, QR code, 90-day analytics. Each shows its own price where it appears on the dashboard; tick several and pay for them in one payment. The free plan holds 3 links.
-- **Founder console** (admin.linqsafe.com): users, activation funnel, revenue, payments, expiries, a pricing editor, and **site-wide traffic with every user analytic and more**, filterable by date range, account type, category, template, paid/free, country, device, source or a single page. **CSV exports** for visits & clicks, pages, users and payments (same filters).
+- **Founder console** (admin.linqsafe.com): users, activation funnel, revenue, payments, expiries, a pricing editor, and **site-wide traffic with every user analytic and more**, each metric with an ⓘ explaining how it's calculated, filterable by date range, account type, category, template, paid/free, country, device, source or a single page. **CSV exports** for visits & clicks, pages, users and payments (same filters).
 - **Emails** via **Resend**: confirm, welcome, password reset/changed, receipts, expiry reminders, contact form.
+- **Visitor country:** Cloudflare header if present, else the visitor's IP looked up offline on our server (`ip3country`, IP2Location LITE; the IP is never stored), else browser time zone, else that visitor's last known country.
+- **Public pages** always carry a *Made with linqsafe* badge with the logo.
 - **SEO**: per-page titles, link previews and structured data (including each profile), generated `robots.txt` and `sitemap.xml`; dev and admin are never indexed.
 
 ## Stages

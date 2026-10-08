@@ -5,6 +5,7 @@ import { ArrowLeft, CalendarClock, Download, Eye, Globe2, Loader2, Lock, QrCode,
 import { api } from '@/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { TypeBadge } from '@/lib/linkTypes'
+import { InfoTip } from '@/components/ui/info-tip'
 import { useTitle } from '@/lib/useTitle'
 
 // Validated two-series palette (blue / orange, passes CVD + contrast checks on the light surface).
@@ -17,11 +18,11 @@ export const regionName = (() => {
 export const flag = (c) => String.fromCodePoint(...[...c].map((ch) => 0x1f1a5 + ch.charCodeAt(0)))
 export const fmtDay = (d) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
 
-export function Kpi({ icon: Icon, label, value }) {
+export function Kpi({ icon: Icon, label, value, info }) {
   return (
-    <Card>
+    <Card className="overflow-visible">
       <CardContent className="p-4">
-        <p className="eyebrow flex items-center gap-1.5"><Icon className="size-3.5" aria-hidden="true" />{label}</p>
+        <p className="eyebrow flex items-center gap-1.5"><Icon className="size-3.5" aria-hidden="true" />{label}{info && <InfoTip label={`How "${label}" is calculated`}>{info}</InfoTip>}</p>
         <motion.p key={value} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-1 font-display text-3xl font-semibold tabular-nums">{value}</motion.p>
       </CardContent>
     </Card>

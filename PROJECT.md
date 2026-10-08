@@ -73,7 +73,7 @@ Limits are enforced on the server (`server/app.js`) as well as in the UI.
 | Hosting | **Namecheap cPanel** Node.js App (Passenger/LiteSpeed) + cPanel MySQL | Live site; deployed by GitHub Actions over FTPS; Docker remains as an alternative |
 | CI/CD | **GitHub Actions** (free) | Tests, builds and FTPS-deploys `dev` → dev.linqsafe.com, `prod` → linqsafe.com + admin |
 | Containers (optional) | **Docker** + Docker Compose                                                                  | Alternative for Docker hosts or running app + MySQL together; not used in local dev or on cPanel |
-| Site analytics | In-house `events` table (no third-party trackers) | Each user's page analytics and the founder dashboard |
+| Site analytics | In-house `events` table (no third-party trackers); country via Cloudflare header → offline IP lookup (`ip3country`) → browser time zone → visitor's last country | Each user's page analytics and the founder dashboard |
 
 ---
 
@@ -227,13 +227,13 @@ linqsafe is a single-page app, so the server fills in each page's `<head>` befor
   - accent: **cobalt** `#2B4FAF` (buttons, links, highlights)
   - supporting tints: coral `#F2A07E` (`rose`), teal `#6CC3BA` (`lilac`), sand `#E5D2BD`, blue `#93ACCF` (`mist`)
   - contrast pop: **saffron** `#D99A2B`, used sparingly (live indicators, active markers)
-  - espresso (`ink`) for the inset 3D tree panel; maroon `#77313F` as a secondary accent
+  - maroon `#77313F` as a secondary accent
 - **Text hierarchy by ink opacity:** headings 100%, body ~88%, secondary 60%, labels 55% (not separate greys), so it sits right on every surface and theme.
-- **Section moods:** warm paper hero → the 3D link tree in a rounded espresso panel (inset like the paper cards, pinned for about 2.5 screens) → paper feature cards → cobalt call-to-action → espresso footer.
+- **Section moods:** warm paper hero (phone with a *Claim your link* box) → connector hub (SVG + Framer Motion, pinned for ~3 screens: platforms drift in, wires draw, clicks flow, live counts) on the page with a soft pastel glow → features as large visual cards that slide sideways with the page scroll → cobalt call-to-action → espresso footer.
 - **Dark mode:** `data-theme="dark"` on `<html>` swaps the tokens in `src/styles.css`; pale status chips (green/amber/red) get dark tints there too. Anything that imitates a light page (public profiles, the hero phone) carries `.theme-light` so it stays light.
 - **Fonts (three families, used consistently everywhere):** **Fraunces** for every heading and card title; **IBM Plex Mono** in small caps for every form label, legend, stat label and eyebrow (`.label-form`, `.eyebrow`); **DM Sans** for body text, inputs and buttons. Allura is used only for founder's-note signatures.
 - **Surfaces:** "paper" cards with fine grain, a hairline edge and a long soft shadow; small corners (`--radius: 0.375rem`); inputs warm to the accent on focus.
-- **Motion:** spring hover/press on buttons and cards, scroll reveals, word-by-word hero headline, looping phone story, the 3D link tree, live analytics bars. Everything respects `prefers-reduced-motion`.
+- **Motion:** spring hover/press on buttons and cards, scroll reveals, word-by-word hero headline, looping phone story, the connector hub, the scroll-linked features row, live analytics bars. Everything respects `prefers-reduced-motion`.
 
 ### Prompts for matching animations and images
 

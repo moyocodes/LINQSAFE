@@ -308,4 +308,74 @@ export function BackdropTemplate({ data, name, onLinkClick }) {
   )
 }
 
-export const PROFILE_TEMPLATES = { cover: CoverTemplate, editorial: EditorialTemplate, idcard: IdCardTemplate, search: SearchTemplate, backdrop: BackdropTemplate }
+
+// Grid: a bento board. Photo + name side by side, then platform-tinted tiles; the first link is big.
+export function GridTemplate({ data, name, onLinkClick }) {
+  const tint = (type) => {
+    const bg = LINK_TYPES[type]?.bg || '#261F1C'
+    return bg.startsWith('linear') ? 'linear-gradient(135deg,#FEDA7533,#D6297633,#4F5BD533)' : `${bg}1f`
+  }
+  return (
+    <motion.div variants={stagger(0.06)} initial="hidden" animate="show" className="pt-6">
+      <motion.div variants={fadeUp} className="flex items-center gap-4 rounded-3xl border bg-card/80 p-4 shadow-sm backdrop-blur">
+        <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-primary text-3xl font-bold text-primary-foreground">
+          {data.avatar_url ? <img src={data.avatar_url} alt="" referrerPolicy="no-referrer" className="size-full object-cover" /> : name[0].toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-bold tracking-tight">{name}</h1>
+          {(data.occupation || data.bio) && <p className="line-clamp-2 text-sm text-muted-foreground">{data.occupation || data.bio}</p>}
+        </div>
+      </motion.div>
+      <WhatsAppButton number={data.whatsapp} name={name} className="mt-3" />
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        {data.links.map((l, i) => {
+          const Icon = LINK_TYPES[l.type]?.icon || ArrowUpRight
+          return (
+            <motion.a key={l.id} variants={fadeUp} {...linkProps(l, onLinkClick)} whileHover={{ y: -3, rotate: i % 2 ? 0.6 : -0.6 }} whileTap={{ scale: 0.97 }}
+              style={{ background: tint(l.type) }}
+              className={`relative flex flex-col justify-between overflow-hidden rounded-3xl border p-4 font-semibold ${i === 0 ? 'col-span-2 min-h-36' : 'aspect-square'}`}>
+              <span className="grid size-11 place-items-center rounded-2xl text-white shadow-sm" style={{ background: LINK_TYPES[l.type]?.bg || '#261F1C' }}><Icon className="size-5" aria-hidden="true" /></span>
+              <span className={i === 0 ? 'text-xl' : 'text-sm leading-snug'}>{l.title}</span>
+              <ArrowUpRight className="absolute right-3 top-3 size-4 opacity-50" aria-hidden="true" /><NewTab />
+            </motion.a>
+          )
+        })}
+      </div>
+    </motion.div>
+  )
+}
+
+// Minimal: type-first. Oversized name, a small photo, numbered rows, socials as plain words.
+export function MinimalTemplate({ data, name, onLinkClick }) {
+  const socials = socialsOf(data.links)
+  const rest = data.links.filter((l) => !SOCIAL_KEYS.includes(l.type))
+  return (
+    <motion.div variants={stagger(0.06)} initial="hidden" animate="show" className="pt-10 text-left">
+      <motion.div variants={fadeUp} className="flex items-start justify-between gap-4">
+        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{data.location || data.occupation || 'Links'}</p>
+        {data.avatar_url && <img src={data.avatar_url} alt="" referrerPolicy="no-referrer" className="size-12 rounded-full object-cover grayscale" />}
+      </motion.div>
+      <motion.h1 variants={fadeUp} className="mt-6 font-serif text-6xl font-medium leading-[0.95] tracking-tight">{name}</motion.h1>
+      {data.bio && <motion.p variants={fadeUp} className="mt-4 max-w-xs text-muted-foreground">{data.bio}</motion.p>}
+      {socials.length > 0 && (
+        <motion.p variants={fadeUp} className="mt-5 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium">
+          {socials.map((l) => <a key={l.id} {...linkProps(l, onLinkClick)} className="underline decoration-foreground/30 underline-offset-4 hover:decoration-foreground">{LINK_TYPES[l.type].label.split(' /')[0]}<NewTab /></a>)}
+        </motion.p>
+      )}
+      <WhatsAppButton number={data.whatsapp} name={name} className="mt-6" />
+      <ol className="mt-10 border-t border-foreground/80">
+        {rest.map((l, i) => (
+          <motion.li key={l.id} variants={fadeUp}>
+            <motion.a {...linkProps(l, onLinkClick)} whileHover={{ x: 6 }} className="flex items-baseline gap-4 border-b border-foreground/15 py-4">
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">{String(i + 1).padStart(2, '0')}</span>
+              <span className="flex-1 text-lg">{l.title}</span>
+              <ArrowUpRight className="size-4 self-center text-muted-foreground" aria-hidden="true" /><NewTab />
+            </motion.a>
+          </motion.li>
+        ))}
+      </ol>
+    </motion.div>
+  )
+}
+
+export const PROFILE_TEMPLATES = { grid: GridTemplate, minimal: MinimalTemplate, cover: CoverTemplate, editorial: EditorialTemplate, idcard: IdCardTemplate, search: SearchTemplate, backdrop: BackdropTemplate }

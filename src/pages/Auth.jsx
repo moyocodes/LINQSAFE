@@ -14,7 +14,7 @@ import { IS_ADMIN_HOST } from '@/lib/stage'
 export default function Auth({ mode }) {
   const isLogin = mode === 'login'
   useTitle(isLogin ? 'Log in' : 'Sign up')
-  const [form, setForm] = useState({ username: '', email: '', password: '' })
+  const [form, setForm] = useState(() => ({ username: new URLSearchParams(location.search).get('u')?.replace(/[^a-z0-9_]/gi, '').slice(0, 32) || '', email: '', password: '' }))
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [agree, setAgree] = useState(false)

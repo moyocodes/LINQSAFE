@@ -317,6 +317,11 @@ function visitorId(req, res, consent) {
   return id
 }
 
+// Offline IP → country lookup. Optional: if the package isn't installed yet (cPanel needs Run JS script → deps),
+// the server still starts and falls back to the other country sources.
+let ip3country = null
+try { ip3country = (await import('ip3country')).default; ip3country.init() } catch { console.warn('ip3country not installed: country falls back to time zone') }
+
 // Returns true when the event was recorded (false for bots and for a repeat view within 30 minutes).
 async function track(req, res, { userId, kind, linkId = null, ref = '', consent = false, tz = '' }) {
   const ua = req.get('user-agent') || ''
@@ -328,12 +333,20 @@ async function track(req, res, { userId, kind, linkId = null, ref = '', consent 
       [userId, visitor])
     if (recent) return false
   }
-  // Country: a CDN geo header (e.g. Cloudflare) when present, otherwise the visitor's browser
-  // time zone (e.g. Africa/Lagos → NG). No IP address or user agent is stored.
+  // Country, best source first: a CDN geo header (Cloudflare), the visitor's IP looked up in an offline
+  // database on this server (ip3country, IP2Location LITE), their browser time zone (Africa/Lagos → NG),
+  // then the country of this visitor's last counted visit. The IP is only used for the lookup, never stored.
   const fromTz = /^[A-Za-z_]+\/[A-Za-z_/+-]+$/.test(tz) ? ct.getCountryForTimezone(tz)?.id || '' : ''
-  const country = (req.get('cf-ipcountry') || fromTz).slice(0, 2).toUpperCase()
+  let fromIp = ''
+  try { fromIp = ip3country?.lookupStr(String(req.ip || '').replace(/^::ffff:/, '')) || '' } catch { /* private or bad IP */ }
+  const valid = (c) => (/^[A-Z]{2}$/.test(String(c || '').toUpperCase()) && !['XX', 'T1', 'ZZ'].includes(String(c).toUpperCase()) ? String(c).toUpperCase() : '')
+  let country = valid(req.get('cf-ipcountry')) || valid(fromIp) || valid(fromTz)
+  if (!country && visitor) {
+    const [[last]] = await pool.query("SELECT country FROM events WHERE visitor = ? AND country <> '' ORDER BY id DESC LIMIT 1", [visitor])
+    country = last?.country || ''
+  }
   await pool.query('INSERT INTO events (user_id, link_id, kind, referrer, device, country, visitor) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [userId, linkId, kind, refHost(req, ref), deviceOf(ua), /^[A-Z]{2}$/.test(country) ? country : '', visitor])
+    [userId, linkId, kind, refHost(req, ref), deviceOf(ua), country, visitor])
   return true
 }
 
@@ -348,6 +361,15 @@ function validUrl(value) {
 
 // ---- Auth ----
 app.get('/api/health', (req, res) => res.json({ ok: true }))
+
+// Is a username free? Used by the "claim your link" box on the home page.
+app.get('/api/username/:name', async (req, res) => {
+  const name = String(req.params.name || '')
+  if (!/^[a-z0-9_]{3,32}$/i.test(name)) return res.json({ available: false, reason: '3–32 letters, numbers or _' })
+  if (RESERVED.has(name.toLowerCase())) return res.json({ available: false, reason: 'That one is reserved' })
+  const [[taken]] = await pool.query('SELECT 1 AS x FROM users WHERE username = ? LIMIT 1', [name])
+  res.json({ available: !taken, reason: taken ? 'Already taken' : '' })
+})
 
 app.post('/api/register', authLimiter, async (req, res) => {
   const { username, password, email = '', account_type = 'personal', category = '', whatsapp = '' } = req.body
@@ -826,9 +848,19 @@ app.get('/api/owner/stats', auth, async (req, res) => {
      WHERE status = 'success' AND DATE_ADD(paid_at, INTERVAL GREATEST(months, 1) MONTH) > NOW()`)
   const [[life]] = await pool.query(
     "SELECT COALESCE(SUM(amount_kobo), 0) / 100 AS total, COUNT(DISTINCT user_id) AS payers FROM payments WHERE status = 'success'")
-  const byFeature = await q(
-    `SELECT feature AS name, COALESCE(SUM(amount_kobo), 0) / 100 AS n FROM payments
-     WHERE status = 'success' AND paid_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY) GROUP BY feature ORDER BY n DESC`, [days - 1])
+  // Split multi-feature payments across their features by each item's price (falls back to an even split).
+  const paidRows = await q(`SELECT feature, items, amount_kobo FROM payments
+     WHERE status = 'success' AND paid_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`, [days - 1])
+  const featureTotals = {}
+  for (const r of paidRows) {
+    let list = []
+    try { list = r.items ? JSON.parse(r.items) : [] } catch { /* ignore */ }
+    if (!list.length) list = [{ feature: r.feature, price: 0 }]
+    const amount = Number(r.amount_kobo) / 100
+    const priced = list.reduce((t, i) => t + (Number(i.price) || 0), 0)
+    for (const i of list) featureTotals[i.feature] = (featureTotals[i.feature] || 0) + (priced ? amount * (Number(i.price) || 0) / priced : amount / list.length)
+  }
+  const byFeature = Object.entries(featureTotals).map(([name, n]) => ({ name, n: Math.round(n) })).sort((a, b) => b.n - a.n)
   const byMonth = await q(
     `SELECT DATE_FORMAT(paid_at, '%Y-%m') AS month, SUM(amount_kobo) / 100 AS amount FROM payments
      WHERE status = 'success' AND paid_at >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 11 MONTH) GROUP BY month ORDER BY month`)

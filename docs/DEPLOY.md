@@ -260,7 +260,8 @@ Every `FAIL` line is followed by the fix. If `check` isn't in the list, the serv
 2. The home page loads, with a **DEV** badge on dev and none on prod.
 3. Sign up with `OWNER_EMAIL`, then confirm your email from the email you receive (or ask your terminal: see *Owner access* below).
 4. Open the founder console: `admin-dev.linqsafe.com` / `admin.linqsafe.com` (or `/owner` if you didn't set `ADMIN_HOST`).
-5. Scroll to **Traffic**, pick a filter, and click **Visits & clicks CSV**: a `.csv` file downloads (it opens in Excel or Google Sheets). Exports only work on the founder console's host and only for the owner account, like the rest of the founder API.
+5. After a deploy that adds packages (e.g. `ip3country` for visitor countries): *Setup Node.js App* → each app → **Run JS script → `deps`** → **Restart**. Until then the site still runs; countries fall back to time zone.
+6. Scroll to **Traffic**, pick a filter, and click **Visits & clicks CSV**: a `.csv` file downloads (it opens in Excel or Google Sheets). Exports only work on the founder console's host and only for the owner account, like the rest of the founder API.
 
 **Owner access without email:** *Setup Node.js App* → the app → **Run JS script** → **`owner`** → **Run**. It verifies `OWNER_EMAIL` and unlocks every feature. (If your plan has cPanel → **Terminal**, you can also paste the `source /home/linqqkto/nodevenv/…` command shown at the top of the app page, then run `npm run owner`.)
 

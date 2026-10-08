@@ -14,7 +14,7 @@ import AvatarPicker from '@/components/AvatarPicker'
 import QrCard from '@/components/QrCard'
 import Onboarding from '@/components/Onboarding'
 import { AccountFields, BillingProvider, StickySave, FeatureCard, FounderNoteEditor, PaymentHistory, SocialSuggestions, TemplatePicker, TestimonialsEditor, UnlockChip } from '@/components/ProFeatures'
-import { FREE_LINK_LIMIT, has } from '@/lib/plans'
+import { FREE_LINK_LIMIT, TEMPLATES, has } from '@/lib/plans'
 import { LINK_TYPES, TypeBadge, TypeSelect, detectType } from '@/lib/linkTypes'
 
 function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDragEnd }) {
@@ -55,37 +55,44 @@ function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDra
   )
 }
 
+// Live preview: the real public page, scaled into a phone, in the template and theme picked here
+// (even before saving). It reloads shortly after the saved content changes.
+// Templates built around a photo, and which photo each one uses.
+const PHOTO_TEMPLATES = {
+  cover: { field: 'cover_url', title: 'Cover uses a big header photo', hint: 'Upload a cover photo (portrait works best). Without one it uses your profile picture.' },
+  backdrop: { field: 'cover_url', title: 'Photo background fills the whole page', hint: 'Upload a cover photo for the background. Without one it uses your profile picture.' },
+  search: { field: 'cover_url', title: 'Search & solve shows a photo behind the search bar', hint: 'Upload a cover photo.' },
+  idcard: { field: 'avatar_url', title: 'Profile card shows your photo as a polaroid', hint: 'Upload a profile picture (a portrait crop works best).' },
+  editorial: { field: 'avatar_url', title: 'Editorial shows a small round black-and-white portrait', hint: 'Upload a profile picture.' },
+}
+
 function Preview({ me }) {
-  const name = me.display_name || me.username
   const layout = me.layout || 'classic'
-  const align = layout === 'minimal' ? '' : 'text-center'
-  const tile = {
-    classic: 'rounded-xl bg-white/80 px-3 py-2 text-center',
-    grid: 'flex min-h-14 flex-col justify-center rounded-xl bg-white/80 p-2 text-center',
-    minimal: 'border-b border-foreground/15 py-2 text-left',
-  }[layout]
+  const theme = me.theme || 'light'
+  const content = JSON.stringify([me.links?.map((l) => [l.id, l.title, l.url, l.type]), me.display_name, me.bio, me.avatar_url, me.cover_url, me.bg_blur, me.tags, me.occupation, me.location, me.whatsapp])
+  const [version, setVersion] = useState(content)
+  useEffect(() => { const t = setTimeout(() => setVersion(content), 700); return () => clearTimeout(t) }, [content])
+  const [loading, setLoading] = useState(true)
+  const src = `/${me.username}?preview=${layout}&theme=${theme}&embed=1`
+  useEffect(() => setLoading(true), [src, version])
   return (
-    <motion.div whileHover={{ y: -6, rotate: -1 }} whileTap={{ scale: 0.97 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
-      <Link
-        to={`/${me.username}`} target="_blank" rel="noopener noreferrer"
-        className="group relative mx-auto block w-[260px] rounded-[2.5rem] border-[6px] border-foreground/90 bg-gradient-to-b from-stone-100 to-stone-50 p-5 shadow-xl"
-      >
+    <motion.div whileHover={{ y: -6, rotate: -1 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
+      <Link to={`/${me.username}`} target="_blank" rel="noopener noreferrer"
+        className="group relative mx-auto block h-[540px] w-[260px] overflow-hidden rounded-[2.5rem] border-[6px] border-ink bg-ink shadow-xl">
         <span className="sr-only">Open your live page in a new tab</span>
-        <span aria-hidden="true" className="mx-auto mb-1 block h-1.5 w-16 rounded-full bg-foreground/80" />
-        <motion.div layout className={`mt-2 grid size-14 place-items-center overflow-hidden rounded-full bg-primary text-xl font-bold text-primary-foreground ${layout === 'minimal' ? '' : 'mx-auto'}`}>
-          {me.avatar_url ? <img src={me.avatar_url} alt="" className="size-full object-cover" /> : name[0]?.toUpperCase()}
-        </motion.div>
-        <p aria-hidden="true" className={`mt-2 text-sm font-semibold ${align}`}>{name}</p>
-        {me.bio && <p aria-hidden="true" className={`text-xs text-muted-foreground ${align}`}>{me.bio}</p>}
-        <motion.div layout aria-hidden="true" className={`mt-4 min-h-[8rem] pb-3 ${layout === 'grid' ? 'grid grid-cols-2 gap-2' : layout === 'minimal' ? 'border-t border-foreground/15' : 'space-y-2'}`}>
-          <AnimatePresence initial={false}>
-            {me.links.map((l) => (
-              <motion.span key={l.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                className={`flex min-w-0 items-center gap-1.5 text-xs font-medium shadow-sm ${tile}`}><TypeBadge type={l.type} className="size-5 shrink-0" /><span className="line-clamp-2 min-w-0 break-words">{l.title || 'Untitled'}</span></motion.span>
-            ))}
-          </AnimatePresence>
-        </motion.div>
-        <span aria-hidden="true" className="absolute inset-x-0 bottom-3 mx-auto flex w-fit items-center gap-1 rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background opacity-0 transition-opacity group-hover:opacity-100">
+        <iframe key={`${src}|${version}`} title="Live preview of your page" src={src} tabIndex={-1} aria-hidden="true" onLoad={() => setLoading(false)}
+          className="pointer-events-none h-[828px] w-[390px] origin-top-left scale-[0.6359] border-0 bg-white" />
+        <AnimatePresence>
+          {loading && (
+            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 grid place-items-center bg-ink/40 backdrop-blur-sm"><Loader2 className="size-5 animate-spin text-white" /></motion.span>
+          )}
+        </AnimatePresence>
+        <motion.span key={layout + theme} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          className="absolute left-1/2 top-3 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink/80 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-paper backdrop-blur">
+          {TEMPLATES.find((t) => t.id === layout)?.name || layout} · {theme}
+        </motion.span>
+        <span aria-hidden="true" className="absolute inset-x-0 bottom-3 mx-auto flex w-fit items-center gap-1 rounded-full bg-ink px-3 py-1 text-[11px] font-medium text-paper opacity-0 transition-opacity group-hover:opacity-100">
           Open live page <ExternalLink className="size-3" />
         </span>
       </Link>
@@ -420,6 +427,19 @@ export default function Admin() {
             </fieldset>
             <TemplatePicker value={me.layout || 'classic'} me={me} category={me.category} accountType={me.account_type}
               onChange={(t) => setMe({ ...me, layout: t.id })} />
+            {/* Photo templates: upload the photo they use right here (same fields as above). */}
+            <AnimatePresence initial={false}>
+              {PHOTO_TEMPLATES[me.layout] && (
+                <motion.div key={me.layout} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden rounded-md border border-accent/25 bg-accent/[0.04] p-4">
+                  <p className="text-sm font-semibold">{PHOTO_TEMPLATES[me.layout].title}</p>
+                  <p className="mb-3 text-xs text-muted-foreground">{PHOTO_TEMPLATES[me.layout].hint} Then press <b>Save profile</b>.</p>
+                  {PHOTO_TEMPLATES[me.layout].field === 'cover_url'
+                    ? <AvatarPicker shape="cover" id="tpl-photo" value={me.cover_url || ''} onChange={(cover_url) => setMe({ ...me, cover_url })} />
+                    : <AvatarPicker id="tpl-photo" value={me.avatar_url || ''} name={me.display_name || me.username} onChange={(avatar_url) => setMe({ ...me, avatar_url })} />}
+                </motion.div>
+              )}
+            </AnimatePresence>
             <AnimatePresence initial={false}>
               {me.layout === 'backdrop' && (
                 <motion.label initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}

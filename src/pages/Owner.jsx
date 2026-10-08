@@ -9,6 +9,7 @@ import { CATEGORIES, TEMPLATES, categoryLabel, channelName, methodLabel, naira }
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useTitle } from '@/lib/useTitle'
+import { InfoTip } from '@/components/ui/info-tip'
 import OwnerTraffic from '@/components/OwnerTraffic'
 import { IS_ADMIN_HOST, STAGE } from '@/lib/stage'
 
@@ -196,20 +197,20 @@ export default function Owner() {
 
       {!d ? <div className="grid h-64 place-items-center"><Loader2 className="animate-spin text-muted-foreground" role="status" aria-label="Loading" /></div> : (<>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Kpi icon={Users} label="Total users" value={d.totals.users.toLocaleString()} />
-          <Kpi icon={UserPlus} label={`New in ${days} days`} value={d.totals.newUsers.toLocaleString()} />
-          <Kpi icon={Crown} label="Paying users" value={`${d.totals.pro} (${d.totals.users ? Math.round((d.totals.pro / d.totals.users) * 100) : 0}%)`} />
-          <Kpi icon={Store} label="Business accounts" value={d.totals.business.toLocaleString()} />
-          <Kpi icon={Eye} label="Page views" value={d.totals.views.toLocaleString()} />
-          <Kpi icon={Users} label="Unique visitors" value={d.totals.visitors.toLocaleString()} />
-          <Kpi icon={MousePointerClick} label="Link clicks" value={d.totals.clicks.toLocaleString()} />
-          <Kpi icon={Link2} label="Links created" value={d.totals.links.toLocaleString()} />
-          <Kpi icon={Banknote} label={`Revenue, ${days} days`} value={naira(d.totals.revenue || 0)} />
+          <Kpi icon={Users} label="Total users" info="Every account ever created, verified or not." value={d.totals.users.toLocaleString()} />
+          <Kpi icon={UserPlus} label={`New in ${days} days`} info="Accounts created in the selected range (today counts as day 1)." value={d.totals.newUsers.toLocaleString()} />
+          <Kpi icon={Crown} label="Paying users" info="Users with at least one paid feature active right now (not expired). The % is out of all users." value={`${d.totals.pro} (${d.totals.users ? Math.round((d.totals.pro / d.totals.users) * 100) : 0}%)`} />
+          <Kpi icon={Store} label="Business accounts" info="Accounts set to Business during onboarding or in Account type." value={d.totals.business.toLocaleString()} />
+          <Kpi icon={Eye} label="Page views" info="Profile page loads in the range, across all pages. Your own visits while signed in, bots, and refreshes within 30 minutes aren't counted." value={d.totals.views.toLocaleString()} />
+          <Kpi icon={Users} label="Unique visitors" info="Distinct visitor cookies. Only visitors who accepted the cookie notice can be counted, so this is a floor, not the full number." value={d.totals.visitors.toLocaleString()} />
+          <Kpi icon={MousePointerClick} label="Link clicks" info="Taps on links (and social icons) on profile pages in the range." value={d.totals.clicks.toLocaleString()} />
+          <Kpi icon={Link2} label="Links created" info="All links on all pages right now." value={d.totals.links.toLocaleString()} />
+          <Kpi icon={Banknote} label={`Revenue, ${days} days`} info="Sum of successful Paystack payments in the range. Started or failed payments are left out." value={naira(d.totals.revenue || 0)} />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
-            <CardHeader><CardTitle>Activation funnel</CardTitle><CardDescription>People who signed up in the last {days} days, and how far they got.</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2">Activation funnel <InfoTip>Of the people who signed up in the range: how many finished onboarding, added a bio or photo, added a first link, got a first visitor, and paid. Each % is out of signups.</InfoTip></CardTitle><CardDescription>People who signed up in the last {days} days, and how far they got.</CardDescription></CardHeader>
             <CardContent>
               <Funnel stages={[
                 { label: 'Signed up', n: d.funnel.signed_up }, { label: 'Finished onboarding', n: d.funnel.onboarded },
@@ -219,7 +220,7 @@ export default function Owner() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>Onboarding drop-off</CardTitle><CardDescription>Furthest setup step reached by new signups. Big drops show where people quit.</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2">Onboarding drop-off <InfoTip>Furthest onboarding screen each new signup reached (saved as they go). A big drop between two steps shows where people quit.</InfoTip></CardTitle><CardDescription>Furthest setup step reached by new signups. Big drops show where people quit.</CardDescription></CardHeader>
             <CardContent>
               {/* onboarding_step = furthest screen reached (1 = About you … 5 = Template). */}
               <Funnel stages={[
@@ -232,27 +233,27 @@ export default function Owner() {
         </div>
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Kpi icon={Banknote} label="Monthly run-rate" value={naira(Math.round(d.money.runRate))} />
-          <Kpi icon={Banknote} label="Yearly equivalent" value={naira(Math.round(d.money.arr))} />
-          <Kpi icon={Crown} label="Revenue per paying user" value={naira(Math.round(d.money.arppu))} />
-          <Kpi icon={Users} label="Free → paid" value={`${d.totals.users ? Math.round((d.money.payers / d.totals.users) * 100) : 0}% (${d.money.payers})`} />
+          <Kpi icon={Banknote} label="Monthly run-rate" info="For every purchase still running today: its price ÷ its months, added up. ₦3,000 for 3 months adds ₦1,000." value={naira(Math.round(d.money.runRate))} />
+          <Kpi icon={Banknote} label="Yearly equivalent" info="Monthly run-rate × 12." value={naira(Math.round(d.money.arr))} />
+          <Kpi icon={Crown} label="Revenue per paying user" info="Lifetime revenue ÷ the number of users who have ever paid." value={naira(Math.round(d.money.arppu))} />
+          <Kpi icon={Users} label="Free → paid" info="Share of all users who have ever made a successful payment (the count is in brackets)." value={`${d.totals.users ? Math.round((d.money.payers / d.totals.users) * 100) : 0}% (${d.money.payers})`} />
         </div>
         <p className="-mt-3 text-xs text-muted-foreground">Run-rate spreads each purchase over its months (₦3,000 for 3 months counts ₦1,000 a month) for purchases still running today. There are no subscriptions, so it's the nearest thing to MRR.</p>
 
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2">
-            <CardHeader><CardTitle>Revenue by month</CardTitle><CardDescription>Last 12 months · lifetime {naira(d.money.lifetime)}</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2">Revenue by month <InfoTip>Successful payments grouped by the month they were paid, last 12 months.</InfoTip></CardTitle><CardDescription>Last 12 months · lifetime {naira(d.money.lifetime)}</CardDescription></CardHeader>
             <CardContent><RevenueByMonth months={d.money.byMonth} /></CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>Revenue by feature</CardTitle><CardDescription>Last {days} days</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2">Revenue by feature <InfoTip>Successful payments in the range, split by feature. A multi-feature payment is split by each feature's price.</InfoTip></CardTitle><CardDescription>Last {days} days</CardDescription></CardHeader>
             <CardContent><BarList empty="No revenue yet." rows={d.money.byFeature.map((f) => ({ key: f.name, label: f.name, n: f.n, display: naira(f.n) }))} /></CardContent>
           </Card>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
           <Card>
-            <CardHeader><CardTitle>Expiry & renewals</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2">Expiry & renewals <InfoTip>Expiring: active features ending in the next 7 days. Expired: ended in the last 30 days. Renewed: users who bought the same feature more than once.</InfoTip></CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-2 text-center">
                 {[['Expiring in 7 days', d.expiry.soon], ['Expired, last 30 days', d.expiry.expired], ['Renewed', d.expiry.renewed]].map(([l, n]) => (
@@ -267,7 +268,7 @@ export default function Owner() {
             </CardContent>
           </Card>
           <Card className="lg:col-span-2">
-            <CardHeader><CardTitle>Paid features in use</CardTitle><CardDescription>Active right now, across all users.</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2">Paid features in use <InfoTip>Features active right now, counted per user.</InfoTip></CardTitle><CardDescription>Active right now, across all users.</CardDescription></CardHeader>
             <CardContent><BarList empty="No paid features active yet." rows={d.featureUse.map((f) => ({ key: f.name, label: f.name, n: f.n }))} /></CardContent>
           </Card>
         </div>
@@ -310,19 +311,19 @@ export default function Owner() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>How people pay</CardTitle><CardDescription>Successful payments, last {days} days.</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2">How people pay <InfoTip>Successful payments in the range by Paystack channel (card, bank transfer, USSD…).</InfoTip></CardTitle><CardDescription>Successful payments, last {days} days.</CardDescription></CardHeader>
             <CardContent><BarList empty="No payments yet." rows={d.methods.map((m) => ({ key: m.name || 'x', label: channelName(m.name), n: m.n }))} /></CardContent>
           </Card>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
-            <CardHeader><CardTitle>Signups per day</CardTitle><CardDescription>{d.totals.verified} of {d.totals.users} users have verified their email.</CardDescription></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2">Signups per day <InfoTip>New accounts per day in the range.</InfoTip></CardTitle><CardDescription>{d.totals.verified} of {d.totals.users} users have verified their email.</CardDescription></CardHeader>
             <CardContent><SignupBars series={d.series} /></CardContent>
           </Card>
-          <Card><CardHeader><CardTitle>Business categories</CardTitle></CardHeader>
+          <Card><CardHeader><CardTitle className="flex items-center gap-2">Business categories <InfoTip>Business accounts by the category they picked.</InfoTip></CardTitle></CardHeader>
             <CardContent><BarList empty="No business accounts yet." rows={d.categories.map((c) => ({ key: c.name, label: categoryLabel(c.name), n: c.n }))} /></CardContent></Card>
-          <Card><CardHeader><CardTitle>Templates in use</CardTitle></CardHeader>
+          <Card><CardHeader><CardTitle className="flex items-center gap-2">Templates in use <InfoTip>Every page's current template.</InfoTip></CardTitle></CardHeader>
             <CardContent><BarList rows={d.templates.map((t) => ({ key: t.name, label: tplName[t.name] || t.name, n: t.n }))} /></CardContent></Card>
         </div>
 

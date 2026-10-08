@@ -11,6 +11,7 @@ import { fadeUp, stagger } from '@/lib/motion'
 import { useTitle } from '@/lib/useTitle'
 import { SITE } from '@/config'
 import { SOCIAL_KEYS, TypeBadge } from '@/lib/linkTypes'
+import { LogoMark } from '@/components/Logo'
 import { FounderNote, KindWords, PROFILE_TEMPLATES, WhatsAppButton } from '@/components/ProfileTemplates'
 
 const visitorTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch { return '' } })()
@@ -62,6 +63,9 @@ export default function Profile() {
   const PREVIEWABLE = ['classic', 'grid', 'minimal', 'cover', 'editorial', 'search', 'backdrop', 'idcard']
   const preview = PREVIEWABLE.includes(params.get('preview')) ? params.get('preview') : null
   const layout = preview || data?.layout || 'classic'
+  // ?embed=1 is the dashboard's live preview: no top bar or buttons; ?theme= previews an unsaved theme.
+  const embed = params.get('embed') === '1'
+  const themeParam = ['light', 'sage', 'blush', 'midnight', 'auto'].includes(params.get('theme')) ? params.get('theme') : null
   const prefersDark = useMedia('(prefers-color-scheme: dark)')
   const midnight = {
     background: 'hsl(330 20% 8%)',
@@ -85,7 +89,8 @@ export default function Profile() {
     },
     midnight: { cls: '', vars: midnight },
   }
-  const key = data?.theme === 'auto' ? (prefersDark ? 'midnight' : 'light') : data?.theme
+  const chosen = themeParam || data?.theme
+  const key = chosen === 'auto' ? (prefersDark ? 'midnight' : 'light') : chosen
   const theme = themes[key] || themes.light
   const themeStyle = theme.vars
   const dark = key === 'midnight'
@@ -101,14 +106,14 @@ export default function Profile() {
 
   return (
     <div className={`relative min-h-screen overflow-hidden text-foreground ${dark ? '' : 'theme-light'} ${theme.cls}`} style={themeStyle}>
-      {preview && (
+      {preview && !embed && (
         <div className="fixed inset-x-0 top-0 z-50 bg-foreground py-1 text-center font-mono text-[11px] uppercase tracking-widest text-background">
           Preview · not saved
         </div>
       )}
       {!dark && <MotionBackdrop palette={key === 'blush' ? 'blush' : key === 'sage' ? 'sage' : 'fresh'} />}
       <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col px-4 py-6">
-        <div className={`flex items-center justify-between ${['cover', 'search'].includes(layout) ? 'relative z-20 mb-[-4rem] [&_a]:bg-card/90' : ''}`}>
+        <div className={`flex items-center justify-between ${embed ? 'hidden' : ''} ${['cover', 'search'].includes(layout) ? 'relative z-20 mb-[-4rem] [&_a]:bg-card/90' : ''}`}>
           {isSignedIn() ? (
             <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} whileHover={{ x: -2 }}>
               <Link to="/admin" className="inline-flex h-10 items-center gap-1.5 rounded-md border bg-card/80 px-3.5 text-sm font-medium backdrop-blur hover:bg-card">
@@ -185,10 +190,15 @@ export default function Profile() {
         <KindWords data={data} />
         <FounderNote data={data} name={name} />
 
-        <footer className="pt-10 text-center text-xs text-muted-foreground">
-          <Link to="/signup" className="font-medium underline hover:text-foreground">Create your own page on {SITE.name}</Link>
-          <span className="mx-2">·</span>
-          <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+        {/* Every public page carries the linqsafe mark. */}
+        <footer className="relative z-10 flex flex-col items-center gap-2 pt-10 text-xs text-muted-foreground">
+          <motion.div whileHover={{ y: -2, scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+            <Link to="/signup" className="inline-flex items-center gap-2 rounded-full border bg-card/90 py-1.5 pl-1.5 pr-3.5 font-medium text-foreground shadow-sm backdrop-blur">
+              <LogoMark className="size-6" animate={false} />
+              <span>Made with <b className="font-display">{SITE.name}</b></span>
+            </Link>
+          </motion.div>
+          <span><Link to="/signup" className="underline hover:text-foreground">Create your own page</Link><span className="mx-2">·</span><Link to="/privacy" className="hover:text-foreground">Privacy</Link></span>
         </footer>
       </div>
     </div>

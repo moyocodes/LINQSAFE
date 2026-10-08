@@ -209,6 +209,16 @@ const MIGRATIONS = [
     // One payment can unlock several features: items = JSON [{ feature, months, price }]. feature = first key or 'bundle'.
     await addColumn(db, 'payments', 'items TEXT NULL')
   }],
+  [24, 'fill unknown event countries from the same visitor', async (db) => {
+    // Events with no country get the country this visitor had on another counted visit (most common one).
+    await db.query(`
+      UPDATE events e JOIN (
+        SELECT visitor, SUBSTRING_INDEX(GROUP_CONCAT(country ORDER BY n DESC), ',', 1) AS country FROM (
+          SELECT visitor, country, COUNT(*) AS n FROM events WHERE visitor <> '' AND country <> '' GROUP BY visitor, country) c
+        GROUP BY visitor) k ON k.visitor = e.visitor
+      SET e.country = k.country
+      WHERE e.country = '' AND e.visitor <> ''`)
+  }],
 ]
 
 export async function migrate(pool) {

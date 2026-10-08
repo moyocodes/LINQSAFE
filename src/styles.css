@@ -56,6 +56,8 @@
     --ring: 224 75% 68%;
     color-scheme: dark;
   }
+  /* Headings on always-dark/coloured cards take the card's text colour, not the page's. */
+  .bg-cta :is(h1, h2, h3), .bg-ink :is(h1, h2, h3) { color: inherit; }
   /* Set for ~400ms by the appearance toggle so the switch fades instead of snapping. */
   .theme-fade, .theme-fade *, .theme-fade *::before, .theme-fade *::after {
     transition: background-color .35s ease, border-color .35s ease, color .35s ease, fill .35s ease, box-shadow .35s ease !important;
