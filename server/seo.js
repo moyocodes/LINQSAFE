@@ -66,9 +66,13 @@ function block({ title, desc, url, image, imageAlt, type = 'website', noindex, l
 }
 
 let template = null
+let templateTime = 0
 function readTemplate(dist) {
-  // Read once per process; a deploy always restarts the app.
-  if (!template) template = fs.readFileSync(path.join(dist, 'index.html'), 'utf8')
+  // Re-read whenever index.html changes on disk: a deploy uploads new files before the app restarts, and the
+  // old page would point at code files the deploy just deleted (a crashed or blank page).
+  const file = path.join(dist, 'index.html')
+  const mtime = fs.statSync(file).mtimeMs
+  if (!template || mtime !== templateTime) { template = fs.readFileSync(file, 'utf8'); templateTime = mtime }
   return template
 }
 

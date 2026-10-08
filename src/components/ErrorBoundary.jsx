@@ -14,6 +14,8 @@ export default class ErrorBoundary extends Component {
         <div className="max-w-sm space-y-3">
           <p className="text-lg font-semibold">Something went wrong on this page.</p>
           <p className="text-sm text-muted-foreground">Your saved changes are safe. Reload to carry on.</p>
+          {/* Short technical detail, so a screenshot is enough to find the cause. */}
+          <p className="break-words font-mono text-[11px] text-muted-foreground/80">{String(this.state.error?.message || this.state.error).slice(0, 160)}</p>
           <button type="button" onClick={() => location.reload()} className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground">Reload</button>
         </div>
       </div>

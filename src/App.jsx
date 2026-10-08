@@ -1,10 +1,19 @@
-import { lazy, Suspense } from 'react'
+import { lazy as reactLazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import StageBadge from '@/components/StageBadge'
 import { IS_ADMIN_HOST } from '@/lib/stage'
 import NotFound from '@/pages/NotFound'
 import Profile from '@/pages/Profile'
+
+// A page opened before a deploy asks for code files the deploy replaced. When that happens, reload once to
+// get the new version instead of crashing (the flag stops a reload loop if the file is really missing).
+const lazy = (load) => reactLazy(() => load().then((m) => { try { sessionStorage.removeItem('chunk-reload') } catch { /* storage blocked */ } return m }).catch((err) => {
+  let tried = false
+  try { tried = sessionStorage.getItem('chunk-reload') === '1'; sessionStorage.setItem('chunk-reload', '1') } catch { /* storage blocked */ }
+  if (!tried) { location.reload(); return new Promise(() => {}) }
+  throw err
+}))
 
 // Public profile pages are most of the traffic, so only they (and 404) ship in the main bundle;
 // the marketing and account pages load when someone opens them.
