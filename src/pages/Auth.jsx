@@ -48,7 +48,7 @@ export default function Auth({ mode }) {
 
   return (
     <div className="bg-hero -mt-16 pt-16">
-      <div className="container grid min-h-[calc(100vh-8rem)] place-items-center py-8">
+      <div className="container grid min-h-[calc(100dvh-8rem)] place-items-center py-8">
         <motion.div initial={{ opacity: 0, y: 24, rotate: -0.6 }} animate={{ opacity: 1, y: 0, rotate: 0 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }} className="relative grid w-full max-w-4xl overflow-hidden rounded-md lg:grid-cols-[1fr_1.05fr]">
           {/* A second sheet peeking out underneath, so the card reads as paper, not a UI panel. */}
@@ -56,7 +56,7 @@ export default function Auth({ mode }) {
             <div className="absolute -right-16 -top-16 size-64 rounded-full bg-saffron/80 blur-2xl" />
             <div className="absolute -bottom-20 -left-10 size-72 rounded-full bg-lilac/60 blur-3xl" />
             <div className="absolute bottom-24 right-6 size-40 rounded-full bg-rose/70 blur-2xl" />
-            <p className="eyebrow relative !text-white/70">{SITE.domain}</p>
+            <p className="font-mono text-[.66rem] uppercase tracking-[.07em] text-foreground/55 sm:text-[.7rem] sm:tracking-[.14em] relative !text-white/70">{SITE.domain}</p>
             <div className="relative">
               <p className="font-display text-4xl font-semibold leading-tight">One link.<br />Every place<br />you show up.</p>
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
@@ -89,7 +89,7 @@ export default function Auth({ mode }) {
                   {/* Log in: email only. Sign up: username (your link) and email. */}
                   {!isLogin && (
                     <div className="space-y-1.5">
-                      <Label htmlFor="username" className="label-form">Username</Label>
+                      <Label htmlFor="username" className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em]">Username</Label>
                       <Input id="username" name="username" placeholder="moyosore_james" autoFocus autoComplete="username" required value={form.username}
                         autoCapitalize="none" autoCorrect="off" spellCheck={false} pattern="[A-Za-z0-9_]{3,32}" title="3 to 32 letters, numbers or underscores"
                         aria-invalid={!!error} aria-describedby={['username-hint', error && 'auth-error'].filter(Boolean).join(' ')}
@@ -98,7 +98,7 @@ export default function Auth({ mode }) {
                     </div>
                   )}
                   <div className="space-y-1.5">
-                    <Label htmlFor="email" className="label-form">Email</Label>
+                    <Label htmlFor="email" className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em]">Email</Label>
                     <Input id="email" name="email" type="email" placeholder="you@gmail.com" required autoComplete={isLogin ? 'username' : 'email'} value={form.email}
                       autoFocus={isLogin} autoCapitalize="none" autoCorrect="off" spellCheck={false}
                       aria-invalid={!!error} aria-describedby={error ? 'auth-error' : undefined}
@@ -106,7 +106,7 @@ export default function Auth({ mode }) {
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-baseline justify-between">
-                      <Label htmlFor="password" className="label-form">Password</Label>
+                      <Label htmlFor="password" className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em]">Password</Label>
                       {isLogin && <Link to="/forgot-password" className="font-serif text-sm italic text-muted-foreground underline-offset-4 hover:text-accent hover:underline">Forgot it?</Link>}
                     </div>
                     <PasswordInput id="password" name="password" placeholder={isLogin ? 'Your password' : 'At least 6 characters'} required minLength={isLogin ? undefined : 6}

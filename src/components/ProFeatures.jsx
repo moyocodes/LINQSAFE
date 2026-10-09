@@ -6,6 +6,7 @@ import { Check, CircleCheck, Crown, Eye, Image, Lock, Loader2, Plus, Sparkles, T
 import { api } from '@/api'
 import PhoneInput from '@/components/PhoneInput'
 import { useErrorToast } from '@/lib/toast'
+import useKeyboardOpen from '@/lib/useKeyboardOpen'
 import { ProfileView } from '@/pages/Profile'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -281,7 +282,7 @@ export function TemplatePicker({ value, onChange, onUse, theme, onTheme, me, cat
   const [previewing, setPreviewing] = useState(null)
   return (
     <fieldset id="template" className="scroll-mt-24 space-y-3 rounded-md border border-foreground/10 p-4">
-      <legend className="label-form px-1">Template &amp; theme</legend>
+      <legend className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em] px-1">Template &amp; theme</legend>
       <div role="radiogroup" aria-label="Theme" className="space-y-1.5">
         <p className="text-xs text-muted-foreground">Theme <span className="hidden sm:inline">(Auto follows each visitor's light or dark setting)</span></p>
         <div className="flex flex-wrap gap-2">
@@ -350,7 +351,7 @@ export function AccountFields({ me, setMe }) {
   return (
     <div id="account" className="scroll-mt-24 space-y-4 rounded-md border border-foreground/10 p-4">
       <fieldset>
-        <legend className="label-form">Account type</legend>
+        <legend className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em]">Account type</legend>
         <div className="mt-2 inline-flex rounded-lg border bg-muted p-1">
           {[['personal', 'Personal'], ['business', 'Business']].map(([v, label]) => (
             <label key={v} className="relative cursor-pointer">
@@ -488,6 +489,8 @@ export function StickySave({ children, hint }) {
   const marker = useRef(null)
   const enterSave = useRef(null)
   const [active, setActive] = useState(false)
+  // Out of the way while the keyboard is up, so it never covers the field being typed into.
+  const typing = useKeyboardOpen()
   useEffect(() => {
     const section = marker.current?.closest('.scroll-mt-24[id]') || marker.current?.parentElement
     if (!section) return
@@ -511,7 +514,7 @@ export function StickySave({ children, hint }) {
       <div ref={enterSave} hidden>{children}</div>
       {createPortal(
         <AnimatePresence>
-          {active && (
+          {active && !typing && (
             <motion.div initial={{ opacity: 0, y: 16, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.9 }}
               className="pointer-events-none fixed bottom-5 right-4 z-40 flex flex-col items-end gap-1.5 sm:right-6 [body[data-cart]_&]:bottom-44">
               {hint && <span className="rounded-full bg-card/90 px-2.5 py-1 text-[11px] text-muted-foreground shadow-sm backdrop-blur">{hint}</span>}

@@ -20,6 +20,8 @@ import { AccountFields, BillingProvider, StickySave, FeatureCard, TemplatePrevie
 import { FREE_LINK_LIMIT, TEMPLATES, has } from '@/lib/plans'
 import { LINK_TYPES, TypeBadge, detectType } from '@/lib/linkTypes'
 import PageLoader from '@/components/PageLoader'
+import useKeyboardOpen from '@/lib/useKeyboardOpen'
+import { useConfirm } from '@/components/ui/confirm'
 
 // What your link does: show your page (default), or send visitors straight to one of your links.
 function RedirectPicker({ me, setMe }) {
@@ -213,7 +215,7 @@ function PreviewToolbar({ me, url, canQr }) {
   const [copied, setCopied] = useState(false)
   const [qr, setQr] = useState(false)
   async function copy() {
-    try { await navigator.clipboard.writeText(url) } catch { window.prompt('Copy this link:', url); return }
+    try { await navigator.clipboard.writeText(url) } catch { toast('Could not copy. Long-press the link above to copy it.', 'error'); return }
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -290,7 +292,7 @@ function SectionNav() {
   return (
     <motion.nav aria-label="Dashboard sections" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
       className="paper mt-5 rounded-md p-2">
-      <p className="label-form px-2 pb-1 pt-1">Jump to</p>
+      <p className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em] px-2 pb-1 pt-1">Jump to</p>
       <SectionList active={active} onPick={go} layoutPrefix="nav" />
     </motion.nav>
   )
@@ -340,12 +342,18 @@ function YouCard({ me, setMe }) {
   const [error, setError] = useState('')
   useErrorToast(error)
   const [reset, setReset] = useState('idle')
+  const ask = useConfirm()
   const wait = me.next_username_change && new Date(me.next_username_change) > new Date() ? new Date(me.next_username_change) : null
   const changed = name.trim().toLowerCase() !== me.username
   async function changeUsername(e) {
     e.preventDefault()
     if (!changed) return
-    if (!window.confirm(`Change your link to ${location.host}/${name.trim().toLowerCase()}? Your old link will stop working, and after this you'll have to wait before changing it again.`)) return
+    const ok = await ask({
+      title: `Change your link to ${location.host}/${name.trim().toLowerCase()}?`,
+      body: "Your old link will stop working, and after this you'll have to wait before changing it again.",
+      confirmLabel: 'Change it',
+    })
+    if (!ok) return
     setState('saving'); setError('')
     try {
       const r = await api('/username', { method: 'PUT', body: { username: name } })
@@ -471,6 +479,8 @@ export default function Admin() {
   const [profileError, setProfileError] = useState('')
   useErrorToast(profileError)
   const urlInput = useRef(null)
+  const ask = useConfirm()
+  const typing = useKeyboardOpen()
   const [adding, setAdding] = useState(false)
   const [announce, setAnnounce] = useState('')
   const [peek, setPeek] = useState(false)
@@ -567,7 +577,13 @@ export default function Admin() {
   }
 
   async function removeLink(id) {
-    if (!window.confirm('Delete this link?')) return
+    const link = me.links.find((l) => l.id === id)
+    const ok = await ask({
+      title: 'Delete this link?',
+      body: link?.title ? `“${link.title}” will be removed from your page. This can't be undone.` : "It will be removed from your page. This can't be undone.",
+      confirmLabel: 'Delete', danger: true,
+    })
+    if (!ok) return
     await api(`/links/${id}`, { method: 'DELETE' })
     setMe({ ...me, links: me.links.filter((l) => l.id !== id) })
   }
@@ -628,7 +644,7 @@ export default function Admin() {
                 [MousePointerClick, 'Link clicks', me.links.reduce((n, l) => n + (l.clicks || 0), 0)],
               ].map(([Icon, label, n]) => (
                 <div key={label} className="px-5 pb-4 pt-5">
-                  <p className="eyebrow flex items-center gap-1.5"><Icon className="size-3.5" aria-hidden="true" /> {label}</p>
+                  <p className="font-mono text-[.66rem] uppercase tracking-[.07em] text-foreground/55 sm:text-[.7rem] sm:tracking-[.14em] flex items-center gap-1.5"><Icon className="size-3.5" aria-hidden="true" /> {label}</p>
                   <motion.p key={n} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-1.5 font-display text-4xl font-bold tabular-nums leading-none">{n.toLocaleString()}</motion.p>
                 </div>
               ))}
@@ -824,7 +840,7 @@ export default function Admin() {
 
       {/* Phones & tablets: floating Preview button (bottom-left, clear of Save). It opens the preview over
           the page, so closing it leaves you exactly where you were editing. */}
-      <button type="button" onClick={() => setPeek(true)} aria-haspopup="dialog"
+      <button type="button" onClick={() => setPeek(true)} aria-haspopup="dialog" hidden={typing}
         className="fixed bottom-5 left-4 z-40 flex h-12 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold text-paper ring-1 ring-white/20 shadow-[0_12px_30px_-8px_hsl(20_30%_15%/.5)] transition-transform active:scale-95 lg:hidden [body[data-cart]_&]:bottom-44">
         <Smartphone className="size-4" aria-hidden="true" /> Preview
       </button>
@@ -860,7 +876,7 @@ export default function Admin() {
 
       {/* Desktop only: sticky preview column. */}
       <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="hidden lg:block">
-        <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4 [scrollbar-width:thin]">
+        <div className="sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto pb-4 [scrollbar-width:thin]">
           <p className="mb-3 text-center text-sm font-medium text-muted-foreground">Live preview <span className="font-normal">(click to open your page)</span></p>
           <Preview me={me} />
           <PreviewToolbar me={me} url={profileUrl} canQr={has(me, 'qr_code')} />

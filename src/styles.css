@@ -170,11 +170,6 @@
     content: ''; position: absolute; inset: 7px; pointer-events: none;
     border: 1px solid hsl(var(--foreground) / .14); border-radius: calc(var(--radius) - 3px);
   }
-  /* Form labels set like a printed form: small caps, wide tracking. */
-  .label-form { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .68rem; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: hsl(var(--foreground) / .6); }
-  .label-form .font-normal { text-transform: none; letter-spacing: 0; font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: .75rem; }
-  /* Small mono eyebrow/meta text. */
-  .eyebrow { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: hsl(var(--foreground) / .55); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -193,6 +188,3 @@
     mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   }
 }
-
-/* Secondary text is the ink at reduced opacity (not a separate grey), so it sits right on every surface and theme. */
-.text-muted-foreground { color: hsl(var(--foreground) / .6); }

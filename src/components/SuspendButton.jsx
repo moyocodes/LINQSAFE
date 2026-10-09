@@ -2,17 +2,30 @@ import { useState } from 'react'
 import { Ban, Loader2, RotateCcw } from 'lucide-react'
 import { api } from '@/api'
 import { toast } from '@/lib/toast'
+import { useConfirm } from '@/components/ui/confirm'
 
 // Founder: suspend a page (a 404 everywhere; the owner sees the reason on their dashboard) or lift it.
 export default function SuspendButton({ username, suspended, onChange, className = '' }) {
   const [busy, setBusy] = useState(false)
+  const ask = useConfirm()
   async function toggle() {
     let req
     if (suspended) {
-      if (!window.confirm(`Lift the suspension on @${username}? Their page goes live again straight away.`)) return
+      const ok = await ask({
+        title: `Lift the suspension on @${username}?`,
+        body: 'Their page goes live again straight away.',
+        confirmLabel: 'Unsuspend',
+      })
+      if (!ok) return
       req = () => api(`/owner/users/${username}/suspend`, { method: 'DELETE' })
     } else {
-      const reason = window.prompt(`Suspend @${username}? Their page will show "not found" everywhere.\n\nReason (they will see this):`, 'Reported for suspicious links')
+      const reason = await ask({
+        title: `Suspend @${username}?`,
+        body: 'Their page will show "not found" everywhere.',
+        confirmLabel: 'Suspend',
+        danger: true,
+        input: { label: 'Reason (they will see this)', defaultValue: 'Reported for suspicious links', required: true },
+      })
       if (reason === null) return
       req = () => api(`/owner/users/${username}/suspend`, { method: 'POST', body: { reason } })
     }

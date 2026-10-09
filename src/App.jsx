@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import StageBadge from '@/components/StageBadge'
 import Toaster from '@/components/Toaster'
+import { ConfirmProvider } from '@/components/ui/confirm'
 import { IS_ADMIN_HOST } from '@/lib/stage'
 import NotFound from '@/pages/NotFound'
 import Profile from '@/pages/Profile'
@@ -59,6 +60,7 @@ const EMBED = new URLSearchParams(window.location.search).get('embed') === '1'
 
 export default function App() {
   return (
+    <ConfirmProvider>
     <Suspense fallback={<PageLoader className="min-h-screen" />}>
       {!EMBED && <StageBadge />}
       <Toaster />
@@ -89,5 +91,6 @@ export default function App() {
       </Routes>
       )}
     </Suspense>
+    </ConfirmProvider>
   )
 }

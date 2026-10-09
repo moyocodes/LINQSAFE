@@ -65,6 +65,35 @@ export async function renderCard(url, username) {
   return canvas.toDataURL('image/png')
 }
 
+// Saving the card. `download` on a multi-megabyte data: URL silently does nothing in iOS Safari and in
+// some in-app browsers, so turn it into a Blob first.
+//
+// On a phone, the share sheet is how a picture actually reaches Photos, so prefer it there. On a desktop
+// (including a touchscreen laptop) a plain download is what people expect, and Chrome advertises
+// canShare for files too, so check for a coarse pointer rather than trusting canShare alone.
+export async function saveCard(dataUrl, username) {
+  if (!dataUrl) return
+  const file = new File([await (await fetch(dataUrl)).blob()], `${username}-qr.png`, { type: 'image/png' })
+  const phone = matchMedia('(pointer: coarse)').matches && matchMedia('(max-width: 820px)').matches
+  if (phone && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: `@${username} QR code` })
+      return
+    } catch (e) {
+      if (e.name === 'AbortError') return // they closed the share sheet
+    }
+  }
+  const href = URL.createObjectURL(file)
+  const a = document.createElement('a')
+  a.href = href
+  a.download = file.name
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(href), 10_000)
+}
+
 // ?src=qr lets analytics count scans separately from other visits.
 function useQrImage(url, username) {
   const [src, setSrc] = useState('')
@@ -92,8 +121,8 @@ export function QrDialog({ url, username, onClose, title = 'Your QR code' }) {
         <div className="grid aspect-[1080/1320] w-full place-items-center overflow-hidden rounded-3xl bg-[#FCFAF8] shadow-2xl">
           {src ? <img src={src} alt={`QR code linking to ${url}`} className="size-full" /> : <QrCode className="size-10 animate-pulse text-black/20" aria-hidden="true" />}
         </div>
-        <a href={src || undefined} download={`${username}-qr.png`} aria-disabled={!src}
-          className="inline-flex h-10 items-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-black hover:bg-white/90 aria-disabled:pointer-events-none aria-disabled:opacity-60"><Download className="size-4" aria-hidden="true" /> Download PNG</a>
+        <button type="button" onClick={() => saveCard(src, username)} disabled={!src}
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-60"><Download className="size-4" aria-hidden="true" /> Save PNG</button>
       </motion.div>
     </motion.div>
   )
@@ -132,8 +161,8 @@ export default function QrCard({ url, username, showQr, onShowQr }) {
       <CardContent className="flex flex-wrap items-center gap-5">
         {src && <img src={src} alt={`QR code linking to ${url}`} className="w-40 rounded-2xl border shadow-sm" />}
         <div className="flex flex-col items-start gap-3">
-          <Button asChild variant="outline" disabled={!src}>
-            <a href={src} download={`${username}-qr.png`}><Download /> Download PNG</a>
+          <Button type="button" variant="outline" disabled={!src} onClick={() => saveCard(src, username)}>
+            <Download /> Save PNG
           </Button>
           {onShowQr && (
             <label className="flex cursor-pointer items-center gap-3 text-sm">

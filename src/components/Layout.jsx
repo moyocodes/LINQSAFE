@@ -17,7 +17,7 @@ const nav = [
 function Navbar() {
   const [open, setOpen] = useState(false)
   const loggedIn = isSignedIn()
-  const { pathname } = useLocation()
+  const { pathname, key: locationKey } = useLocation()
   // Transparent at the top so the page's colours run behind it; a floating frosted pill once you scroll.
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
@@ -27,7 +27,9 @@ function Navbar() {
     return () => window.removeEventListener('scroll', on)
   }, [])
 
-  useEffect(() => setOpen(false), [pathname])
+  // Any navigation closes the menu, including #section and ?query changes on the same page.
+  useEffect(() => setOpen(false), [locationKey])
+  const headerRef = useRef(null)
 
   // Sections marked data-hide-nav (the home page's feature showcase) get the full screen: the bar slides
   // away while one of them is at the top, and comes back after.
@@ -44,15 +46,30 @@ function Navbar() {
   }, [pathname])
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => e.key === 'Escape' && setOpen(false)
+    // Close on Escape, a tap outside the bar, scrolling away, or growing to the desktop layout.
+    const close = () => setOpen(false)
+    const onKey = (e) => e.key === 'Escape' && close()
+    const onDown = (e) => !headerRef.current?.contains(e.target) && close()
+    const startY = window.scrollY
+    const onScroll = () => Math.abs(window.scrollY - startY) > 40 && close()
+    const desktop = window.matchMedia('(min-width: 768px)')
+    const onWide = (e) => e.matches && close()
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onDown)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    desktop.addEventListener('change', onWide)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('scroll', onScroll)
+      desktop.removeEventListener('change', onWide)
+    }
   }, [open])
   const linkClass = ({ isActive }) =>
     `inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-foreground ${isActive ? 'text-foreground' : 'text-muted-foreground'}`
 
   return (
-    <header className={`sticky top-0 z-40 h-16 transition-transform duration-300 ${hidden && !open ? '-translate-y-[120%]' : ''}`}>
+    <header ref={headerRef} className={`sticky top-0 z-40 h-16 transition-transform duration-300 ${hidden && !open ? '-translate-y-[120%]' : ''}`}>
       <motion.div
         animate={scrolled || open
           ? { marginTop: 8, borderRadius: 999, backgroundColor: 'hsl(var(--background) / 0.72)', boxShadow: '0 10px 30px -12px hsl(20 35% 18% / 0.25), inset 0 0 0 1px hsl(var(--foreground) / 0.08)' }
@@ -81,12 +98,13 @@ function Navbar() {
         </Button>
         </div>
       </motion.div>
-      <AnimatePresence>
-        {open && (
-          <motion.nav
+      {/* No exit animation here on purpose. Tapping a link both closes this and changes the route, and
+          the new page can suspend mid-animation; that interrupts an AnimatePresence exit and leaves the
+          sheet stranded on screen, open. A plain conditional render always goes away. */}
+      {open && (
+          <nav
             id="mobile-nav" aria-label="Mobile"
-            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="mx-3 mt-2 overflow-hidden rounded-2xl bg-background/90 shadow-lg ring-1 ring-foreground/10 backdrop-blur-md md:hidden" onClick={() => setOpen(false)}
+            className="mx-3 mt-2 overflow-hidden rounded-2xl bg-background/90 shadow-lg ring-1 ring-foreground/10 backdrop-blur-md md:hidden motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-2 motion-safe:duration-200" onClick={() => setOpen(false)}
           >
             <div className="container flex flex-col gap-3 py-4">
               {nav.map((n) => (
@@ -101,9 +119,8 @@ function Navbar() {
                 </>
               )}
             </div>
-          </motion.nav>
-        )}
-      </AnimatePresence>
+          </nav>
+      )}
     </header>
   )
 }
@@ -219,7 +236,7 @@ export default function Layout() {
   }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-[100dvh] flex-col">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground">
         Skip to content
       </a>

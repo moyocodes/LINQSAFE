@@ -81,7 +81,7 @@ function BarsDemo() {
         <motion.span key={clicks} initial={{ y: 6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="font-mono text-lg font-semibold tabular-nums text-foreground">
           {clicks.toLocaleString()}
         </motion.span>
-        <span className="eyebrow flex items-center gap-1.5"><span className="size-1.5 animate-pulse rounded-full bg-saffron" />live clicks</span>
+        <span className="font-mono text-[.66rem] uppercase tracking-[.07em] text-foreground/55 sm:text-[.7rem] sm:tracking-[.14em] flex items-center gap-1.5"><span className="size-1.5 animate-pulse rounded-full bg-saffron" />live clicks</span>
       </div>
       <div className="flex h-24 items-end gap-2">
         {bars.map((h, i) => (
@@ -233,7 +233,7 @@ export default function FeatureBento() {
   const header = (
     <div className="container flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
       <div className="max-w-2xl">
-        <p className="eyebrow">Features</p>
+        <p className="font-mono text-[.66rem] uppercase tracking-[.07em] text-foreground/55 sm:text-[.7rem] sm:tracking-[.14em]">Features</p>
         <h2 className="mt-3 text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl">Everything you need, with nothing in the way</h2>
       </div>
       <div className="flex items-center gap-2">

@@ -128,7 +128,7 @@ export function ProfileView({ data: raw, layout, theme: chosen, preview = null, 
   }[layout]
 
   return (
-    <div className={`relative min-h-screen overflow-hidden text-foreground ${dark ? '' : 'theme-light'} ${theme.cls}`} style={themeStyle}>
+    <div className={`relative min-h-[100dvh] overflow-hidden text-foreground ${dark ? '' : 'theme-light'} ${theme.cls}`} style={themeStyle}>
       {data.own && data.redirect && !embed && !preview && (
         <div className="fixed inset-x-0 top-0 z-50 truncate bg-accent px-3 py-1 text-center font-mono text-[11px] uppercase tracking-widest text-accent-foreground">
           Redirect on · visitors go straight to {data.redirect.url.replace(/^https?:\/\/(www\.)?/, '')}
@@ -140,7 +140,7 @@ export function ProfileView({ data: raw, layout, theme: chosen, preview = null, 
         </div>
       )}
       {!dark && <MotionBackdrop palette={key === 'blush' ? 'blush' : key === 'sage' ? 'sage' : 'fresh'} />}
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col px-4 py-6">
+      <div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-md flex-col px-4 py-6">
         <div className={`flex items-center justify-between ${embed ? 'hidden' : ''} ${['cover', 'search'].includes(layout) ? 'relative z-20 mb-[-4rem] sm:mb-[-4.5rem] sm:px-4 sm:pt-4' : ''} ${['cover', 'search', 'backdrop'].includes(layout) ? '[&_a]:border-white/60 [&_a]:bg-white/85 [&_a]:text-ink [&_button]:border-white/60 [&_button]:bg-white/85 [&_button]:text-ink [&_a]:shadow-lg [&_button]:shadow-lg' : ''}`}>
           {isSignedIn() ? (
             <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} whileHover={{ x: -2 }}>

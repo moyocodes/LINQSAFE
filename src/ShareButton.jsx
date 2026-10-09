@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { toast } from '@/lib/toast'
 
 export default function ShareButton({ url, title, variant = 'outline', className }) {
   const [copied, setCopied] = useState(false)
@@ -17,7 +18,7 @@ export default function ShareButton({ url, title, variant = 'outline', className
     try {
       await navigator.clipboard.writeText(url)
     } catch {
-      window.prompt('Copy this link:', url)
+      toast('Could not copy. Long-press your link to copy it.', 'error')
       return
     }
     setCopied(true)

@@ -42,10 +42,7 @@ export default function Contact() {
             <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-paper/70">We read every message</p>
             <p className="mt-2 font-display text-2xl font-semibold leading-tight">A real person replies, usually within a day.</p>
           </div>
-          <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5, type: 'spring' }}
-            className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-paper/90 px-3 py-1.5 text-xs font-semibold text-ink shadow-lg backdrop-blur">
-            <span className="size-2 animate-pulse rounded-full bg-emerald-500" /> Support is online
-          </motion.span>
+         
         </Photo>
       </motion.div>
       <div>

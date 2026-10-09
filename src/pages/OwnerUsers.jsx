@@ -11,6 +11,7 @@ import OwnerShell from '@/components/OwnerShell'
 import PageLoader from '@/components/PageLoader'
 import { useErrorToast } from '@/lib/toast'
 import SuspendButton from '@/components/SuspendButton'
+import { useConfirm } from '@/components/ui/confirm'
 
 const tplName = Object.fromEntries(TEMPLATES.map((t) => [t.id, t.name]))
 const SORTS = [['newest', 'Newest'], ['oldest', 'Oldest'], ['active', 'Last active'], ['views', 'Most views']]
@@ -184,6 +185,7 @@ function FeatureManager({ user, catalog, onClose, onChanged }) {
   const [error, setError] = useState('')
   useErrorToast(error)
   const [length, setLength] = useState({}) // feature → months | 'forever'
+  const ask = useConfirm()
   const active = Object.fromEntries(user.features.map((f) => [f.feature, f]))
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -198,8 +200,14 @@ function FeatureManager({ user, catalog, onClose, onChanged }) {
     const l = length[key] ?? 1
     return run(key, () => api(`/owner/users/${user.username}/features`, { method: 'POST', body: { feature: key, months: l === 'forever' ? null : l } }))
   }
-  const remove = (key) => window.confirm(`Remove ${catalog.find((f) => f.key === key)?.name || key} from @${user.username}?`)
-    && run(key, () => api(`/owner/users/${user.username}/features/${key}`, { method: 'DELETE' }))
+  const remove = async (key) => {
+    const ok = await ask({
+      title: `Remove ${catalog.find((f) => f.key === key)?.name || key}?`,
+      body: `@${user.username} loses this feature straight away.`,
+      confirmLabel: 'Remove', danger: true,
+    })
+    if (ok) run(key, () => api(`/owner/users/${user.username}/features/${key}`, { method: 'DELETE' }))
+  }
   return (
     <motion.div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.div role="dialog" aria-modal="true" aria-label={`Features for @${user.username}`} onClick={(e) => e.stopPropagation()}

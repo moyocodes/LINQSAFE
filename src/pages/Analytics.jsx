@@ -23,7 +23,8 @@ export function Kpi({ icon: Icon, label, value, info }) {
   return (
     <Card className="overflow-visible">
       <CardContent className="p-4">
-        <p className="eyebrow flex items-center gap-1.5"><Icon className="size-3.5" aria-hidden="true" />{label}{info && <InfoTip label={`How "${label}" is calculated`}>{info}</InfoTip>}</p>
+        {/* The icon and info button stay put while only the words wrap, so tiles line up on a phone. */}
+        <p className="font-mono text-[.66rem] uppercase tracking-[.07em] text-foreground/55 sm:text-[.7rem] sm:tracking-[.14em] flex items-start gap-1.5"><Icon className="mt-[3px] size-3.5 shrink-0" aria-hidden="true" /><span className="min-w-0 flex-1 leading-snug">{label}</span>{info && <InfoTip label={`How "${label}" is calculated`}>{info}</InfoTip>}</p>
         <motion.p key={value} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mt-1 font-display text-3xl font-semibold tabular-nums">{value}</motion.p>
       </CardContent>
     </Card>
@@ -136,7 +137,7 @@ export function WeekSummary({ week, subject = 'Your page', own = 'your' }) {
       <span className={`mt-0.5 grid size-8 shrink-0 place-items-center rounded-full ${up ? 'bg-emerald-50 text-emerald-700' : 'bg-accent/10 text-accent'}`}>
         {up ? <TrendingUp className="size-4" aria-hidden="true" /> : <TrendingDown className="size-4" aria-hidden="true" />}
       </span>
-      <p className="font-serif text-lg leading-snug"><span className="label-form mr-2 align-middle">This week</span>{parts.join(' ')}</p>
+      <p className="font-serif text-lg leading-snug"><span className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em] mr-2 align-middle">This week</span>{parts.join(' ')}</p>
     </motion.div>
   )
 }
@@ -156,8 +157,9 @@ export function BestTime({ heat }) {
   return (
     <div>
       <p className="mb-3 text-sm">{best ? <>Busiest: <strong>{DAYS[best.d]}, {hourLabel(best.h)}–{hourLabel((best.h + 1) % 24)}</strong>. Post just before then.</> : 'Not enough activity yet.'}</p>
-      <div className="overflow-x-auto">
-        <div className="inline-grid min-w-full grid-cols-[2.5rem_repeat(24,minmax(0.9rem,1fr))] gap-[2px] text-[10px] text-muted-foreground" role="img"
+      {/* The cells shrink to fit a phone instead of pushing the card wider than the screen. */}
+      <div className="-mx-1 overflow-x-auto px-1">
+        <div className="grid min-w-0 grid-cols-[1.75rem_repeat(24,minmax(0,1fr))] gap-px text-[10px] text-muted-foreground sm:grid-cols-[2.5rem_repeat(24,minmax(0,1fr))] sm:gap-[2px]" role="img"
           aria-label={best ? `Busiest time ${DAYS[best.d]} ${hourLabel(best.h)}` : 'No activity yet'}>
           <span />
           {Array.from({ length: 24 }, (_, h) => <span key={h} className="text-center">{h % 6 === 0 ? hourLabel(h) : ''}</span>)}

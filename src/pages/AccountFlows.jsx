@@ -13,7 +13,7 @@ import { useTitle } from '@/lib/useTitle'
 function Shell({ children }) {
   return (
     <div className="bg-hero -mt-16 pt-16">
-      <div className="container grid min-h-[calc(100vh-8rem)] place-items-center py-12">
+      <div className="container grid min-h-[calc(100dvh-8rem)] place-items-center py-12">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm">{children}</motion.div>
       </div>
     </div>

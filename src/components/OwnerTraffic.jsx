@@ -18,7 +18,7 @@ const field = 'h-9 rounded-md border bg-card px-2.5 text-sm text-foreground focu
 function Select({ label, value, onChange, children }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="label-form text-[10px]">{label}</span>
+      <span className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em] text-[10px]">{label}</span>
       <select value={value} onChange={(e) => onChange(e.target.value)} className={field}>{children}</select>
     </label>
   )
@@ -65,7 +65,7 @@ export default function OwnerTraffic() {
     <section className="space-y-6" aria-labelledby="traffic-title">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow flex items-center gap-1.5">Traffic <InfoTip>Your own visits while signed in, bots, and refreshes within 30 minutes aren't counted. Filters on account, category, template and plan look at the page owner; country, device and source look at the visit.</InfoTip></p>
+          <p className="font-mono text-[.66rem] uppercase tracking-[.07em] text-foreground/55 sm:text-[.7rem] sm:tracking-[.14em] flex items-center gap-1.5">Traffic <InfoTip>Your own visits while signed in, bots, and refreshes within 30 minutes aren't counted. Filters on account, category, template and plan look at the page owner; country, device and source look at the visit.</InfoTip></p>
           <h2 id="traffic-title" className="font-display text-2xl font-semibold tracking-tight">Every page, every visit</h2>
           <p className="text-sm text-muted-foreground">The same analytics users see for their page, across the whole site. Filter by anything below.</p>
         </div>
@@ -120,7 +120,7 @@ export default function OwnerTraffic() {
               {opts?.sources.filter((s) => s !== 'qr').map((s) => <option key={s} value={s}>{sourceName(s)}</option>)}
             </Select>
             <form className="col-span-2 flex flex-col gap-1" onSubmit={(e) => { e.preventDefault(); set('user', user.trim().replace(/^@/, '')) }}>
-              <label htmlFor="traffic-user" className="label-form text-[10px]">One page (username)</label>
+              <label htmlFor="traffic-user" className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em] text-[10px]">One page (username)</label>
               <div className="flex gap-2">
                 <input id="traffic-user" value={user} onChange={(e) => setUser(e.target.value)} placeholder="e.g. moyosore" className={`${field} min-w-0 flex-1`} />
                 <button className="inline-flex h-9 items-center gap-1 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"><Search className="size-4" aria-hidden="true" /> Apply</button>
