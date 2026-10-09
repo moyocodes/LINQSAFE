@@ -7,12 +7,13 @@ import { IS_ADMIN_HOST } from '@/lib/stage'
 import NotFound from '@/pages/NotFound'
 import Profile from '@/pages/Profile'
 
-// A page opened before a deploy asks for code files the deploy replaced. When that happens, reload once to
-// get the new version instead of crashing (the flag stops a reload loop if the file is really missing).
-const lazy = (load) => reactLazy(() => load().then((m) => { try { sessionStorage.removeItem('chunk-reload') } catch { /* storage blocked */ } return m }).catch((err) => {
-  let tried = false
-  try { tried = sessionStorage.getItem('chunk-reload') === '1'; sessionStorage.setItem('chunk-reload', '1') } catch { /* storage blocked */ }
-  if (!tried) { location.reload(); return new Promise(() => {}) }
+// A page opened before a deploy asks for code files the deploy replaced. When that happens, reload to
+// get the new version instead of crashing.
+const lazy = (load) => reactLazy(() => load().catch((err) => {
+  // Reload to fetch the new files, but at most once every 10 seconds, so a really missing file can't loop.
+  let last = 0
+  try { last = Number(sessionStorage.getItem('chunk-reload')) || 0; sessionStorage.setItem('chunk-reload', String(Date.now())) } catch { /* storage blocked */ }
+  if (Date.now() - last > 10_000) { location.reload(); return new Promise(() => {}) }
   throw err
 }))
 
