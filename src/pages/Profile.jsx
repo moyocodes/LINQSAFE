@@ -143,7 +143,7 @@ export function ProfileView({ data: raw, layout, theme: chosen, preview = null, 
           {isSignedIn() ? (
             <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} whileHover={{ x: -2 }}>
               <Link to="/admin" className="inline-flex h-10 items-center gap-1.5 rounded-md border bg-card/80 px-3.5 text-sm font-medium backdrop-blur hover:bg-card">
-                <ArrowLeft className="size-4" aria-hidden="true" /> Back to dashboard
+                <ArrowLeft className="size-4" aria-hidden="true" /> Dashboard
               </Link>
             </motion.div>
           ) : (
