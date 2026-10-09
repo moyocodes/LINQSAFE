@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, Reorder, motion, useDragControls } from 'framer-motion'
-import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, UserRound, Share2, Smartphone, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, Clock, EyeOff, GripVertical, ImagePlus, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
+import { ArrowRight, BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, UserRound, Share2, Smartphone, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, Clock, EyeOff, GripVertical, ImagePlus, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
 import { api, logout, setSignedIn } from '@/api'
 import { ProfileView } from '@/pages/Profile'
 import ShareButton from '@/ShareButton'
@@ -592,8 +592,8 @@ export default function Admin() {
       <p role="status" aria-live="polite" className="sr-only">{announce}</p>
       {!me.onboarded_at && <Onboarding me={me} onDone={() => loadMe()} />}
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-bold tracking-tight">Your links</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="shrink-0 text-3xl font-bold tracking-tight">Your links</h1>
           <div className="flex min-w-0 items-center gap-1">
             {/* Who's signed in; tap for account settings. */}
             <a href="#you" className="flex min-w-0 items-center gap-2 rounded-full border bg-card/80 py-1 pl-1 pr-3 text-left hover:bg-muted" title={me.email || undefined}>
@@ -602,7 +602,7 @@ export default function Admin() {
                 : <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">{(me.display_name || me.username)[0].toUpperCase()}</span>}
               <span className="min-w-0 leading-tight">
                 <span className="block max-w-[10rem] truncate text-xs font-semibold">@{me.username}</span>
-                <span className="block max-w-[10rem] truncate text-[11px] text-muted-foreground">{me.email || 'No email'}</span>
+                <span className="hidden max-w-[10rem] truncate text-[11px] text-muted-foreground sm:block">{me.email || 'No email'}</span>
               </span>
             </a>
             <Button variant="ghost" size="sm" onClick={() => logout().then(() => navigate('/'))}><LogOut /> <span className="sr-only sm:not-sr-only">Log out</span></Button>
@@ -619,53 +619,58 @@ export default function Admin() {
         )}
         {(!me.email || !me.email_verified) && <VerifyBanner email={me.email} onChanged={(r) => setMe({ ...me, email: r.email, email_verified: r.email_verified })} />}
 
-        <div id="overview" className="grid scroll-mt-24 grid-cols-2 gap-4">
-          {[
-            [Eye, 'Page views', me.views ?? 0, 'cobalt'],
-            [MousePointerClick, 'Link clicks', me.links.reduce((n, l) => n + (l.clicks || 0), 0), 'rose'],
-          ].map(([Icon, label, n, tone]) => (
-            <Card key={label} accent={tone} whileHover={{ y: -3 }}>
-              <CardContent className="flex items-center gap-3 p-4">
-                <IconChip icon={Icon} tone={tone} />
-                <div>
-                  <motion.p key={n} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-2xl font-bold tabular-nums">{n.toLocaleString()}</motion.p>
-                  <p className="eyebrow mt-0.5">{label}</p>
+        {/* Overview: the two numbers, this month's click allowance, then where to dig deeper. */}
+        <div id="overview" className="scroll-mt-24 space-y-2">
+          <Card accent="cobalt">
+            <div className="grid grid-cols-2 divide-x divide-foreground/10">
+              {[
+                [Eye, 'Page views', me.views ?? 0],
+                [MousePointerClick, 'Link clicks', me.links.reduce((n, l) => n + (l.clicks || 0), 0)],
+              ].map(([Icon, label, n]) => (
+                <div key={label} className="px-5 pb-4 pt-5">
+                  <p className="eyebrow flex items-center gap-1.5"><Icon className="size-3.5" aria-hidden="true" /> {label}</p>
+                  <motion.p key={n} initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-1.5 font-display text-4xl font-bold tabular-nums leading-none">{n.toLocaleString()}</motion.p>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-          {me.is_owner && (
-            <Link to="/owner" className="group col-span-2 flex items-center justify-between rounded-xl border border-accent/30 bg-accent/[0.06] px-4 py-3 text-sm font-semibold text-accent transition-colors hover:bg-accent/10">
-              <span className="flex items-center gap-2"><Crown className="size-4" aria-hidden="true" /> Founder dashboard: whole-site analytics</span>
-              <ExternalLink className="size-4" aria-hidden="true" />
-            </Link>
-          )}
-          {me.limits?.clicks > 0 && !has(me, 'unlimited_clicks') && (() => {
-            const used = me.clicks_this_month || 0, cap = me.limits.clicks, full = used >= cap
-            return (
-              <div className={`col-span-2 space-y-2 rounded-xl border p-3 ${full ? 'border-accent/40 bg-accent/[0.06]' : 'bg-card'}`}>
-                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <span><b className="tabular-nums">{used.toLocaleString()}</b> of {cap.toLocaleString()} link clicks counted this month</span>
-                  <UnlockChip feature="unlimited_clicks" />
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10" role="progressbar" aria-valuemin={0} aria-valuemax={cap} aria-valuenow={Math.min(used, cap)} aria-label="Link clicks this month">
-                  <div className={`h-full rounded-full ${full ? 'bg-accent' : 'bg-emerald-600'}`} style={{ width: `${Math.min(100, (used / cap) * 100)}%` }} />
-                </div>
-                {full && <p className="text-xs text-muted-foreground">Your links still work for visitors. New clicks aren't counted until next month, or unlock unlimited clicks.</p>}
-              </div>
-            )
-          })()}
-          <p className="col-span-2 -mt-1 text-xs text-muted-foreground">Your own visits while logged in aren't counted. To test, open your page in a private/incognito window.</p>
-          <Link to="/admin/analytics" className="group col-span-2 flex items-center justify-between rounded-xl border bg-card px-4 py-3 text-sm font-semibold transition-colors hover:bg-muted">
-            <span className="flex items-center gap-2"><BarChart3 className="size-4" aria-hidden="true" /> Full analytics: countries, sources, devices</span>
-            <ExternalLink className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-          </Link>
-          {!has(me, 'analytics_90') && (
-            <div id="analytics" className="col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-accent/30 bg-accent/[0.04] px-4 py-2.5 text-sm">
-              <span><b>90-day analytics</b> <span className="text-muted-foreground">· free covers 30 days</span></span>
-              <UnlockChip feature="analytics_90" />
+              ))}
             </div>
-          )}
+            {me.limits?.clicks > 0 && !has(me, 'unlimited_clicks') && (() => {
+              const used = me.clicks_this_month || 0, cap = me.limits.clicks, full = used >= cap
+              return (
+                <div className={`space-y-2 border-t border-foreground/10 px-5 py-3 ${full ? 'bg-accent/[0.06]' : ''}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground"><b className="tabular-nums text-foreground">{used.toLocaleString()}</b> of {cap.toLocaleString()} clicks counted this month</span>
+                    <UnlockChip feature="unlimited_clicks" />
+                  </div>
+                  <div className="h-1 overflow-hidden rounded-full bg-foreground/10" role="progressbar" aria-valuemin={0} aria-valuemax={cap} aria-valuenow={Math.min(used, cap)} aria-label="Link clicks this month">
+                    <div className={`h-full rounded-full ${full ? 'bg-accent' : 'bg-emerald-600'}`} style={{ width: `${Math.min(100, (used / cap) * 100)}%` }} />
+                  </div>
+                  {full && <p className="text-xs text-muted-foreground">Your links still work for visitors. New clicks aren't counted until next month, or unlock unlimited clicks.</p>}
+                </div>
+              )
+            })()}
+            <Link to="/admin/analytics" className="group flex items-center gap-3 border-t border-foreground/10 px-5 py-3 transition-colors hover:bg-muted/60">
+              <BarChart3 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block text-sm font-semibold">Full analytics</span>
+                <span className="block text-xs text-muted-foreground">Countries, sources and devices</span>
+              </span>
+              <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </Link>
+            {!has(me, 'analytics_90') && (
+              <div id="analytics" className="flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-foreground/10 px-5 py-2.5 text-xs">
+                <span className="text-muted-foreground"><b className="text-foreground">90-day history</b> · free covers 30 days</span>
+                <UnlockChip feature="analytics_90" />
+              </div>
+            )}
+            {me.is_owner && (
+              <Link to="/owner" className="group flex items-center gap-3 border-t border-foreground/10 bg-accent/[0.05] px-5 py-3 text-accent transition-colors hover:bg-accent/10">
+                <Crown className="size-4 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 flex-1 text-sm font-semibold">Founder dashboard</span>
+                <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              </Link>
+            )}
+          </Card>
+          <p className="px-1 text-xs text-muted-foreground">Your own visits while signed in aren't counted. To test, open your page in a private window.</p>
         </div>
 
         <Card id="share" accent="mist" className="scroll-mt-24">
