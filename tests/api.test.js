@@ -273,6 +273,7 @@ test('hidden links, click allowance, and founder-only gifting', async () => {
 
   assert.equal((await api('POST', `/owner/users/${username}/features`, { feature: 'qr_code', months: 1 })).status, 403)
   assert.equal((await api('GET', '/owner/users')).status, 403)
+  assert.equal((await api('GET', '/owner/risk')).status, 403)
 })
 
 test('loophole fixes: old usernames held and forwarded, email change keeps the page live, big logos fit', async () => {

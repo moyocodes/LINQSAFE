@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Activity, Banknote, ChevronsLeft, ChevronsRight, CreditCard, Gauge, LogOut, Mail, Menu, RefreshCw, Tag, TrendingUp, UserPlus, Users, X } from 'lucide-react'
+import { Activity, Banknote, ChevronsLeft, ChevronsRight, CreditCard, Gauge, LogOut, Mail, RefreshCw, ShieldAlert, Tag, TrendingUp, UserPlus, Users } from 'lucide-react'
 import { api, logout } from '@/api'
 import { IS_ADMIN_HOST, STAGE } from '@/lib/stage'
 
@@ -12,25 +11,24 @@ const NAV = [
   ['Overview', Gauge, '', 'overview'], ['Growth', TrendingUp, '', 'growth'], ['Revenue', Banknote, '', 'revenue'],
   ['Traffic', Activity, '', 'traffic'], ['Pricing', Tag, '', 'pricing'], ['Payments', CreditCard, '', 'payments'],
   ['Signups', UserPlus, '', 'signups'], ['Messages', Mail, '', 'messages'], ['All users', Users, '/users', null],
+  ['Fraud & risk', ShieldAlert, '/risk', null],
 ]
 
 const readCollapsed = () => { try { return localStorage.getItem('owner_nav') === 'collapsed' } catch { return false } }
 
-// Founder console frame: a collapsible sidebar (icons only when collapsed; a drawer on phones) and a
-// toolbar with who's signed in, page-specific controls (`tools`), refresh and log out.
+// Founder console frame, responsive with Tailwind only: on large screens a collapsible sidebar (icons only
+// when collapsed); on phones and tablets a sticky row of chips that scrolls sideways. A toolbar shows who's
+// signed in, page-specific controls (`tools`), refresh and log out, and wraps onto two lines on phones.
 export default function OwnerShell({ title, tools, onRefresh, children }) {
   const [collapsed, setCollapsed] = useState(readCollapsed)
-  const [open, setOpen] = useState(false)
   const [me, setMe] = useState(null)
   const { pathname } = useLocation()
   const navigate = useNavigate()
   useEffect(() => { api('/me').then(setMe).catch(() => {}) }, [])
   useEffect(() => { try { localStorage.setItem('owner_nav', collapsed ? 'collapsed' : 'open') } catch { /* storage blocked */ } }, [collapsed])
-  useEffect(() => setOpen(false), [pathname])
 
   const home = ownerBase || '/'
   const go = (path, anchor) => (e) => {
-    setOpen(false)
     if (!anchor) return
     e.preventDefault()
     const jump = () => document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -53,7 +51,7 @@ export default function OwnerShell({ title, tools, onRefresh, children }) {
   const signOut = async () => { await logout(); navigate('/login') }
 
   return (
-    <div className={`container grid gap-6 py-6 ${collapsed ? 'lg:grid-cols-[3.5rem_minmax(0,1fr)]' : 'lg:grid-cols-[13rem_minmax(0,1fr)]'}`}>
+    <div className={`container grid gap-4 py-4 sm:gap-6 sm:py-6 ${collapsed ? 'lg:grid-cols-[3.5rem_minmax(0,1fr)]' : 'lg:grid-cols-[13rem_minmax(0,1fr)]'}`}>
       {/* Desktop sidebar */}
       <aside className="hidden lg:block">
         <div className="sticky top-20 space-y-3 rounded-xl border bg-card/80 p-2 backdrop-blur">
@@ -66,32 +64,26 @@ export default function OwnerShell({ title, tools, onRefresh, children }) {
         </div>
       </aside>
 
-      {/* Phone / tablet drawer */}
-      <AnimatePresence>
-        {open && (
-          <motion.div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)}>
-            <motion.div role="dialog" aria-modal="true" aria-label="Founder console menu" onClick={(e) => e.stopPropagation()}
-              initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="h-full w-64 space-y-3 overflow-y-auto bg-card p-3 shadow-2xl">
-              <div className="flex items-center justify-between px-2.5 py-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Founder · {STAGE}</span>
-                <button type="button" onClick={() => setOpen(false)} aria-label="Close menu" className="grid size-8 place-items-center rounded-md hover:bg-muted"><X className="size-4" /></button>
-              </div>
-              {nav(true)}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div className="min-w-0 space-y-6">
+        {/* Phones and tablets: sticky chips that scroll sideways (no drawer, CSS only). */}
+        <nav aria-label="Founder console" className="sticky top-16 z-30 -mx-4 overflow-x-auto border-b bg-background/90 px-4 py-2 backdrop-blur [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max gap-1.5">
+            {NAV.map(([label, Icon, path, anchor]) => {
+              const to = (ownerBase + path) || '/'
+              const chip = 'flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium'
+              return anchor
+                ? <a key={label} href={`${to}#${anchor}`} onClick={go(path, anchor)} className={`${chip} bg-card text-muted-foreground`}><Icon className="size-3.5" aria-hidden="true" />{label}</a>
+                : <NavLink key={label} to={to} end className={({ isActive }) => `${chip} ${isActive ? 'border-foreground bg-foreground text-background' : 'bg-card text-muted-foreground'}`}><Icon className="size-3.5" aria-hidden="true" />{label}</NavLink>
+            })}
+          </div>
+        </nav>
         {/* Toolbar */}
         <div role="toolbar" aria-label="Founder tools" className="flex flex-wrap items-center gap-2 rounded-xl border bg-card/80 p-2 backdrop-blur">
-          <button type="button" onClick={() => setOpen(true)} aria-label="Open menu" className="grid size-9 place-items-center rounded-md hover:bg-muted lg:hidden"><Menu className="size-4" /></button>
-          <h1 className="min-w-0 flex-1 truncate px-1 text-lg font-bold tracking-tight">{title}</h1>
+          <h1 className="min-w-0 basis-full truncate px-1 text-lg font-bold tracking-tight sm:basis-0 sm:flex-1">{title}</h1>
           {tools}
           {onRefresh && <button type="button" onClick={onRefresh} aria-label="Refresh" title="Refresh" className="grid size-9 place-items-center rounded-md border hover:bg-muted"><RefreshCw className="size-4" /></button>}
           {me && (
-            <span className="flex min-w-0 items-center gap-2 rounded-md border px-2 py-1" title={me.email}>
+            <span className="ml-auto flex min-w-0 items-center gap-2 rounded-md border px-2 py-1 sm:ml-0" title={me.email}>
               {me.avatar_url
                 ? <img src={me.avatar_url} alt="" className="size-7 shrink-0 rounded-full object-cover" />
                 : <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">{(me.display_name || me.username || '?')[0].toUpperCase()}</span>}

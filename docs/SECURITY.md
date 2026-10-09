@@ -11,6 +11,7 @@ What protects the site today, what was fixed in the review on 9 Oct 2026, and th
 - The server always takes the user from the session token. The browser never receives internal user ids, and no route trusts an id sent by the browser.
 - A password reset signs out every session (`token_version`). Verify and reset links are one-time, stored only as SHA-256 hashes, and expire (24 h / 1 h).
 - "Forgot password" gives the same answer whether or not the email exists, so it can't be used to find accounts.
+- Log-in is by **email** and password only (usernames are public, so they're not accepted).
 - An expired session sends you to log in and back to the page you were on. Only same-site paths are accepted as the return address.
 - Soft-deleted accounts (`deleted_at`) can't log in or keep a session.
 
@@ -59,7 +60,8 @@ All are covered by the API tests (`tests/api.test.js`) or were checked in a brow
 ### High
 
 1. **Scams and phishing using linqsafe pages.** Anyone can sign up, verify an email and publish links, and redirect mode sends visitors straight to any URL. A scam page on linqsafe.com hurts the domain's reputation (browsers and WhatsApp can start flagging it).
-   *Next:* a "Report this page" link on public pages, a founder **Suspend** button on All users (use `deleted_at`, or a `suspended_at` that 404s the page), and optionally checking links against Google Safe Browsing when they're saved.
+   *Done:* the founder console's **Fraud & risk** page flags suspicious links, brand / "official" names, throwaway emails, sign-up bursts, shared WhatsApp numbers, click spam and payment abuse.
+   *Next:* a "Report this page" link on public pages, a founder **Suspend** button (a `suspended_at` that 404s the page) next to each flag and on All users, and optionally checking links against Google Safe Browsing when they're saved.
 2. **No way for users to delete their account or download their data.** The Nigeria Data Protection Act 2023 (and the GDPR for EU visitors) give people the right to both.
    *Next:* "Delete my account" in Your account (soft delete, then hard delete after 30 days) and an "export my data" JSON download. Update the Privacy page.
 3. **The founder account is the master key, protected only by a password and a Gmail inbox.** Whoever controls moyosorejames@gmail.com can reset the password and open the founder console, including giving free features.

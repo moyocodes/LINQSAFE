@@ -1083,6 +1083,77 @@ async function ownerOnly(req, res, next) {
   next()
 }
 
+// ---- Founder: fraud & risk signals (nothing is blocked automatically; the founder decides) ----
+const DISPOSABLE = ['mailinator.com', 'yopmail.com', 'guerrillamail.com', 'sharklasers.com', 'grr.la', '10minutemail.com', 'tempmail.com',
+  'temp-mail.org', 'tempmail.dev', 'trashmail.com', 'getnada.com', 'dispostable.com', 'maildrop.cc', 'throwawaymail.com', 'mohmal.com', 'emailondeck.com',
+  'fakeinbox.com', 'mintemail.com', 'spamgourmet.com', 'tempr.email', 'moakt.com', 'byom.de', 'mailnesia.com', 'burnermail.io', 'inboxkitten.com']
+// Names scammers borrow: banks, payment apps, telcos, agencies, platforms, "official / support".
+// Whole words only (\\b), so e.g. "global" doesn't match "glo".
+const IMPERSONATION = '\\b(paystack|flutterwave|opay|palmpay|moniepoint|kuda|gtbank|gtco|zenith|firstbank|uba|fcmb|fidelity|wema|stanbic|ecobank|polaris|cbn|efcc|nnpc|jamb|waec|nimc|mtn|airtel|glo|9mobile|binance|bybit|whatsapp|instagram|facebook|tiktok|paypal|linqsafe|official|support|helpdesk|customercare|customer care|admin|verification|giveaway)\\b'
+const SHADY_URL = String.raw`xn--|://[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|bit\.ly|tinyurl\.com|cutt\.ly|rb\.gy|is\.gd|t\.ly|shorturl\.at|ow\.ly|s\.id/`
+const SHADY_WORDS = '\\b(login|log-in|signin|sign-in|verify|verification|wallet|giveaway|bonus|airdrop|claim|recover|unlock|password|bvn|double your|investment|forex)\\b'
+
+app.get('/api/owner/risk', auth, ownerOnly, async (req, res) => {
+  const days = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30
+  const since = 'DATE_SUB(CURDATE(), INTERVAL ? DAY)'
+  const q = async (sql, args = []) => (await pool.query(sql, args))[0]
+  const flags = []
+  const add = (section, severity, username, reason, extra = {}) => flags.push({ section, severity, username, reason, ...extra })
+
+  // Traffic: one visitor clicking the same page's links again and again (click fraud / testing bots).
+  for (const r of await q(`SELECT u.username, COUNT(*) AS n FROM events e JOIN users u ON u.id = e.user_id
+      WHERE e.kind = 'click' AND e.visitor <> '' AND e.created_at >= ${since} GROUP BY e.user_id, e.visitor, DATE(e.created_at) HAVING n >= 25 ORDER BY n DESC LIMIT 30`, [days - 1]))
+    add('traffic', r.n >= 100 ? 'high' : 'medium', r.username, `One visitor made ${r.n} link clicks in a day`)
+  // Traffic: impossible ratios per page.
+  for (const r of await q(`SELECT u.username, SUM(e.kind = 'view') AS views, SUM(e.kind = 'click') AS clicks,
+      COUNT(DISTINCT IF(e.kind = 'view' AND e.visitor <> '', e.visitor, NULL)) AS visitors
+      FROM events e JOIN users u ON u.id = e.user_id WHERE e.created_at >= ${since} GROUP BY e.user_id`, [days - 1])) {
+    const views = Number(r.views), clicks = Number(r.clicks), visitors = Number(r.visitors)
+    if (clicks >= 30 && clicks > views * 2) add('traffic', 'medium', r.username, `${clicks} clicks from only ${views} views`)
+    if (views >= 100 && visitors && views / visitors >= 15) add('traffic', 'medium', r.username, `${views} views from just ${visitors} visitors`)
+  }
+
+  // Accounts: throwaway emails, sign-up bursts, borrowed names.
+  for (const r of await q(`SELECT username, email, DATE_FORMAT(created_at, '%Y-%m-%d') AS joined FROM users
+      WHERE deleted_at IS NULL AND SUBSTRING_INDEX(email, '@', -1) IN (?) ORDER BY created_at DESC LIMIT 50`, [DISPOSABLE]))
+    add('accounts', 'medium', r.username, `Throwaway email (${r.email.split('@')[1]})`, { when: r.joined })
+  for (const r of await q(`SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:00') AS hr, COUNT(*) AS n, GROUP_CONCAT(username ORDER BY id SEPARATOR ', ') AS names
+      FROM users WHERE created_at >= ${since} GROUP BY hr HAVING n >= 8 ORDER BY n DESC LIMIT 10`, [days - 1]))
+    add('accounts', r.n >= 20 ? 'high' : 'medium', null, `${r.n} sign-ups in one hour (${r.hr})`, { detail: String(r.names).slice(0, 300) })
+  for (const r of await q(`SELECT username, display_name, page_live FROM users WHERE deleted_at IS NULL
+      AND (REPLACE(username, '_', ' ') REGEXP ? OR LOWER(display_name) REGEXP ?) ORDER BY created_at DESC LIMIT 50`, [IMPERSONATION, IMPERSONATION]))
+    add('accounts', r.page_live ? 'high' : 'low', r.username, `Name looks like a brand or "official" account${r.display_name ? ` ("${r.display_name}")` : ''}`)
+  for (const r of await q(`SELECT whatsapp, COUNT(*) AS n, GROUP_CONCAT(username ORDER BY id SEPARATOR ', ') AS names FROM users
+      WHERE deleted_at IS NULL AND whatsapp <> '' GROUP BY whatsapp HAVING n >= 3 ORDER BY n DESC LIMIT 20`))
+    add('accounts', 'medium', null, `Same WhatsApp number on ${r.n} accounts (+${r.whatsapp})`, { detail: r.names })
+
+  // Links: shorteners, raw IPs, look-alike domains, phishing words; new pages that redirect everyone away.
+  for (const r of await q(`SELECT u.username, l.title, l.url, u.page_live FROM links l JOIN users u ON u.id = l.user_id
+      WHERE l.deleted_at IS NULL AND u.deleted_at IS NULL AND (LOWER(l.url) REGEXP ? OR LOWER(CONCAT(l.title, ' ', l.url)) REGEXP ?)
+      ORDER BY l.id DESC LIMIT 60`, [SHADY_URL, SHADY_WORDS])) {
+    const hard = new RegExp(SHADY_URL).test(r.url.toLowerCase())
+    add('links', hard && r.page_live ? 'high' : 'medium', r.username, hard ? 'Link hides where it goes (shortener, IP address or look-alike domain)' : 'Link uses phishing-style words', { detail: `${r.title} · ${r.url}`.slice(0, 200) })
+  }
+  for (const r of await q(`SELECT u.username, l.url, DATEDIFF(NOW(), u.created_at) AS age FROM users u JOIN links l ON l.id = u.redirect_link_id
+      WHERE u.deleted_at IS NULL AND u.page_live = 1 AND u.created_at > DATE_SUB(NOW(), INTERVAL 14 DAY)`))
+    add('links', 'medium', r.username, `New account (${r.age} days) sends every visitor straight to another site`, { detail: r.url })
+
+  // Payments: repeated failures, underpayments, one card on many accounts.
+  for (const r of await q(`SELECT u.username, COUNT(*) AS n FROM payments p JOIN users u ON u.id = p.user_id
+      WHERE p.status IN ('failed', 'abandoned') AND p.created_at >= ${since} GROUP BY p.user_id HAVING n >= 3 ORDER BY n DESC LIMIT 20`, [days - 1]))
+    add('payments', r.n >= 6 ? 'high' : 'medium', r.username, `${r.n} failed or abandoned payments`)
+  for (const r of await q(`SELECT u.username, p.reference FROM payments p JOIN users u ON u.id = p.user_id WHERE p.status = 'underpaid' AND p.created_at >= ${since} LIMIT 20`, [days - 1]))
+    add('payments', 'high', r.username, 'Paid less than the price (feature not unlocked)', { detail: r.reference })
+  for (const r of await q(`SELECT p.card_type, p.last4, COUNT(DISTINCT p.user_id) AS n, GROUP_CONCAT(DISTINCT u.username SEPARATOR ', ') AS names
+      FROM payments p JOIN users u ON u.id = p.user_id WHERE p.last4 <> '' GROUP BY p.card_type, p.last4 HAVING n >= 3 LIMIT 20`))
+    add('payments', 'medium', null, `Same card (${r.card_type || 'card'} •••• ${r.last4}) on ${r.n} accounts`, { detail: r.names })
+
+  const rank = { high: 0, medium: 1, low: 2 }
+  flags.sort((a, b) => rank[a.severity] - rank[b.severity])
+  const count = (sev) => flags.filter((f) => f.severity === sev).length
+  res.json({ days, summary: { high: count('high'), medium: count('medium'), low: count('low'), total: flags.length }, flags })
+})
+
 // ---- Founder: every user, paginated and searchable ----
 app.get('/api/owner/users', auth, ownerOnly, async (req, res) => {
   const per = 25

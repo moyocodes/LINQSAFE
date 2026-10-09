@@ -92,8 +92,35 @@ export default function OwnerUsers() {
         <Card>
           <CardContent className="space-y-4 p-4">
             {pager}
-            {data.users.length ? (
-              <div className="overflow-x-auto">
+            {data.users.length ? (<>
+              {/* Phones: one card per user. */}
+              <ul className="divide-y md:hidden">
+                {data.users.map((u) => (
+                  <li key={u.username} className="space-y-1.5 py-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <Link to={`/${u.username}`} target="_blank" className="block truncate font-medium hover:underline">@{u.username}</Link>
+                        {u.display_name && <span className="block truncate text-xs text-muted-foreground">{u.display_name}</span>}
+                      </div>
+                      <button type="button" onClick={() => setManaging(u.username)} className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted">
+                        <Gift className="size-3.5" aria-hidden="true" />{u.features.length ? `${u.features.length} active` : 'Give'}
+                      </button>
+                    </div>
+                    <a href={`mailto:${u.email}`} className="block break-all text-sm hover:underline">{u.email || '–'}{u.email && !u.email_verified && <span className="ml-1 text-xs text-amber-700">(unverified)</span>}</a>
+                    <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                      <span>{u.account_type === 'business' ? categoryLabel(u.category) || 'Business' : 'Personal'}</span>
+                      <span>{tplName[u.layout] || u.layout}</span>
+                      <span>{u.links} links</span>
+                      <span>{Number(u.views || 0).toLocaleString()} views</span>
+                      <span>Joined {u.joined?.slice(0, 10)}</span>
+                      <span>Last login {u.last_login?.slice(0, 10) || '–'}</span>
+                      {!u.onboarded && <span>not onboarded</span>}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              {/* Tablets and up: the full table. */}
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[56rem] text-sm">
                   <thead className="text-left text-muted-foreground">
                     <tr><th className="py-2 font-medium">User</th><th className="font-medium">Email</th><th className="font-medium">Type</th><th className="font-medium">Template</th>
@@ -123,7 +150,7 @@ export default function OwnerUsers() {
                   ))}</tbody>
                 </table>
               </div>
-            ) : <p className="py-10 text-center text-sm text-muted-foreground">{q ? `No users match "${q}".` : 'No users yet.'}</p>}
+            </>) : <p className="py-10 text-center text-sm text-muted-foreground">{q ? `No users match "${q}".` : 'No users yet.'}</p>}
             {pager}
           </CardContent>
         </Card>
