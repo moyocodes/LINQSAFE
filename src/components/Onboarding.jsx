@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Briefcase, Check, Loader2, Sparkles, User } from
 import { api } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import PhoneInput from '@/components/PhoneInput'
 import { Label } from '@/components/ui/label'
 import AvatarPicker from '@/components/AvatarPicker'
 import { TemplatePicker } from '@/components/ProFeatures'
@@ -132,8 +133,8 @@ export default function Onboarding({ me, onDone }) {
                   )}
                   <div className="space-y-2">
                     <Label htmlFor="onb-wa">Business WhatsApp <span className="font-normal text-muted-foreground">(optional)</span></Label>
-                    <Input id="onb-wa" type="tel" inputMode="tel" placeholder="+234 801 234 5678" value={d.whatsapp} onChange={(e) => set({ whatsapp: e.target.value })} />
-                    <p className="text-xs text-muted-foreground">Adds a "Chat on WhatsApp" button to your page. Include your country code.</p>
+                    <PhoneInput id="onb-wa" value={d.whatsapp} onChange={(whatsapp) => set({ whatsapp })} describedBy="onb-wa-hint" />
+                    <p id="onb-wa-hint" className="text-xs text-muted-foreground">Adds a "Chat on WhatsApp" button to your page. Pick your country, then type the number.</p>
                   </div>
                 </>)}
                 <div className="space-y-2">

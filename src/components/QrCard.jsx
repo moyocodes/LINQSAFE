@@ -99,6 +99,22 @@ export function QrDialog({ url, username, onClose }) {
   )
 }
 
+// On the public page (owners who paid for QR code): the branded code on screen, so someone can scan it
+// straight off a phone or laptop, or save it.
+export function QrShowcase({ url, username, onPhoto = false }) {
+  const src = useQrImage(url, username)
+  return (
+    <motion.section aria-label="QR code for this page" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+      className={`mx-auto mt-8 flex w-full max-w-xs flex-col items-center gap-3 rounded-3xl p-4 text-center ${onPhoto ? 'bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-xl' : 'border bg-card/90 shadow-sm backdrop-blur'}`}>
+      <p className={`font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${onPhoto ? 'text-white/90' : 'text-muted-foreground'}`}>Scan to open this page</p>
+      <div className="aspect-[1080/1320] w-44 overflow-hidden rounded-2xl bg-[#FCFAF8] shadow-md">
+        {src ? <img src={src} alt={`QR code for ${url}`} className="size-full" /> : <div className="grid size-full place-items-center"><QrCode className="size-8 animate-pulse text-black/20" aria-hidden="true" /></div>}
+      </div>
+      {src && <a href={src} download={`${username}-qr.png`} className={`inline-flex items-center gap-1.5 text-xs font-semibold underline-offset-4 hover:underline ${onPhoto ? 'text-white' : 'text-accent'}`}><Download className="size-3.5" aria-hidden="true" /> Save QR code</a>}
+    </motion.section>
+  )
+}
+
 // "Scan to connect" code for flyers, business cards and story posts.
 export default function QrCard({ url, username }) {
   const src = useQrImage(url, username)

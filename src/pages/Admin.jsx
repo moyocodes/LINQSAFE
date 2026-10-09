@@ -11,18 +11,20 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, IconChip } from '@/components/ui/card'
 import { useTitle } from '@/lib/useTitle'
+import { toast, useErrorToast } from '@/lib/toast'
 import AvatarPicker, { toSmallDataUrl } from '@/components/AvatarPicker'
 import QrCard, { QrDialog } from '@/components/QrCard'
 import { AmbientVideo } from '@/components/Media'
 import Onboarding from '@/components/Onboarding'
 import { AccountFields, BillingProvider, StickySave, FeatureCard, TemplatePreview, FounderNoteEditor, PaymentHistory, SocialSuggestions, TemplatePicker, TestimonialsEditor, UnlockChip } from '@/components/ProFeatures'
 import { FREE_LINK_LIMIT, TEMPLATES, has } from '@/lib/plans'
-import { LINK_TYPES, TypeBadge, TypeSelect, detectType } from '@/lib/linkTypes'
+import { LINK_TYPES, TypeBadge, detectType } from '@/lib/linkTypes'
 import PageLoader from '@/components/PageLoader'
 
 // What your link does: show your page (default), or send visitors straight to one of your links.
 function RedirectPicker({ me, setMe }) {
   const [error, setError] = useState('')
+  useErrorToast(error)
   const value = me.redirect_link_id && me.links.some((l) => l.id === me.redirect_link_id) ? String(me.redirect_link_id) : ''
   async function choose(v) {
     setError('')
@@ -47,7 +49,6 @@ function RedirectPicker({ me, setMe }) {
         })}
       </div>
       <p className="text-xs text-muted-foreground">{value ? 'Visitors skip your page and land on that link (counted as a click). You still see your page when signed in.' : 'Or send everyone to just one link, for a launch, a sale or a new video.'}</p>
-      {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
     </div>
   )
 }
@@ -64,7 +65,7 @@ function LinkLogo({ link, onChange, onSave }) {
     try {
       const icon_url = await toSmallDataUrl(file, 128, 128)
       onChange({ icon_url }); onSave({ icon_url })
-    } catch { window.alert("That picture couldn't be read. Try a JPG or PNG.") } finally { setBusy(false) }
+    } catch { toast("That picture couldn't be read. Try a JPG or PNG.", 'error') } finally { setBusy(false) }
   }
   return (
     <span className="relative">
@@ -105,10 +106,13 @@ function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDra
           <LinkLogo link={link} onChange={onChange} onSave={onSave} />
         </div>
         <div className="grid min-w-0 gap-2">
-          <Input placeholder="Link title" aria-label={`Title for link ${index + 1}`} value={link.title} onChange={(e) => onChange({ title: e.target.value })} onBlur={onSave} />
+          <Input placeholder="Link title" aria-label={`Title for link ${index + 1}`} value={link.title} onChange={(e) => onChange({ title: e.target.value })} onBlur={() => onSave()} />
           <Input placeholder="https://instagram.com/moyosore" aria-label={`URL for link ${index + 1}`} value={link.url} onChange={(e) => onChange({ url: e.target.value })}
-            onBlur={() => { const t = detectType(link.url); if (t && t !== link.type) { onChange({ type: t }); onSave({ type: t }) } else onSave() }} />
-          <TypeSelect aria-label={`Type for link ${index + 1}`} value={link.type || 'website'} onChange={(type) => { onChange({ type }); onSave({ type }) }} />
+            onBlur={() => {
+              // The type follows the URL: a known site gets its badge; anything else is a website (Shop / Music keep theirs).
+              const t = detectType(link.url) || (LINK_TYPES[link.type]?.hosts.length ? 'website' : link.type || 'website')
+              if (t !== link.type) { onChange({ type: t }); onSave({ type: t }) } else onSave()
+            }} />
         </div>
         <div className="col-span-2 flex items-center justify-between gap-1 border-t pt-2 sm:col-span-1 sm:flex-col sm:justify-center sm:border-0 sm:pt-0">
           <Badge variant="secondary"><BarChart3 className="mr-1 size-3" aria-hidden="true" />{link.clicks}<span className="sr-only"> clicks</span></Badge>
@@ -298,6 +302,7 @@ function YouCard({ me, setMe }) {
   const [name, setName] = useState(me.username)
   const [state, setState] = useState('idle')
   const [error, setError] = useState('')
+  useErrorToast(error)
   const [reset, setReset] = useState('idle')
   const wait = me.next_username_change && new Date(me.next_username_change) > new Date() ? new Date(me.next_username_change) : null
   const changed = name.trim().toLowerCase() !== me.username
@@ -351,7 +356,6 @@ function YouCard({ me, setMe }) {
           <p id="username-rule" className="text-xs text-muted-foreground">
             {wait ? <>You can change it again on <b>{wait.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}</b>.</> : 'Your page link. After a change you wait 30 days, then 90, then 30 and so on before the next one.'}
           </p>
-          {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
         </form>
 
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-4 py-3">
@@ -372,6 +376,7 @@ function VerifyBanner({ email, onChanged }) {
   const [editing, setEditing] = useState(!email)
   const [value, setValue] = useState(email || '')
   const [error, setError] = useState('')
+  useErrorToast(error)
   useEffect(() => { setEditing(!email); setValue(email || '') }, [email])
   async function resend() {
     setState('sending')
@@ -404,7 +409,6 @@ function VerifyBanner({ email, onChanged }) {
             <Button size="sm" className="h-10" disabled={state === 'saving'}>{state === 'saving' ? <Loader2 className="animate-spin" /> : 'Save email'}</Button>
             {email && <Button type="button" size="sm" variant="ghost" className="h-10" onClick={() => setEditing(false)}>Cancel</Button>}
           </div>
-          {error && <p className="text-xs font-medium text-red-800" role="alert">{error}</p>}
         </form>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -426,8 +430,10 @@ export default function Admin() {
   const [me, setMe] = useState(null)
   const [newLink, setNewLink] = useState({ title: '', url: '', type: '' })
   const [error, setError] = useState('')
+  useErrorToast(error)
   const [saved, setSaved] = useState(false)
   const [profileError, setProfileError] = useState('')
+  useErrorToast(profileError)
   const urlInput = useRef(null)
   const [adding, setAdding] = useState(false)
   const [announce, setAnnounce] = useState('')
@@ -500,10 +506,9 @@ export default function Admin() {
   async function addLink(e) {
     e.preventDefault()
     setError('')
-    if (!newLink.type) return setError('Tap what kind of link it is (Instagram, Website, Shop…).')
     setAdding(true)
     try {
-      const link = await api('/links', { method: 'POST', body: { title: newLink.title, url: newLink.url, type: newLink.type } })
+      const link = await api('/links', { method: 'POST', body: { title: newLink.title, url: newLink.url, type: detectType(newLink.url) || (newLink.picked ? newLink.type : '') || 'website' } })
       setMe({ ...me, links: [...me.links, link] })
       setNewLink({ title: '', url: '', type: '' })
     } catch (err) {
@@ -701,7 +706,6 @@ export default function Admin() {
                 </motion.label>
               )}
             </AnimatePresence>
-            {profileError && <p role="alert" className="text-sm font-medium text-destructive">{profileError}</p>}
             <StickySave hint="Changes show on your page after saving.">
               <Button onClick={() => saveProfile()}>{saved ? <><Check aria-hidden="true" /> Saved</> : 'Save profile'}</Button>
             </StickySave>
@@ -719,7 +723,6 @@ export default function Admin() {
           <CardContent className="space-y-4">
             <RedirectPicker me={me} setMe={setMe} />
             <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900"><Globe className="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>Public: every link title and URL you add is shown on your public page. Only add links you are happy for anyone to see.</span></p>
-            {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
             <Reorder.Group axis="y" values={me.links} onReorder={(links) => setMe({ ...me, links })} className="space-y-3">
               <AnimatePresence initial={false}>
                 {me.links.map((l, i) => (
@@ -749,18 +752,13 @@ export default function Admin() {
               }} />
               <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
                 <AnimatePresence mode="wait" initial={false}>
-                  {newLink.detected ? (
+                  {/* No type to pick: it's worked out from the URL (a known site gets its badge, anything else is a website). */}
+                  {newLink.detected && newLink.type ? (
                     <motion.p key="yes" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-1 items-center gap-2 text-sm">
                       <TypeBadge type={newLink.type} url={newLink.url} className="size-7" />
-                      <span>{newLink.picked ? 'Adding as ' : ''}<span className="font-medium">{LINK_TYPES[newLink.type].label}</span>{newLink.picked ? '' : ' link detected'}</span>
-                      <button type="button" onClick={() => setNewLink({ ...newLink, detected: false, picked: false })} className="text-xs font-semibold text-accent hover:underline">Change</button>
+                      <span><span className="font-medium">{LINK_TYPES[newLink.type].label}</span>{newLink.picked ? '' : ' link detected'}</span>
                     </motion.p>
-                  ) : (
-                    <motion.div key="ask" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid min-w-0 flex-1 gap-1">
-                      <p id="new-type-label" className="text-sm text-muted-foreground">What kind of link is it? Tap one:</p>
-                      <TypeSelect id="new-type" required aria-labelledby="new-type-label" value={newLink.type} onChange={(type) => setNewLink({ ...newLink, type })} />
-                    </motion.div>
-                  )}
+                  ) : <span className="flex-1" />}
                 </AnimatePresence>
               <Button disabled={adding} aria-busy={adding}>{adding ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Plus aria-hidden="true" />} Add link</Button>
               </div>

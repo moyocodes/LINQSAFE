@@ -13,7 +13,8 @@ This guide explains what the product does, how it's built, how to run it in each
 - A profile page with photo, name, bio, topics, social badges and links.
 - **8 templates**: Classic, Grid, Minimal (free); Cover, Editorial, Search & solve, Photo background (blurred or sharp), Profile card (paid).
 - **5 themes**: Light, Sage, Blush, Midnight, Auto (follows the visitor's light/dark setting).
-- Business pages can show a **Chat on WhatsApp** button.
+- Business pages can show a **Chat on WhatsApp** button. The number is entered with a searchable country picker (flag, name, dial code; Nigeria first) and formats as you type (`src/components/PhoneInput.jsx`, `libphonenumber-js`); it's stored as digits with the country code, as wa.me expects.
+- Pages whose owner paid for **QR code** show a *Scan to open this page* card with the branded QR on every template (loaded only for those pages).
 - Pages can show a **Founder's note** (paid) (paper-style letter with signature) and **Kind words** (client testimonials as small chat bubbles under a "What people say" label).
 - A page is **public only once its owner has verified their email** (`users.page_live`, set on first verification and never cleared, so changing email later doesn't take a page down). Until then it's a 404 for everyone; the owner sees why.
 - **Redirect mode:** the owner can send visitors straight to one of their links instead of showing the page (counted as a click; the owner still sees the page with a "Redirect on" bar).
@@ -24,7 +25,8 @@ This guide explains what the product does, how it's built, how to run it in each
 ### For page owners (dashboard, `/admin`)
 
 - **Onboarding** after the first login: account type (personal or business), business category and optional WhatsApp, profile basics, socials, template.
-- Add, edit, drag-to-reorder, hide and delete links. Pasting a URL detects the platform (Instagram, Threads, TikTok, YouTube, and others). Unknown URLs ask for a type with a row of tappable icons (no dropdowns). Tap a link's icon to add or change its logo.
+- Add, edit, drag-to-reorder, hide and delete links. There's no type to pick: a known site (Instagram, Threads, TikTok, YouTube…) gets its badge from the URL, anything else is a website with its own favicon. Tap a link's icon to add or change its logo.
+- **Errors show as a toast** (bottom of the screen, 2 seconds; `src/lib/toast.js` + `<Toaster />`), in the dashboard and founder console.
 - **Link ideas tailored to onboarding** (`linkIdeas()` in `src/components/ProFeatures.jsx`): account type + business category pick a list (e.g. food → menu, WhatsApp, Instagram, Google Maps), and words in the occupation/topics add more (e.g. "baker" → menu, "developer" → GitHub). Tap a card to fill in the add-link form.
 - Profile picture and cover photo upload (cropped and resized in the browser); a blur suggestion on every new photo for the Photo background template.
 - Live preview drawn directly in the page from the editor's data (no iframe, updates as you type) with a toolbar (Open, Copy, Share, QR, Stats). On phones a floating **Preview** button opens it, with a switcher for templates you already own and **View QR**.

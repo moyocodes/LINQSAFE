@@ -809,6 +809,7 @@ app.get('/api/u/:username', async (req, res) => {
   if (LAYOUT_FEATURE[user.layout] && !unlocked.includes(LAYOUT_FEATURE[user.layout])) user.layout = 'classic'
   if (!unlocked.includes('founder_note')) user.note_body = null
   if (!unlocked.includes('testimonials')) user.testimonials = null
+  user.qr = unlocked.includes('qr_code') // paid QR: the page shows its QR code to visitors
   if (user.account_type !== 'business') user.whatsapp = ''
   delete user.plan
   // The owner looking at their own page isn't a visitor (and isn't redirected away from it).

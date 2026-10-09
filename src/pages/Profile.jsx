@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
@@ -13,6 +13,9 @@ import { SOCIAL_KEYS, TypeBadge } from '@/lib/linkTypes'
 import { LogoMark, Wordmark } from '@/components/Logo'
 import { FounderNote, KindWords, PROFILE_TEMPLATES, WhatsAppButton } from '@/components/ProfileTemplates'
 import PageLoader from '@/components/PageLoader'
+
+// Only pages with the paid QR feature load the QR code library.
+const QrShowcase = lazy(() => import('@/components/QrCard').then((m) => ({ default: m.QrShowcase })))
 
 const visitorTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch { return '' } })()
 
@@ -218,6 +221,10 @@ export function ProfileView({ data: raw, layout, theme: chosen, preview = null, 
 
         <KindWords data={data} onPhoto={['backdrop', 'cover', 'search'].includes(layout)} />
         <FounderNote data={data} name={name} />
+        {/* Paid QR code: shown on every template (data.qr from the public API; the dashboard preview checks features). */}
+        {(data.qr ?? (data.features && 'qr_code' in data.features)) && (
+          <Suspense fallback={null}><QrShowcase url={`${location.origin}/${data.username}`} username={data.username} onPhoto={['backdrop', 'cover', 'search'].includes(layout)} /></Suspense>
+        )}
 
         {/* Every public page carries the linqsafe mark. Its links open in a new tab so visitors keep this page. */}
         <footer className="relative z-10 flex flex-col items-center gap-2 pt-10 text-xs text-muted-foreground">

@@ -12,6 +12,7 @@ import { useTitle } from '@/lib/useTitle'
 import { InfoTip } from '@/components/ui/info-tip'
 import OwnerTraffic from '@/components/OwnerTraffic'
 import PageLoader from '@/components/PageLoader'
+import { useErrorToast } from '@/lib/toast'
 import OwnerShell, { ownerBase } from '@/components/OwnerShell'
 
 const SIGNUPS = '#2a78d6'
@@ -42,6 +43,7 @@ function PricingEditor() {
   const [limits, setLimits] = useState({ links: '', clicks: '' })
   const [state, setState] = useState('idle')
   const [error, setError] = useState('')
+  useErrorToast(error)
   // Merge over what we had, so a reply missing a field (e.g. durations) can't blank the table.
   const load = (c) => {
     setCfg((prev) => ({ durations: [1, 3, 6, 12], ...prev, ...c }))
@@ -119,7 +121,6 @@ function PricingEditor() {
             {state === 'saving' ? <Loader2 className="animate-spin" /> : state === 'saved' ? <Check /> : null}{state === 'saved' ? 'Saved' : 'Save prices'}
           </Button>
         </fieldset>
-        {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
       </CardContent>
     </Card>
   )

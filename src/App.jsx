@@ -2,6 +2,7 @@ import { lazy as reactLazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import StageBadge from '@/components/StageBadge'
+import Toaster from '@/components/Toaster'
 import { IS_ADMIN_HOST } from '@/lib/stage'
 import NotFound from '@/pages/NotFound'
 import Profile from '@/pages/Profile'
@@ -59,6 +60,7 @@ export default function App() {
   return (
     <Suspense fallback={<PageLoader className="min-h-screen" />}>
       {!EMBED && <StageBadge />}
+      <Toaster />
       {IS_ADMIN_HOST ? <AdminHostApp /> : (
       <Routes>
         <Route element={<Layout />}>

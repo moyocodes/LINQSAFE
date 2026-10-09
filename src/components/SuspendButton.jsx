@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Ban, Loader2, RotateCcw } from 'lucide-react'
 import { api } from '@/api'
+import { toast } from '@/lib/toast'
 
 // Founder: suspend a page (a 404 everywhere; the owner sees the reason on their dashboard) or lift it.
 export default function SuspendButton({ username, suspended, onChange, className = '' }) {
@@ -16,7 +17,7 @@ export default function SuspendButton({ username, suspended, onChange, className
       req = () => api(`/owner/users/${username}/suspend`, { method: 'POST', body: { reason } })
     }
     setBusy(true)
-    try { onChange?.(await req()) } catch (e) { window.alert(e.message) } finally { setBusy(false) }
+    try { onChange?.(await req()) } catch (e) { toast(e.message, 'error') } finally { setBusy(false) }
   }
   return (
     <button type="button" onClick={toggle} disabled={busy}

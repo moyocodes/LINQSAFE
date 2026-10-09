@@ -9,6 +9,7 @@ import { useTitle } from '@/lib/useTitle'
 import { TEMPLATES, categoryLabel } from '@/lib/plans'
 import OwnerShell from '@/components/OwnerShell'
 import PageLoader from '@/components/PageLoader'
+import { useErrorToast } from '@/lib/toast'
 import SuspendButton from '@/components/SuspendButton'
 
 const tplName = Object.fromEntries(TEMPLATES.map((t) => [t.id, t.name]))
@@ -181,6 +182,7 @@ export default function OwnerUsers() {
 function FeatureManager({ user, catalog, onClose, onChanged }) {
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
+  useErrorToast(error)
   const [length, setLength] = useState({}) // feature → months | 'forever'
   const active = Object.fromEntries(user.features.map((f) => [f.feature, f]))
   useEffect(() => {
@@ -242,7 +244,6 @@ function FeatureManager({ user, catalog, onClose, onChanged }) {
             )
           })}
         </ul>
-        {error && <p role="alert" className="border-t px-5 py-3 text-sm font-medium text-destructive">{error}</p>}
       </motion.div>
     </motion.div>
   )

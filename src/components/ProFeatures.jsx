@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, CircleCheck, Crown, Eye, Image, Lock, Loader2, Plus, Sparkles, Trash2, UserRound, X } from 'lucide-react'
 import { api } from '@/api'
+import PhoneInput from '@/components/PhoneInput'
+import { useErrorToast } from '@/lib/toast'
 import { ProfileView } from '@/pages/Profile'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,6 +54,7 @@ export function BillingProvider({ me, onUnlocked, children }) {
   useEffect(() => { if (cfg) setCart((c) => c.filter((k) => cfg.features.some((f) => f.key === k && f.forSale))) }, [cfg])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  useErrorToast(error)
   const [done, setDone] = useState('')
   // "… unlocked." is a quick confirmation, not a banner that stays: gone after 2 seconds.
   useEffect(() => { if (!done) return; const t = setTimeout(() => setDone(''), 2000); return () => clearTimeout(t) }, [done])
@@ -165,7 +168,6 @@ function CartBar() {
                 {b.busy && <Loader2 className="animate-spin" aria-hidden="true" />} Pay {naira(b.total)}
               </Button>
             </div>
-            {b.error && <p role="alert" className="mt-2 text-sm font-medium text-destructive">{b.error}</p>}
             <p className="mt-2 text-[11px] text-muted-foreground">One secure Paystack payment for everything selected. Buying more time adds to what's left.</p>
           </>) : (
             <p role="status" className="flex items-center gap-2 text-sm font-medium text-emerald-800"><CircleCheck className="size-4" aria-hidden="true" />{b.done}</p>
@@ -373,9 +375,8 @@ export function AccountFields({ me, setMe }) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="wa">Business WhatsApp <span className="font-normal text-muted-foreground">(optional)</span></Label>
-            <Input id="wa" type="tel" inputMode="tel" autoComplete="tel" placeholder="+234 801 234 5678" value={me.whatsapp ? `+${me.whatsapp}` : ''}
-              onChange={(e) => setMe({ ...me, whatsapp: e.target.value.replace(/[^\d]/g, '') })} />
-            <p className="text-xs text-muted-foreground">Adds a "Chat on WhatsApp" button to your page. Include your country code.</p>
+            <PhoneInput id="wa" value={me.whatsapp || ''} onChange={(whatsapp) => setMe({ ...me, whatsapp })} describedBy="wa-hint" />
+            <p id="wa-hint" className="text-xs text-muted-foreground">Adds a "Chat on WhatsApp" button to your page. Pick your country, then type the number.</p>
           </div>
         </motion.div>
       )}
@@ -529,6 +530,7 @@ export function StickySave({ children, hint }) {
 function useSaver(path, body) {
   const [state, setState] = useState('idle')
   const [error, setError] = useState('')
+  useErrorToast(error)
   async function save() {
     setState('saving')
     setError('')
@@ -568,7 +570,6 @@ export function FounderNoteEditor({ me, setMe }) {
         <Input id="sign" maxLength={60} placeholder="Moyosore" value={me.note_sign || ''} onChange={(e) => setMe({ ...me, note_sign: e.target.value })} />
         {me.note_sign && <p aria-hidden="true" className="font-script text-4xl text-accent">{me.note_sign}</p>}
       </div>
-      {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
       {button}
     </div>
   )
@@ -589,7 +590,6 @@ export function TestimonialsEditor({ me, setMe }) {
       {items.length < 6 && (
         <Button type="button" variant="outline" size="sm" onClick={() => set([...items, ''])}><Plus /> Add a message from a client</Button>
       )}
-      {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
       <div>{button}</div>
     </div>
   )
