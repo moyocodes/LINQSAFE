@@ -450,13 +450,15 @@ app.post('/api/register', authLimiter, async (req, res) => {
   }
 })
 
+// Log in with email + password (usernames aren't accepted: they're public, emails aren't).
 app.post('/api/login', authLimiter, async (req, res) => {
-  const { username, password } = req.body
-  const id = String(username || '').trim().toLowerCase()
-  const [rows] = await pool.query('SELECT id, password_hash, token_version FROM users WHERE (username = ? OR email = ?) AND deleted_at IS NULL LIMIT 1', [id, id])
+  const { password } = req.body
+  const email = String(req.body.email ?? req.body.username ?? '').trim().toLowerCase()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Enter the email you signed up with' })
+  const [rows] = await pool.query('SELECT id, password_hash, token_version FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1', [email])
   const user = rows[0]
   if (!user || !(await bcrypt.compare(password || '', user.password_hash)))
-    return res.status(401).json({ error: 'Invalid username, email or password' })
+    return res.status(401).json({ error: 'Wrong email or password' })
   await pool.query('UPDATE users SET last_login_at = NOW(), login_count = login_count + 1 WHERE id = ?', [user.id])
   startSession(res, user)
   res.json({ ok: true })

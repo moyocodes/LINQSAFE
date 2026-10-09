@@ -32,7 +32,7 @@ This guide explains what the product does, how it's built, how to run it in each
 - Each section has a floating Save; **Enter** in a one-line field saves too. An expired session sends you to log in and back.
 - **Analytics** (`/admin/analytics`): week-on-week summary, views, unique visitors, clicks, click-through rate, QR scans, daily chart (or table), best time to post (day × hour), new vs returning visitors, links by conversion, countries, sources, devices. **Export CSV** downloads every view and click in the chosen range (time, type, link, source, device, country).
 - **Light / dark / system** appearance toggle in the navbar (remembered per browser). Public profiles always keep the owner's chosen theme.
-- Email verification, forgot/reset password, log in with username or email.
+- Email verification, forgot/reset password, log in with email and password (usernames aren't accepted, since they're public).
 
 ### For the founder (`/owner`, or the `admin.` subdomain)
 

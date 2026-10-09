@@ -36,7 +36,7 @@ export default function Auth({ mode }) {
     setError('')
     setBusy(true)
     try {
-      await api(`/${mode === 'login' ? 'login' : 'register'}`, { method: 'POST', body: isLogin ? { username: form.username, password: form.password } : form })
+      await api(`/${mode === 'login' ? 'login' : 'register'}`, { method: 'POST', body: isLogin ? { email: form.email, password: form.password } : form })
       setSignedIn(true)
       navigate(next || (IS_ADMIN_HOST ? '/' : '/admin'))
     } catch (err) {
@@ -86,24 +86,24 @@ export default function Auth({ mode }) {
                 {expired && <p role="status" className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">Your session expired. Log in again to carry on.</p>}
 
                 <form onSubmit={submit} className="mt-5 space-y-3.5">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="username" className="label-form">{isLogin ? 'Username or email' : 'Username'}</Label>
-                    <Input id="username" name="username" placeholder={isLogin ? 'your_username or you@gmail.com' : 'moyosore_james'} autoFocus autoComplete="username" required value={form.username}
-                      autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                      pattern={isLogin ? undefined : '[A-Za-z0-9_]{3,32}'}
-                      title={isLogin ? undefined : '3 to 32 letters, numbers or underscores'}
-                      aria-invalid={!!error} aria-describedby={[!isLogin && 'username-hint', error && 'auth-error'].filter(Boolean).join(' ') || undefined}
-                      onChange={(e) => setForm({ ...form, username: e.target.value })} />
-                    {!isLogin && <p id="username-hint" className="text-xs text-muted-foreground">{SITE.domain}/<span className="font-medium text-foreground">{form.username || 'yourname'}</span> · 3–32 letters, numbers or _</p>}
-                  </div>
+                  {/* Log in: email only. Sign up: username (your link) and email. */}
                   {!isLogin && (
                     <div className="space-y-1.5">
-                      <Label htmlFor="email" className="label-form">Email</Label>
-                      <Input id="email" name="email" type="email" placeholder="you@gmail.com" required autoComplete="email" value={form.email}
-                        autoCapitalize="none" spellCheck={false}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                      <Label htmlFor="username" className="label-form">Username</Label>
+                      <Input id="username" name="username" placeholder="moyosore_james" autoFocus autoComplete="username" required value={form.username}
+                        autoCapitalize="none" autoCorrect="off" spellCheck={false} pattern="[A-Za-z0-9_]{3,32}" title="3 to 32 letters, numbers or underscores"
+                        aria-invalid={!!error} aria-describedby={['username-hint', error && 'auth-error'].filter(Boolean).join(' ')}
+                        onChange={(e) => setForm({ ...form, username: e.target.value })} />
+                      <p id="username-hint" className="text-xs text-muted-foreground">{SITE.domain}/<span className="font-medium text-foreground">{form.username || 'yourname'}</span> · 3–32 letters, numbers or _</p>
                     </div>
                   )}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="label-form">Email</Label>
+                    <Input id="email" name="email" type="email" placeholder="you@gmail.com" required autoComplete={isLogin ? 'username' : 'email'} value={form.email}
+                      autoFocus={isLogin} autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                      aria-invalid={!!error} aria-describedby={error ? 'auth-error' : undefined}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  </div>
                   <div className="space-y-1.5">
                     <div className="flex items-baseline justify-between">
                       <Label htmlFor="password" className="label-form">Password</Label>

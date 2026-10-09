@@ -75,8 +75,9 @@ test('session cookie: sign up, me, log out, log in by email', async () => {
   assert.ok(me.body.last_login_at)
   assert.equal((await api('POST', '/logout')).status, 200)
   assert.equal((await api('GET', '/me')).status, 401)
-  assert.equal((await api('POST', '/login', { username: `${username}@example.com`, password: 'wrong' })).status, 401)
-  assert.equal((await api('POST', '/login', { username: `${username}@example.com`, password: 'secret123' })).status, 200)
+  assert.equal((await api('POST', '/login', { email: `${username}@example.com`, password: 'wrong' })).status, 401)
+  assert.equal((await api('POST', '/login', { username, password: 'secret123' })).status, 400, 'usernames are not accepted for log-in')
+  assert.equal((await api('POST', '/login', { email: `${username}@example.com`, password: 'secret123' })).status, 200)
   assert.equal((await api('GET', '/me')).status, 200)
 })
 
