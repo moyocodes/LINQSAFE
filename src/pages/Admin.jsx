@@ -570,6 +570,12 @@ export default function Admin() {
 
         <MobileSectionNav />
 
+        {me.suspended_at && (
+          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+            <p className="font-semibold">Your page is suspended</p>
+            <p className="mt-1">Visitors see "not found" until this is lifted.{me.suspended_reason ? <> Reason: <b>{me.suspended_reason}</b>.</> : ''} If you think this is a mistake, write to <a href="mailto:support@linqsafe.com" className="underline">support@linqsafe.com</a> or use the <Link to="/contact" className="underline">contact form</Link>.</p>
+          </div>
+        )}
         {(!me.email || !me.email_verified) && <VerifyBanner email={me.email} onChanged={(r) => setMe({ ...me, email: r.email, email_verified: r.email_verified })} />}
 
         <div id="overview" className="grid scroll-mt-24 grid-cols-2 gap-4">

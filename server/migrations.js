@@ -254,6 +254,10 @@ const MIGRATIONS = [
       CONSTRAINT username_history_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     )`)
   }],
+  [30, 'founder can suspend a page', async (db) => {
+    await addColumn(db, 'users', 'suspended_at DATETIME NULL')
+    await addColumn(db, 'users', "suspended_reason VARCHAR(200) NOT NULL DEFAULT ''")
+  }],
 ]
 
 export async function migrate(pool) {

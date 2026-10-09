@@ -61,7 +61,8 @@ All are covered by the API tests (`tests/api.test.js`) or were checked in a brow
 
 1. **Scams and phishing using linqsafe pages.** Anyone can sign up, verify an email and publish links, and redirect mode sends visitors straight to any URL. A scam page on linqsafe.com hurts the domain's reputation (browsers and WhatsApp can start flagging it).
    *Done:* the founder console's **Fraud & risk** page flags suspicious links, brand / "official" names, throwaway emails, sign-up bursts, shared WhatsApp numbers, click spam and payment abuse.
-   *Next:* a "Report this page" link on public pages, a founder **Suspend** button (a `suspended_at` that 404s the page) next to each flag and on All users, and optionally checking links against Google Safe Browsing when they're saved.
+   *Done:* a founder **Suspend** button on each flag and on All users (`users.suspended_at` + reason): the page, previews, pictures and sitemap 404, clicks stop counting, and the owner sees the reason on their dashboard. **Unsuspend** restores it.
+   *Next:* a "Report this page" link on public pages, and optionally checking links against Google Safe Browsing when they're saved.
 2. **No way for users to delete their account or download their data.** The Nigeria Data Protection Act 2023 (and the GDPR for EU visitors) give people the right to both.
    *Next:* "Delete my account" in Your account (soft delete, then hard delete after 30 days) and an "export my data" JSON download. Update the Privacy page.
 3. **The founder account is the master key, protected only by a password and a Gmail inbox.** Whoever controls moyosorejames@gmail.com can reset the password and open the founder console, including giving free features.

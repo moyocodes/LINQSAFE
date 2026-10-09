@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigationType } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowUp, Home, LayoutDashboard, LogIn, Mail, Menu, Rocket, ShieldCheck, FileText, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -163,19 +163,60 @@ function Footer() {
   )
 }
 
+// Remembers where you were on each page. A reload, or Back / Forward, brings you back to that spot once the
+// page's content has loaded (it keeps trying for a few seconds and stops as soon as you scroll yourself).
+const scrollKey = (loc) => `scroll:${loc.pathname}${loc.search}`
+const readScroll = (key) => { try { return Number(sessionStorage.getItem(key)) || 0 } catch { return 0 } }
+function restoreScroll(y) {
+  if (!y) return () => {}
+  let stop = false
+  const quit = () => { stop = true }
+  const opts = { passive: true, once: true }
+  for (const ev of ['wheel', 'touchstart', 'keydown', 'mousedown']) window.addEventListener(ev, quit, opts)
+  const started = performance.now()
+  const tick = () => {
+    if (stop) return
+    const max = document.documentElement.scrollHeight - innerHeight
+    window.scrollTo(0, Math.min(y, max))
+    if (max >= y - 2 || performance.now() - started > 4000) return
+    requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+  return quit
+}
+
 export default function Layout() {
-  const { pathname } = useLocation()
+  const location = useLocation()
+  const { pathname } = location
+  const navType = useNavigationType()
   const main = useRef(null)
   const first = useRef(true)
   const [announce, setAnnounce] = useState('')
 
+  // Save the position as you scroll (and when leaving), per page.
+  useEffect(() => {
+    try { history.scrollRestoration = 'manual' } catch { /* old browser */ }
+    const key = scrollKey(location)
+    let raf = 0
+    const save = () => { try { sessionStorage.setItem(key, String(Math.round(scrollY))) } catch { /* storage blocked */ } }
+    const onScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(save) }
+    addEventListener('scroll', onScroll, { passive: true })
+    addEventListener('pagehide', save)
+    return () => { cancelAnimationFrame(raf); removeEventListener('scroll', onScroll); removeEventListener('pagehide', save) }
+  }, [location.pathname, location.search]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // First load (incl. a reload): go back to where you were, unless the address points at a section (#…).
+  useEffect(() => (location.hash ? undefined : restoreScroll(readScroll(scrollKey(location)))), []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // On client-side navigation, move focus to the page and announce its title (SPAs don't do this natively).
+  // Back / Forward return to the old spot; a new page starts at the top.
   useEffect(() => {
     if (first.current) { first.current = false; return }
     main.current?.focus({ preventScroll: true })
-    window.scrollTo(0, 0)
     setAnnounce(document.title)
-  }, [pathname])
+    if (navType === 'POP') return restoreScroll(readScroll(scrollKey(location)))
+    window.scrollTo(0, 0)
+  }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex min-h-screen flex-col">

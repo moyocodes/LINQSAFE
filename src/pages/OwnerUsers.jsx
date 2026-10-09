@@ -9,6 +9,7 @@ import { useTitle } from '@/lib/useTitle'
 import { TEMPLATES, categoryLabel } from '@/lib/plans'
 import OwnerShell from '@/components/OwnerShell'
 import PageLoader from '@/components/PageLoader'
+import SuspendButton from '@/components/SuspendButton'
 
 const tplName = Object.fromEntries(TEMPLATES.map((t) => [t.id, t.name]))
 const SORTS = [['newest', 'Newest'], ['oldest', 'Oldest'], ['active', 'Last active'], ['views', 'Most views']]
@@ -30,6 +31,7 @@ export default function OwnerUsers() {
   const [managing, setManaging] = useState(null) // username whose features are open
   useEffect(() => { api('/owner/pricing').then((c) => setCatalog(c.features)).catch(() => {}) }, [])
 
+  const setSuspended = (username, r) => setData((d) => ({ ...d, users: d.users.map((u) => (u.username === username ? { ...u, suspended: r.suspended, suspended_reason: r.suspended_reason } : u)) }))
   const update = (patch) => setParams((p) => {
     const next = new URLSearchParams(p)
     for (const [k, v] of Object.entries(patch)) (v && v !== 1 && v !== 'newest' ? next.set(k, v) : next.delete(k))
@@ -102,10 +104,14 @@ export default function OwnerUsers() {
                         <Link to={`/${u.username}`} target="_blank" className="block truncate font-medium hover:underline">@{u.username}</Link>
                         {u.display_name && <span className="block truncate text-xs text-muted-foreground">{u.display_name}</span>}
                       </div>
-                      <button type="button" onClick={() => setManaging(u.username)} className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted">
-                        <Gift className="size-3.5" aria-hidden="true" />{u.features.length ? `${u.features.length} active` : 'Give'}
-                      </button>
+                      <span className="flex shrink-0 gap-1.5">
+                        <button type="button" onClick={() => setManaging(u.username)} className="inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted">
+                          <Gift className="size-3.5" aria-hidden="true" />{u.features.length ? `${u.features.length} active` : 'Give'}
+                        </button>
+                        <SuspendButton username={u.username} suspended={!!u.suspended} onChange={(r) => setSuspended(u.username, r)} />
+                      </span>
                     </div>
+                    {u.suspended && <p className="text-xs font-medium text-red-700">Suspended {u.suspended}{u.suspended_reason ? ` · ${u.suspended_reason}` : ''}</p>}
                     <a href={`mailto:${u.email}`} className="block break-all text-sm hover:underline">{u.email || '–'}{u.email && !u.email_verified && <span className="ml-1 text-xs text-amber-700">(unverified)</span>}</a>
                     <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                       <span>{u.account_type === 'business' ? categoryLabel(u.category) || 'Business' : 'Personal'}</span>
@@ -124,7 +130,7 @@ export default function OwnerUsers() {
                 <table className="w-full min-w-[56rem] text-sm">
                   <thead className="text-left text-muted-foreground">
                     <tr><th className="py-2 font-medium">User</th><th className="font-medium">Email</th><th className="font-medium">Type</th><th className="font-medium">Template</th>
-                      <th className="text-right font-medium">Links</th><th className="text-right font-medium">Views</th><th className="pl-4 font-medium">Features</th><th className="font-medium">Joined</th><th className="font-medium">Last login</th></tr>
+                      <th className="text-right font-medium">Links</th><th className="text-right font-medium">Views</th><th className="pl-4 font-medium">Actions</th><th className="font-medium">Joined</th><th className="font-medium">Last login</th></tr>
                   </thead>
                   <tbody>{data.users.map((u) => (
                     <tr key={u.username} className="border-t align-top">
@@ -132,6 +138,7 @@ export default function OwnerUsers() {
                         <Link to={`/${u.username}`} target="_blank" className="font-medium hover:underline">@{u.username}</Link>
                         {u.display_name && <span className="block text-xs text-muted-foreground">{u.display_name}</span>}
                         {!u.onboarded && <span className="block text-xs text-muted-foreground">not onboarded</span>}
+                        {u.suspended && <span className="block text-xs font-medium text-red-700" title={u.suspended_reason || undefined}>suspended {u.suspended}</span>}
                       </td>
                       <td className="pr-3"><a href={`mailto:${u.email}`} className="break-all hover:underline">{u.email || '–'}</a>
                         {u.email && !u.email_verified && <span className="block text-xs text-amber-700">unverified</span>}</td>
@@ -140,9 +147,12 @@ export default function OwnerUsers() {
                       <td className="text-right tabular-nums">{u.links}</td>
                       <td className="text-right tabular-nums">{Number(u.views || 0).toLocaleString()}</td>
                       <td className="pl-4">
-                        <button type="button" onClick={() => setManaging(u.username)} className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted">
-                          <Gift className="size-3.5" aria-hidden="true" />{u.features.length ? `${u.features.length} active` : 'Give'}
-                        </button>
+                        <span className="flex flex-col items-start gap-1">
+                          <button type="button" onClick={() => setManaging(u.username)} className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted">
+                            <Gift className="size-3.5" aria-hidden="true" />{u.features.length ? `${u.features.length} active` : 'Give'}
+                          </button>
+                          <SuspendButton username={u.username} suspended={!!u.suspended} onChange={(r) => setSuspended(u.username, r)} />
+                        </span>
                       </td>
                       <td className="whitespace-nowrap tabular-nums text-muted-foreground">{u.joined}</td>
                       <td className="whitespace-nowrap tabular-nums text-muted-foreground">{u.last_login || '–'}{u.login_count ? <span className="block text-xs">{u.login_count} logins</span> : null}</td>

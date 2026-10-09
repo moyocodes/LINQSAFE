@@ -274,6 +274,14 @@ test('hidden links, click allowance, and founder-only gifting', async () => {
   assert.equal((await api('POST', `/owner/users/${username}/features`, { feature: 'qr_code', months: 1 })).status, 403)
   assert.equal((await api('GET', '/owner/users')).status, 403)
   assert.equal((await api('GET', '/owner/risk')).status, 403)
+  assert.equal((await api('POST', `/owner/users/${username}/suspend`, { reason: 'x' })).status, 403)
+
+  // A suspended page is a 404 for everyone; the owner sees the reason on /me.
+  await pool.query("UPDATE users SET suspended_at = NOW(), suspended_reason = 'Test' WHERE username = ?", [username])
+  assert.equal((await client()('GET', `/u/${username}`)).status, 404)
+  assert.equal((await api('GET', '/me')).body.suspended_reason, 'Test')
+  await pool.query("UPDATE users SET suspended_at = NULL, suspended_reason = '' WHERE username = ?", [username])
+  assert.equal((await client()('GET', `/u/${username}`)).status, 200)
 })
 
 test('loophole fixes: old usernames held and forwarded, email change keeps the page live, big logos fit', async () => {

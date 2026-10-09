@@ -534,7 +534,7 @@ app.post('/api/password/reset', authLimiter, async (req, res) => {
 // ---- Admin (authenticated) ----
 app.get('/api/me', auth, async (req, res) => {
   const [[user]] = await pool.query(
-    `SELECT username, username_changes, username_changed_at, redirect_link_id, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
+    `SELECT username, username_changes, username_changed_at, redirect_link_id, suspended_at, suspended_reason, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
   const [links] = await pool.query(
     'SELECT id, title, url, type, icon_url, is_public, clicks FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [req.userId])
   const { limits } = await currentPricing()
@@ -771,18 +771,18 @@ function sendDataImage(res, dataUrl, versioned) {
 app.get('/api/img/u/:username/:kind', async (req, res) => {
   const col = { avatar: 'avatar_url', cover: 'cover_url' }[req.params.kind]
   if (!col) return res.status(404).end()
-  const [[u]] = await pool.query(`SELECT ${col} AS img FROM users WHERE username = ? AND page_live = 1 AND deleted_at IS NULL`, [String(req.params.username).toLowerCase()])
+  const [[u]] = await pool.query(`SELECT ${col} AS img FROM users WHERE username = ? AND page_live = 1 AND suspended_at IS NULL AND deleted_at IS NULL`, [String(req.params.username).toLowerCase()])
   sendDataImage(res, u?.img, !!req.query.v)
 })
 app.get('/api/img/link/:id', async (req, res) => {
   const [[l]] = await pool.query(`SELECT l.icon_url AS img FROM links l JOIN users u ON u.id = l.user_id
-    WHERE l.id = ? AND l.deleted_at IS NULL AND l.is_public = 1 AND u.page_live = 1 AND u.deleted_at IS NULL`, [Number(req.params.id) || 0])
+    WHERE l.id = ? AND l.deleted_at IS NULL AND l.is_public = 1 AND u.page_live = 1 AND u.suspended_at IS NULL AND u.deleted_at IS NULL`, [Number(req.params.id) || 0])
   sendDataImage(res, l?.img, !!req.query.v)
 })
 
 app.get('/api/u/:username', async (req, res) => {
   const [[user]] = await pool.query(
-    `SELECT id, username, page_live, redirect_link_id, display_name, bio, layout, avatar_url, cover_url, theme, tags, ${PLAN_SQL}, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur FROM users WHERE username = ? AND deleted_at IS NULL`,
+    `SELECT id, username, page_live, suspended_at, redirect_link_id, display_name, bio, layout, avatar_url, cover_url, theme, tags, ${PLAN_SQL}, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur FROM users WHERE username = ? AND deleted_at IS NULL`,
     [req.params.username.toLowerCase()])
   if (!user) {
     // A recently changed username forwards to the new one for 90 days (shared links and printed QR codes keep working).
@@ -793,11 +793,17 @@ app.get('/api/u/:username', async (req, res) => {
   }
   // A page goes public the first time its owner verifies their email (and stays public if they change it
   // later); until then it's a 404 for everyone (the owner gets a reason instead of a plain "not found").
+  // Suspended by the founder: a 404 for everyone (the owner is told why on their dashboard).
+  if (user.suspended_at) {
+    const own = (await sessionUserId(req)) === user.id
+    return res.status(404).json({ error: own ? 'Your page is suspended. See your dashboard for details.' : 'Profile not found' })
+  }
   if (!user.page_live) {
     const own = (await sessionUserId(req)) === user.id
     return res.status(404).json({ error: own ? 'Your page goes live once you verify your email. Check your inbox, or resend the link from your dashboard.' : 'Profile not found' })
   }
   delete user.page_live
+  delete user.suspended_at
   // Anything not unlocked falls back to the free version instead of breaking the page.
   const unlocked = await unlockedFeatures(user.id)
   if (LAYOUT_FEATURE[user.layout] && !unlocked.includes(LAYOUT_FEATURE[user.layout])) user.layout = 'classic'
@@ -835,7 +841,7 @@ async function overClickQuota(userId) {
 }
 
 app.post('/api/click/:id', clickLimiter, async (req, res) => {
-  const [[link]] = await pool.query('SELECT id, user_id FROM links WHERE id = ? AND deleted_at IS NULL', [req.params.id])
+  const [[link]] = await pool.query('SELECT l.id, l.user_id FROM links l JOIN users u ON u.id = l.user_id WHERE l.id = ? AND l.deleted_at IS NULL AND u.suspended_at IS NULL', [req.params.id])
   if (link && (await sessionUserId(req)) !== link.user_id && !(await overClickQuota(link.user_id)) && (await track(req, res, { userId: link.user_id, kind: 'click', linkId: link.id, ref: String(req.body?.ref || ''), tz: String(req.body?.tz || '') })))
     await pool.query('UPDATE links SET clicks = clicks + 1 WHERE id = ?', [link.id])
   res.json({ ok: true })
@@ -1148,8 +1154,12 @@ app.get('/api/owner/risk', auth, ownerOnly, async (req, res) => {
       FROM payments p JOIN users u ON u.id = p.user_id WHERE p.last4 <> '' GROUP BY p.card_type, p.last4 HAVING n >= 3 LIMIT 20`))
     add('payments', 'medium', null, `Same card (${r.card_type || 'card'} •••• ${r.last4}) on ${r.n} accounts`, { detail: r.names })
 
+  const names = [...new Set(flags.map((f) => f.username).filter(Boolean))]
+  const [sus] = names.length ? await pool.query('SELECT username FROM users WHERE username IN (?) AND suspended_at IS NOT NULL', [names]) : [[]]
+  const suspended = new Set(sus.map((r) => r.username))
+  for (const f of flags) f.suspended = !!f.username && suspended.has(f.username)
   const rank = { high: 0, medium: 1, low: 2 }
-  flags.sort((a, b) => rank[a.severity] - rank[b.severity])
+  flags.sort((a, b) => a.suspended - b.suspended || rank[a.severity] - rank[b.severity])
   const count = (sev) => flags.filter((f) => f.severity === sev).length
   res.json({ days, summary: { high: count('high'), medium: count('medium'), low: count('low'), total: flags.length }, flags })
 })
@@ -1168,6 +1178,7 @@ app.get('/api/owner/users', auth, ownerOnly, async (req, res) => {
   const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM users u WHERE ${W}`, args)
   const [users] = await pool.query(
     `SELECT u.username, u.display_name, u.email, u.email_verified, u.account_type, u.category, u.layout, u.views,
+       DATE_FORMAT(u.suspended_at, '%Y-%m-%d') AS suspended, u.suspended_reason,
        u.onboarded_at IS NOT NULL AS onboarded, u.login_count,
        DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i') AS joined, DATE_FORMAT(u.last_login_at, '%Y-%m-%d %H:%i') AS last_login,
        (SELECT COUNT(*) FROM links l WHERE l.user_id = u.id AND l.deleted_at IS NULL) AS links,
@@ -1199,6 +1210,21 @@ app.post('/api/owner/users/:username/features', auth, ownerOnly, async (req, res
   }
   res.json({ features: await featureAccess(u.id) })
 })
+// Founder suspends a page (a 404 everywhere; the owner can still log in and sees the reason) or lifts it.
+app.post('/api/owner/users/:username/suspend', auth, ownerOnly, async (req, res) => {
+  const reason = String(req.body?.reason || '').trim().slice(0, 200)
+  const [[u]] = await pool.query('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', [String(req.params.username).toLowerCase()])
+  if (!u) return res.status(404).json({ error: 'User not found' })
+  if (u.id === req.userId) return res.status(400).json({ error: "You can't suspend your own account" })
+  await pool.query('UPDATE users SET suspended_at = NOW(), suspended_reason = ? WHERE id = ?', [reason, u.id])
+  res.json({ suspended: new Date().toISOString().slice(0, 10), suspended_reason: reason })
+})
+app.delete('/api/owner/users/:username/suspend', auth, ownerOnly, async (req, res) => {
+  const [r] = await pool.query("UPDATE users SET suspended_at = NULL, suspended_reason = '' WHERE username = ? AND deleted_at IS NULL", [String(req.params.username).toLowerCase()])
+  if (!r.affectedRows) return res.status(404).json({ error: 'User not found' })
+  res.json({ suspended: null, suspended_reason: '' })
+})
+
 app.delete('/api/owner/users/:username/features/:feature', auth, ownerOnly, async (req, res) => {
   const [[u]] = await pool.query('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', [String(req.params.username).toLowerCase()])
   if (!u) return res.status(404).json({ error: 'User not found' })

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useTitle } from '@/lib/useTitle'
 import OwnerShell, { ownerBase } from '@/components/OwnerShell'
 import PageLoader from '@/components/PageLoader'
+import SuspendButton from '@/components/SuspendButton'
 
 const SECTIONS = [
   ['links', 'Suspicious links', Link2, 'Shorteners, raw IP addresses, look-alike domains, phishing words, and new pages that send everyone elsewhere.'],
@@ -82,13 +83,15 @@ export default function OwnerRisk() {
                       className="flex flex-col gap-1.5 py-3 sm:flex-row sm:items-start sm:gap-3">
                       <span className={`w-fit shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ring-1 ring-inset ${SEV[f.severity]}`}>{f.severity}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{f.reason}</p>
+                        <p className="text-sm font-medium">{f.reason}{f.suspended && <span className="ml-2 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-background">Suspended</span>}</p>
                         {f.detail && <p className="break-words text-xs text-muted-foreground">{f.detail}</p>}
                       </div>
                       {f.username && (
                         <span className="flex shrink-0 flex-wrap gap-2 text-xs">
                           <Link to={`/${f.username}`} target="_blank" className="inline-flex items-center gap-1 rounded-md border px-2 py-1 font-medium hover:bg-muted">@{f.username} <ExternalLink className="size-3" aria-hidden="true" /></Link>
                           <Link to={`${ownerBase}/users?q=${encodeURIComponent(f.username)}`} className="inline-flex items-center rounded-md border px-2 py-1 font-medium hover:bg-muted">Account</Link>
+                          <SuspendButton username={f.username} suspended={f.suspended}
+                            onChange={(r) => setData((d) => ({ ...d, flags: d.flags.map((x) => (x.username === f.username ? { ...x, suspended: !!r.suspended } : x)) }))} />
                         </span>
                       )}
                     </motion.li>
