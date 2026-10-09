@@ -15,7 +15,7 @@ import { FounderNote, KindWords, PROFILE_TEMPLATES, WhatsAppButton } from '@/com
 import PageLoader from '@/components/PageLoader'
 
 // Only pages with the paid QR feature load the QR code library.
-const QrShowcase = lazy(() => import('@/components/QrCard').then((m) => ({ default: m.QrShowcase })))
+const QrFloater = lazy(() => import('@/components/QrCard').then((m) => ({ default: m.QrFloater })))
 
 const visitorTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch { return '' } })()
 
@@ -89,7 +89,9 @@ export default function Profile() {
 // (no network), passing unsaved edits as `data` and `onLinkClick` that doesn't count clicks.
 export function ProfileView({ data: raw, layout, theme: chosen, preview = null, embed = false, onLinkClick = () => {} }) {
   // Hidden links (is_public 0) never show, including in the dashboard's previews.
-  const data = raw.links.some((l) => l.is_public === 0) ? { ...raw, links: raw.links.filter((l) => l.is_public !== 0) } : raw
+  // Links scheduled for later (dashboard data has live_at) don't show in previews either.
+  const shown = (l) => l.is_public !== 0 && !(l.live_at && new Date(l.live_at) > new Date() && raw.features && 'scheduled_links' in raw.features)
+  const data = raw.links.every(shown) ? raw : { ...raw, links: raw.links.filter(shown) }
   const name = data.display_name || data.username
   const trackClick = onLinkClick
   const prefersDark = useMedia('(prefers-color-scheme: dark)')
@@ -221,9 +223,9 @@ export function ProfileView({ data: raw, layout, theme: chosen, preview = null, 
 
         <KindWords data={data} onPhoto={['backdrop', 'cover', 'search'].includes(layout)} />
         <FounderNote data={data} name={name} />
-        {/* Paid QR code: shown on every template (data.qr from the public API; the dashboard preview checks features). */}
-        {(data.qr ?? (data.features && 'qr_code' in data.features)) && (
-          <Suspense fallback={null}><QrShowcase url={`${location.origin}/${data.username}`} username={data.username} onPhoto={['backdrop', 'cover', 'search'].includes(layout)} /></Suspense>
+        {/* Paid QR, switched on by the owner: a floating QR on every template (dashboard previews follow the switch). */}
+        {(data.qr ?? (data.show_qr && data.features && 'qr_code' in data.features)) && (
+          <Suspense fallback={null}><QrFloater url={`${location.origin}/${data.username}`} username={data.username} /></Suspense>
         )}
 
         {/* Every public page carries the linqsafe mark. Its links open in a new tab so visitors keep this page. */}

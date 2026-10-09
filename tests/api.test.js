@@ -305,3 +305,19 @@ test('loophole fixes: old usernames held and forwarded, email change keeps the p
   const big = 'data:image/png;base64,' + 'A'.repeat(40_000)
   assert.equal((await api('PUT', `/links/${link.id}`, { title: 'Shop', url: 'https://example.com/shop', icon_url: big })).status, 200)
 })
+
+test('scheduled links are a paid feature and stay hidden until their time', async () => {
+  const api = client()
+  const username = await signUp(api)
+  const link = (await api('POST', '/links', { title: 'Launch', url: 'https://example.com/launch' })).body
+  const later = new Date(Date.now() + 3600_000).toISOString()
+  assert.equal((await api('PUT', `/links/${link.id}`, { title: 'Launch', url: 'https://example.com/launch', live_at: later })).status, 402)
+  const pool = await db()
+  await pool.query("INSERT INTO user_features (user_id, feature, payment_reference) SELECT id, 'scheduled_links', 'test' FROM users WHERE username = ?", [username])
+  assert.equal((await api('PUT', `/links/${link.id}`, { title: 'Launch', url: 'https://example.com/launch', live_at: later })).status, 200)
+  assert.equal((await client()('GET', `/u/${username}`)).body.links.length, 0, 'hidden until it goes live')
+  assert.ok((await api('GET', '/me')).body.links[0].live_at, 'the owner sees when it goes live')
+  const earlier = new Date(Date.now() - 60_000).toISOString()
+  assert.equal((await api('PUT', `/links/${link.id}`, { title: 'Launch', url: 'https://example.com/launch', live_at: earlier })).status, 200)
+  assert.equal((await client()('GET', `/u/${username}`)).body.links.length, 1, 'live once the time has passed')
+})

@@ -534,13 +534,22 @@ app.post('/api/password/reset', authLimiter, async (req, res) => {
 // ---- Admin (authenticated) ----
 app.get('/api/me', auth, async (req, res) => {
   const [[user]] = await pool.query(
-    `SELECT username, username_changes, username_changed_at, redirect_link_id, suspended_at, suspended_reason, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
+    `SELECT username, username_changes, username_changed_at, redirect_link_id, show_qr, suspended_at, suspended_reason, email, email_verified, display_name, bio, layout, avatar_url, cover_url, theme, tags, views, ${PLAN_SQL}, pro_until, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur, onboarded_at, last_login_at FROM users WHERE id = ?`, [req.userId])
   const [links] = await pool.query(
-    'SELECT id, title, url, type, icon_url, is_public, clicks FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id', [req.userId])
+    `SELECT id, title, url, type, icon_url, is_public, DATE_FORMAT(live_at, '%Y-%m-%dT%H:%i:%sZ') AS live_at, clicks
+     FROM links WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id`, [req.userId])
   const { limits } = await currentPricing()
   const { username_changes: _n, username_changed_at: _at, ...me } = user
   res.json({ ...me, is_owner: ownsSite(user), next_username_change: nextUsernameChange(user), limits, clicks_this_month: await clicksThisMonth(req.userId), testimonials: parseList(user.testimonials),
     features: await featureAccess(req.userId), links })
+})
+
+// Floating QR code on your public page (needs the paid QR feature).
+app.put('/api/show-qr', auth, async (req, res) => {
+  const on = !!req.body?.on
+  if (on && !(await hasFeature(req.userId, 'qr_code'))) return locked(res, 'qr_code')
+  await pool.query('UPDATE users SET show_qr = ? WHERE id = ?', [on ? 1 : 0, req.userId])
+  res.json({ show_qr: on })
 })
 
 // Redirect mode: send visitors of your page straight to one of your links (null = show your page).
@@ -732,6 +741,18 @@ app.put('/api/links/:id', auth, async (req, res) => {
     return res.status(400).json({ error: 'Title and a valid http(s) URL are required' })
   if (!LINK_TYPES.includes(type)) return res.status(400).json({ error: 'Unknown link type' })
   if (!typeMatchesUrl(type, url)) return res.status(400).json({ error: 'That link type does not match the URL' })
+  // Scheduled links (paid): an ISO time when the link goes live; null clears it.
+  if ('live_at' in req.body) {
+    const v = req.body.live_at
+    if (v != null && v !== '') {
+      if (!(await hasFeature(req.userId, 'scheduled_links'))) return locked(res, 'scheduled_links')
+      const t = new Date(v)
+      if (Number.isNaN(t.getTime()) || t.getFullYear() > 2100) return res.status(400).json({ error: 'Pick a valid date and time' })
+      await pool.query('UPDATE links SET live_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [t.toISOString().slice(0, 19).replace('T', ' '), req.params.id, req.userId])
+    } else {
+      await pool.query('UPDATE links SET live_at = NULL WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [req.params.id, req.userId])
+    }
+  }
   if ('is_public' in req.body)
     await pool.query('UPDATE links SET is_public = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL', [req.body.is_public ? 1 : 0, req.params.id, req.userId])
   if ('icon_url' in req.body) {
@@ -782,7 +803,7 @@ app.get('/api/img/link/:id', async (req, res) => {
 
 app.get('/api/u/:username', async (req, res) => {
   const [[user]] = await pool.query(
-    `SELECT id, username, page_live, suspended_at, redirect_link_id, display_name, bio, layout, avatar_url, cover_url, theme, tags, ${PLAN_SQL}, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur FROM users WHERE username = ? AND deleted_at IS NULL`,
+    `SELECT id, username, page_live, suspended_at, redirect_link_id, show_qr, display_name, bio, layout, avatar_url, cover_url, theme, tags, ${PLAN_SQL}, note_body, note_sign, account_type, category, whatsapp, occupation, location, testimonials, bg_blur FROM users WHERE username = ? AND deleted_at IS NULL`,
     [req.params.username.toLowerCase()])
   if (!user) {
     // A recently changed username forwards to the new one for 90 days (shared links and printed QR codes keep working).
@@ -809,7 +830,8 @@ app.get('/api/u/:username', async (req, res) => {
   if (LAYOUT_FEATURE[user.layout] && !unlocked.includes(LAYOUT_FEATURE[user.layout])) user.layout = 'classic'
   if (!unlocked.includes('founder_note')) user.note_body = null
   if (!unlocked.includes('testimonials')) user.testimonials = null
-  user.qr = unlocked.includes('qr_code') // paid QR: the page shows its QR code to visitors
+  user.qr = unlocked.includes('qr_code') && !!user.show_qr // paid QR + switched on: visitors get a floating QR
+  delete user.show_qr
   if (user.account_type !== 'business') user.whatsapp = ''
   delete user.plan
   // The owner looking at their own page isn't a visitor (and isn't redirected away from it).
@@ -817,7 +839,8 @@ app.get('/api/u/:username', async (req, res) => {
   if (!own && (await track(req, res, { userId: user.id, kind: 'view', ref: req.query.src === 'qr' ? 'qr' : String(req.query.ref || ''), tz: String(req.query.tz || '') })))
     await pool.query('UPDATE users SET views = views + 1 WHERE id = ?', [user.id])
   const [links] = await pool.query(
-    'SELECT id, title, url, type, icon_url FROM links WHERE user_id = ? AND deleted_at IS NULL AND is_public = 1 ORDER BY position, id', [user.id])
+    `SELECT id, title, url, type, icon_url FROM links WHERE user_id = ? AND deleted_at IS NULL AND is_public = 1
+     ${unlocked.includes('scheduled_links') ? 'AND (live_at IS NULL OR live_at <= UTC_TIMESTAMP())' : ''} ORDER BY position, id`, [user.id])
   // Redirect mode: the page sends visitors straight to one of its links.
   const redirect = links.find((l) => l.id === user.redirect_link_id)
   const { id: _id, redirect_link_id: _r, ...pub } = user // internal ids never leave the server; links keep theirs for click counting

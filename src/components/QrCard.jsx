@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import QRCode from 'qrcode'
 import { Download, QrCode, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -73,7 +73,7 @@ function useQrImage(url, username) {
 }
 
 // The QR image full size in a dialog, with Download (the dashboard's QR buttons open this).
-export function QrDialog({ url, username, onClose }) {
+export function QrDialog({ url, username, onClose, title = 'Your QR code' }) {
   const src = useQrImage(url, username)
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -86,7 +86,7 @@ export function QrDialog({ url, username, onClose }) {
         initial={{ y: 24, scale: 0.96 }} animate={{ y: 0, scale: 1 }} exit={{ y: 24, scale: 0.96 }} transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         className="flex w-full max-w-xs flex-col items-center gap-3">
         <div className="flex w-full items-center justify-between text-white">
-          <p className="font-display text-lg font-semibold !text-white">Your QR code</p>
+          <p className="font-display text-lg font-semibold !text-white">{title}</p>
           <button type="button" onClick={onClose} aria-label="Close" className="grid size-9 place-items-center rounded-full bg-white/15 hover:bg-white/25"><X className="size-4" /></button>
         </div>
         <div className="grid aspect-[1080/1320] w-full place-items-center overflow-hidden rounded-3xl bg-[#FCFAF8] shadow-2xl">
@@ -99,24 +99,28 @@ export function QrDialog({ url, username, onClose }) {
   )
 }
 
-// On the public page (owners who paid for QR code): the branded code on screen, so someone can scan it
-// straight off a phone or laptop, or save it.
-export function QrShowcase({ url, username, onPhoto = false }) {
+// On the public page (owner paid for QR and switched it on): a small floating QR in the corner; tap it for the
+// full-size code with a Save button.
+export function QrFloater({ url, username }) {
   const src = useQrImage(url, username)
+  const [open, setOpen] = useState(false)
+  if (!src) return null
   return (
-    <motion.section aria-label="QR code for this page" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-      className={`mx-auto mt-8 flex w-full max-w-xs flex-col items-center gap-3 rounded-3xl p-4 text-center ${onPhoto ? 'bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-xl' : 'border bg-card/90 shadow-sm backdrop-blur'}`}>
-      <p className={`font-mono text-[11px] font-semibold uppercase tracking-[0.2em] ${onPhoto ? 'text-white/90' : 'text-muted-foreground'}`}>Scan to open this page</p>
-      <div className="aspect-[1080/1320] w-44 overflow-hidden rounded-2xl bg-[#FCFAF8] shadow-md">
-        {src ? <img src={src} alt={`QR code for ${url}`} className="size-full" /> : <div className="grid size-full place-items-center"><QrCode className="size-8 animate-pulse text-black/20" aria-hidden="true" /></div>}
-      </div>
-      {src && <a href={src} download={`${username}-qr.png`} className={`inline-flex items-center gap-1.5 text-xs font-semibold underline-offset-4 hover:underline ${onPhoto ? 'text-white' : 'text-accent'}`}><Download className="size-3.5" aria-hidden="true" /> Save QR code</a>}
-    </motion.section>
+    <>
+      <motion.button type="button" onClick={() => setOpen(true)} aria-label="Show this page's QR code" title="Scan to open this page"
+        initial={{ opacity: 0, scale: 0.8, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ delay: 0.6, type: 'spring', stiffness: 260, damping: 20 }}
+        whileHover={{ y: -3 }} whileTap={{ scale: 0.95 }}
+        className="fixed bottom-4 right-4 z-40 flex flex-col items-center gap-1 rounded-2xl bg-white p-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-ink shadow-2xl ring-1 ring-black/10">
+        <img src={src} alt="" className="w-16 rounded-xl" />
+        Scan
+      </motion.button>
+      <AnimatePresence>{open && <QrDialog url={url} username={username} onClose={() => setOpen(false)} title="Scan to open this page" />}</AnimatePresence>
+    </>
   )
 }
 
 // "Scan to connect" code for flyers, business cards and story posts.
-export default function QrCard({ url, username }) {
+export default function QrCard({ url, username, showQr, onShowQr }) {
   const src = useQrImage(url, username)
 
   return (
@@ -127,9 +131,18 @@ export default function QrCard({ url, username }) {
       </CardHeader>
       <CardContent className="flex flex-wrap items-center gap-5">
         {src && <img src={src} alt={`QR code linking to ${url}`} className="w-40 rounded-2xl border shadow-sm" />}
-        <Button asChild variant="outline" disabled={!src}>
-          <a href={src} download={`${username}-qr.png`}><Download /> Download PNG</a>
-        </Button>
+        <div className="flex flex-col items-start gap-3">
+          <Button asChild variant="outline" disabled={!src}>
+            <a href={src} download={`${username}-qr.png`}><Download /> Download PNG</a>
+          </Button>
+          {onShowQr && (
+            <label className="flex cursor-pointer items-center gap-3 text-sm">
+              <input type="checkbox" className="peer sr-only" checked={!!showQr} onChange={(e) => onShowQr(e.target.checked)} />
+              <span aria-hidden="true" className="relative h-6 w-11 shrink-0 rounded-full bg-foreground/20 transition-colors peer-checked:bg-accent peer-focus-visible:outline peer-focus-visible:outline-2 after:absolute after:left-0.5 after:top-0.5 after:size-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5" />
+              <span><b>Show on my page</b><span className="block text-xs text-muted-foreground">A small QR floats in the corner for visitors to scan.</span></span>
+            </label>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

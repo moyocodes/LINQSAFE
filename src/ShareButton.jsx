@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Check, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export default function ShareButton({ url, title, variant = 'outline', size = 'sm', className }) {
+export default function ShareButton({ url, title, variant = 'outline', className }) {
   const [copied, setCopied] = useState(false)
 
   async function share() {
@@ -25,9 +25,9 @@ export default function ShareButton({ url, title, variant = 'outline', size = 's
   }
 
   return (
-    <Button variant={variant} size={size} className={className} onClick={share}>
+    // Icon only; the label is for screen readers and the tooltip ("Copied" once the link is on the clipboard).
+    <Button variant={variant} size="icon" className={`size-10 ${className || ''}`} onClick={share} aria-label={copied ? 'Link copied' : 'Share'} title={copied ? 'Link copied' : 'Share'}>
       {copied ? <Check /> : <Share2 />}
-      {copied ? 'Copied' : 'Share'}
     </Button>
   )
 }

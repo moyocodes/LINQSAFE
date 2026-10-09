@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AnimatePresence, Reorder, motion, useDragControls } from 'framer-motion'
-import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, UserRound, Share2, Smartphone, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, EyeOff, GripVertical, ImagePlus, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
+import { BarChart3, Briefcase, Crown, Copy, LayoutTemplate, Link2, UserRound, Share2, Smartphone, MailWarning, Feather, MessageSquareQuote, QrCode, Eye, ExternalLink, Globe, MousePointerClick, Check, ChevronDown, ChevronUp, Clock, EyeOff, GripVertical, ImagePlus, Loader2, LogOut, Plus, Trash2 } from 'lucide-react'
 import { api, logout, setSignedIn } from '@/api'
 import { ProfileView } from '@/pages/Profile'
 import ShareButton from '@/ShareButton'
@@ -85,8 +85,33 @@ function LinkLogo({ link, onChange, onSave }) {
   )
 }
 
-function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDragEnd }) {
+// Scheduled links (paid): pick when this link goes live; until then visitors don't see it.
+const toLocalInput = (iso) => { if (!iso) return ''; const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16) }
+const liveLabel = (iso) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+function LinkSchedule({ link, canSchedule, onChange, onSave }) {
+  const [value, setValue] = useState(toLocalInput(link.live_at))
+  if (!canSchedule) return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-accent/30 bg-accent/[0.04] px-3 py-2 text-xs">
+      <span><b>Scheduled links</b> · pick when each link goes live</span>
+      <UnlockChip feature="scheduled_links" />
+    </div>
+  )
+  const set = (live_at) => { onChange({ live_at }); onSave({ live_at }) }
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
+      <label className="text-xs font-medium" htmlFor={`live-${link.id}`}>Goes live</label>
+      <input id={`live-${link.id}`} type="datetime-local" value={value} onChange={(e) => setValue(e.target.value)}
+        className="h-9 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm" />
+      <Button type="button" size="sm" disabled={!value} onClick={() => set(new Date(value).toISOString())}>Schedule</Button>
+      {link.live_at && <Button type="button" size="sm" variant="ghost" onClick={() => { setValue(''); set(null) }}>Go live now</Button>}
+    </div>
+  )
+}
+
+function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDragEnd, canSchedule }) {
   const controls = useDragControls()
+  const [scheduling, setScheduling] = useState(false)
+  const upcoming = link.live_at && new Date(link.live_at) > new Date()
   return (
     <Reorder.Item
       value={link} dragListener={false} dragControls={controls} onDragEnd={onDragEnd}
@@ -117,6 +142,11 @@ function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDra
         <div className="col-span-2 flex items-center justify-between gap-1 border-t pt-2 sm:col-span-1 sm:flex-col sm:justify-center sm:border-0 sm:pt-0">
           <Badge variant="secondary"><BarChart3 className="mr-1 size-3" aria-hidden="true" />{link.clicks}<span className="sr-only"> clicks</span></Badge>
           <div className="flex">
+            <Button variant="ghost" size="icon" className={`size-9 sm:size-8 ${upcoming ? 'text-accent' : ''}`} aria-expanded={scheduling}
+              aria-label={`Schedule ${link.title || 'link'}`} title={upcoming ? `Goes live ${liveLabel(link.live_at)}` : 'Schedule when this link goes live'}
+              onClick={() => setScheduling((on) => !on)}>
+              <Clock />
+            </Button>
             {/* Public = shown on your page; hidden links stay saved here but visitors don't see them. */}
             <Button variant="ghost" size="icon" className={`size-9 sm:size-8 ${link.is_public === 0 ? 'text-muted-foreground' : 'text-emerald-700'}`}
               aria-pressed={link.is_public !== 0} aria-label={`${link.is_public === 0 ? 'Show' : 'Hide'} ${link.title || 'link'} on your page`}
@@ -132,6 +162,12 @@ function LinkRow({ link, index, total, onChange, onSave, onRemove, onMove, onDra
           </div>
         </div>
       </div>
+      {(upcoming || scheduling) && (
+        <div className="space-y-2 border-t px-3 pb-3 pt-2">
+          {upcoming && <p className="flex items-center gap-1.5 text-xs font-medium text-accent"><Clock className="size-3.5" aria-hidden="true" /> Goes live {liveLabel(link.live_at)} · hidden until then</p>}
+          {scheduling && <LinkSchedule link={link} canSchedule={canSchedule} onChange={onChange} onSave={onSave} />}
+        </div>
+      )}
     </Reorder.Item>
   )
 }
@@ -639,7 +675,8 @@ export default function Admin() {
           </CardContent>
         </Card>
 
-        {has(me, 'qr_code') ? <div id="qr" className="scroll-mt-24"><QrCard url={profileUrl} username={me.username} /></div> : (
+        {has(me, 'qr_code') ? <div id="qr" className="scroll-mt-24"><QrCard url={profileUrl} username={me.username} showQr={!!me.show_qr}
+          onShowQr={(on) => { setMe({ ...me, show_qr: on ? 1 : 0 }); api('/show-qr', { method: 'PUT', body: { on } }).catch((e) => { setMe((m) => ({ ...m, show_qr: on ? 0 : 1 })); toast(e.message, 'error') }) }} /></div> : (
           <FeatureCard id="qr" feature="qr_code" tone="saffron" unlocked={false} icon={QrCode} title="QR code" description="A printable code that opens your page, for flyers, packaging and story posts." />
         )}
 
@@ -728,7 +765,7 @@ export default function Admin() {
                 {me.links.map((l, i) => (
                   <LinkRow key={l.id} link={l} index={i} total={me.links.length} onMove={(d) => move(i, d)}
                     onChange={(patch) => patchLink(l.id, patch)} onSave={(patch) => saveLink(l.id, patch)}
-                    onRemove={() => removeLink(l.id)} onDragEnd={persistOrder} />
+                    onRemove={() => removeLink(l.id)} onDragEnd={persistOrder} canSchedule={has(me, 'scheduled_links')} />
                 ))}
               </AnimatePresence>
             </Reorder.Group>

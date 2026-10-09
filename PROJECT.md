@@ -14,7 +14,8 @@ This guide explains what the product does, how it's built, how to run it in each
 - **8 templates**: Classic, Grid, Minimal (free); Cover, Editorial, Search & solve, Photo background (blurred or sharp), Profile card (paid).
 - **5 themes**: Light, Sage, Blush, Midnight, Auto (follows the visitor's light/dark setting).
 - Business pages can show a **Chat on WhatsApp** button. The number is entered with a searchable country picker (flag, name, dial code; Nigeria first) and formats as you type (`src/components/PhoneInput.jsx`, `libphonenumber-js`); it's stored as digits with the country code, as wa.me expects.
-- Pages whose owner paid for **QR code** show a *Scan to open this page* card with the branded QR on every template (loaded only for those pages).
+- Pages whose owner paid for **QR code** and switched on *Show on my page* (dashboard → QR code) get a small **floating QR** in the corner on every template; tapping it opens the full code with Save (loaded only for those pages; `users.show_qr`).
+- **Scheduled links** (paid): a link can be given a go-live time (`links.live_at`, UTC); visitors don't see it until then. The dashboard shows "Goes live …" on the link.
 - Pages can show a **Founder's note** (paid) (paper-style letter with signature) and **Kind words** (client testimonials as small chat bubbles under a "What people say" label).
 - A page is **public only once its owner has verified their email** (`users.page_live`, set on first verification and never cleared, so changing email later doesn't take a page down). Until then it's a 404 for everyone; the owner sees why.
 - **Redirect mode:** the owner can send visitors straight to one of their links instead of showing the page (counted as a click; the owner still sees the page with a "Redirect on" bar).
@@ -58,6 +59,7 @@ Everyone gets a free page. On top of that, each extra feature is **bought separa
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | Up to N links (founder sets N, default 3)                        | Unlimited links                                                                  |
 | N link clicks counted a month (founder sets N, default 0 = no cap) | Unlimited link clicks                                                          |
+| Links go live when added                                         | Scheduled links (pick when each link goes live)                                  |
 | Classic, Grid, Minimal templates                                 | Cover, Editorial, Search & solve, Profile card templates (one purchase each)     |
 | All themes, WhatsApp button, analytics for the last 7 or 30 days | Founder's note · Kind words (testimonials) · QR code download · 90-day analytics |
 

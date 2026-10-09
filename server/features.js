@@ -15,6 +15,7 @@ export const FEATURES = [
   { key: 'qr_code', name: 'QR code download', detail: 'For print, packaging and stories' },
   { key: 'analytics_90', name: '90-day analytics', detail: 'Free analytics cover the last 30 days' },
   { key: 'unlimited_clicks', name: 'Unlimited link clicks', detail: 'Free pages count a set number of link clicks a month' },
+  { key: 'scheduled_links', name: 'Scheduled links', detail: 'Pick when each link goes live' },
 ]
 export const DURATIONS = [1, 3, 6, 12] // months
 export const FEATURE_KEYS = FEATURES.map((f) => f.key)

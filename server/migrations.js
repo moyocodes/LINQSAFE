@@ -258,6 +258,12 @@ const MIGRATIONS = [
     await addColumn(db, 'users', 'suspended_at DATETIME NULL')
     await addColumn(db, 'users', "suspended_reason VARCHAR(200) NOT NULL DEFAULT ''")
   }],
+  [31, 'scheduled links: when each link goes live (UTC)', async (db) => {
+    await addColumn(db, 'links', 'live_at DATETIME NULL')
+  }],
+  [32, 'owner chooses whether visitors see a floating QR code', async (db) => {
+    await addColumn(db, 'users', 'show_qr TINYINT(1) NOT NULL DEFAULT 0')
+  }],
 ]
 
 export async function migrate(pool) {
