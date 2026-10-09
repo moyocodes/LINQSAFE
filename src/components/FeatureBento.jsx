@@ -14,7 +14,7 @@ function Slide({ bg, title, text, chip, bare, children, i }) {
   return (
     <motion.article initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.6, delay: (i % 3) * 0.08, ease: [0.22, 1, 0.36, 1] }}
-      className="group w-[82vw] shrink-0 snap-start sm:w-[min(30rem,calc((100svh-360px)*16/11))] lg:w-[min(36rem,calc((100svh-360px)*16/11))]">
+      className="group w-[min(82vw,calc((100svh-330px)*16/11))] shrink-0 snap-start sm:w-[min(30rem,calc((100svh-360px)*16/11))] lg:w-[min(36rem,calc((100svh-360px)*16/11))]">
       <div className={`relative grid aspect-[16/11] place-items-center overflow-hidden rounded-[1.75rem] p-6 sm:p-10 ${bg}`} aria-hidden="true">
         {bare ? <div className="theme-light relative w-full text-foreground">{children}</div> : (
           <motion.div whileHover={{ y: -6, rotate: -0.5 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}
@@ -223,7 +223,10 @@ export default function FeatureBento() {
     return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
   }, [reduce])
   // Vertical scroll through the pinned section moves the cards sideways.
-  const { scrollYProgress } = useScroll({ target: section, offset: ['start 65px', 'end end'] })
+  // Start sliding only once the section is actually pinned under the header. Measuring from
+  // 'start 65px' means the row has already moved by the time it sticks, so the first card starts
+  // off-screen on the left and looks cut off before you've scrolled at all.
+  const { scrollYProgress } = useScroll({ target: section, offset: ['start start', 'end end'] })
   const x = useSpring(useTransform(scrollYProgress, [0, 1], [0, -distance]), { stiffness: 160, damping: 30, restDelta: 0.5 })
   const nudge = (dir) => {
     if (reduce) return row.current?.scrollBy({ left: dir * Math.min(600, row.current.clientWidth * 0.8), behavior: 'smooth' })
@@ -231,10 +234,10 @@ export default function FeatureBento() {
   }
 
   const header = (
-    <div className="container flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+    <div className="container flex flex-col items-start justify-between gap-3 sm:gap-6 md:flex-row md:items-end">
       <div className="max-w-2xl">
         <p className="font-mono text-[.66rem] uppercase tracking-[.07em] text-foreground/55 sm:text-[.7rem] sm:tracking-[.14em]">Features</p>
-        <h2 className="mt-3 text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl">Everything you need, with nothing in the way</h2>
+        <h2 className="mt-2 text-[1.75rem] font-semibold leading-[1.08] tracking-tight min-[380px]:text-3xl sm:mt-3 sm:text-5xl">Everything you need, with nothing in the way</h2>
       </div>
       <div className="flex items-center gap-2">
         <Link to="/signup" className="group mr-2 inline-flex items-center gap-1.5 text-sm font-semibold">
@@ -266,9 +269,9 @@ export default function FeatureBento() {
 
   return (
     <section id="features" ref={section} data-hide-nav className="relative scroll-mt-20" style={{ height: `calc(100svh + ${distance}px)` }}>
-      <div className="sticky top-[65px] flex h-[calc(100svh-65px)] flex-col justify-center overflow-hidden py-8">
+      <div className="sticky top-[65px] flex h-[calc(100svh-65px)] flex-col justify-center overflow-hidden py-4 sm:py-8">
         {header}
-        <motion.div ref={row} style={{ x }} className={`mt-10 flex w-max gap-6 ${pad}`}>{slides}</motion.div>
+        <motion.div ref={row} style={{ x }} className={`mt-5 flex w-max gap-6 sm:mt-10 ${pad}`}>{slides}</motion.div>
         <div className="container mt-6">
           <div className="h-1 w-40 overflow-hidden rounded-full bg-foreground/10">
             <motion.div style={{ scaleX: scrollYProgress }} className="h-full origin-left bg-gradient-to-r from-accent via-rose to-lilac" />
