@@ -140,10 +140,6 @@ function Stage({ p, step }) {
 
       {/* the hub */}
       <motion.div className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2" style={{ scale: hubScale }}>
-        {[0, 1, 2].map((k) => (
-          <motion.span key={k} aria-hidden="true" className="absolute inset-0 rounded-[28%] border border-cobalt/40"
-            animate={{ scale: [1, 2.4], opacity: [0.6, 0] }} transition={{ duration: 3, repeat: Infinity, delay: k, ease: 'easeOut' }} />
-        ))}
         <motion.div animate={step >= 2 ? { scale: [1, 1.06, 1] } : { scale: 1 }} transition={{ duration: 1.2, repeat: Infinity }}
           className="relative rounded-[28%] shadow-[0_20px_50px_-10px_rgb(43_79_175/.6)]">
           <LogoMark className="size-20 sm:size-24" />
