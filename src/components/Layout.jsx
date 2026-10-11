@@ -177,12 +177,10 @@ function Footer() {
         </motion.button>
       </div>
 
-      {/* Oversized wordmark that rises into view and fades into the footer (Volasec-style watermark). */}
-      <motion.p aria-hidden="true"
-        initial={{ y: '40%', opacity: 0 }} whileInView={{ y: '18%', opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-        className="pointer-events-none select-none text-center font-display text-[22vw] font-extrabold leading-[0.8] tracking-tighter text-transparent [-webkit-text-stroke:1px_hsl(36_30%_90%/.12)] [background:linear-gradient(to_bottom,hsl(36_30%_90%/.10),transparent_75%)] [-webkit-background-clip:text] [background-clip:text]">
-        {SITE.name}.
-      </motion.p>
+      {/* Oversized logo that rises into view and fades into the footer (Volasec-style watermark). */}
+      <motion.img aria-hidden="true" src="/logo-wordmark-dark.png" alt="" width={1186} height={356}
+        initial={{ y: '30%', opacity: 0 }} whileInView={{ y: '14%', opacity: 0.08 }} viewport={{ once: true }} transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+        className="pointer-events-none mx-auto block w-[88%] max-w-5xl select-none [mask-image:linear-gradient(to_bottom,#000_35%,transparent_85%)]" />
     </footer>
   )
 }

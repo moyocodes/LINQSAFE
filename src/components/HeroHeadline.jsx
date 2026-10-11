@@ -24,13 +24,18 @@ export default function HeroHeadline() {
   )
 
   return (
-    <h1 className="mt-4 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl">
+    // A weight run rather than one flat boldness, the way the wordmark pairs a bold "LINQ" against
+    // the mark's thin ribbons: "One link for" starts light, "you share" lands bold, and the rotating
+    // word in between is heaviest with the rest faded back a touch (opacity, not a second colour).
+    <h1 className="mt-4 text-4xl leading-[1.08] tracking-tight sm:text-6xl">
       <span className="sr-only">One link for everything you share</span>
       <span aria-hidden="true">
-        {word('One', 0.1)} {word('link', 0.2)} {word('for', 0.3)}{' '}
+        <span className="font-light text-foreground/70">
+          {word('One', 0.1)} {word('link', 0.2)} {word('for', 0.3)}
+        </span>{' '}
         <motion.span
           layout initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.45, type: 'spring', stiffness: 260, damping: 20 }}
-          className="relative inline-grid overflow-hidden rounded-md bg-saffron/20 px-2 align-bottom text-maroon ring-1 ring-inset ring-saffron/50"
+          className="relative inline-grid overflow-hidden rounded-md bg-saffron/20 px-2 align-bottom font-black text-maroon ring-1 ring-inset ring-saffron/50"
         >
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.span
@@ -42,7 +47,9 @@ export default function HeroHeadline() {
             </motion.span>
           </AnimatePresence>
         </motion.span>{' '}
-        {word('you', 0.6)} {word('share', 0.7)}
+        <span className="font-extrabold">
+          {word('you', 0.6)} {word('share', 0.7)}
+        </span>
       </span>
     </h1>
   )

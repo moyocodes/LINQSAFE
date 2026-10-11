@@ -33,7 +33,7 @@ export function Wordmark({ className = '' }) {
 //
 // `onDark` forces the light version for a surface that is dark in both themes (the footer, a photo
 // header). Left off, it follows the page theme.
-export function LogoLockup({ className = 'h-7 w-auto sm:h-8', onDark = false }) {
+export function LogoLockup({ className = 'h-10 w-auto sm:h-11', onDark = false }) {
   const img = 'absolute inset-0 size-full object-contain object-left'
   return (
     <span className={`relative inline-block ${className}`} style={{ aspectRatio: '1186 / 356' }}>

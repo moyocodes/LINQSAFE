@@ -85,15 +85,17 @@ function Node({ n, i, p, live }) {
     <motion.div className="absolute z-10 -translate-x-1/2 -translate-y-1/2" style={{ left: x, top: y, opacity, scale }}>
       <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 3 + (i % 3), repeat: Infinity, ease: 'easeInOut', delay: i * 0.3 }}
         className="relative flex flex-col items-center gap-1.5">
-        <span className="rounded-full bg-white/70 p-1 shadow-[0_10px_30px_-12px_hsl(20_35%_18%/.35)] ring-1 ring-white backdrop-blur-sm">
+        {/* No ring or backdrop chrome around the icon - the shadow alone lifts it off the page. */}
+        <span className="rounded-full p-1 shadow-[0_10px_30px_-12px_hsl(20_35%_18%/.35)]">
           <TypeBadge type={n.type} className="size-9 sm:size-11" />
         </span>
         <span className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/60">{n.label}</span>
         <AnimatePresence>
           {live && (
+            // A quiet count, not a UI badge: no fill or border, just ink at low opacity.
             <motion.span initial={{ opacity: 0, y: 6, scale: 0.6 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.6 }}
               transition={{ type: 'spring', stiffness: 380, damping: 18, delay: i * 0.06 }}
-              className="absolute -right-6 -top-3 rounded-full bg-saffron px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-ink shadow-lg">
+              className="absolute -right-6 -top-3 font-mono text-[10px] font-semibold tabular-nums text-foreground/55">
               +<Counter to={n.clicks} />
             </motion.span>
           )}
