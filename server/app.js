@@ -458,7 +458,12 @@ app.post('/api/register', authLimiter, async (req, res) => {
 app.post('/api/login', authLimiter, async (req, res) => {
   const { password } = req.body
   const email = String(req.body.email ?? req.body.username ?? '').trim().toLowerCase()
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Enter the email you signed up with' })
+  // Someone typing their username here is the common mistake, so say what to do instead of just
+  // rejecting it. This reveals nothing: it's a test of what they typed, not of any account.
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return res.status(400).json({ error: email && !email.includes('@')
+      ? 'Log in with your email address, not your username.'
+      : 'Enter the email you signed up with' })
   const [rows] = await pool.query('SELECT id, password_hash, token_version FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1', [email])
   const user = rows[0]
   if (!user || !(await bcrypt.compare(password || '', user.password_hash)))

@@ -15,6 +15,9 @@ export default function Auth({ mode }) {
   const isLogin = mode === 'login'
   useTitle(isLogin ? 'Log in' : 'Sign up')
   const [form, setForm] = useState(() => ({ username: new URLSearchParams(location.search).get('u')?.replace(/[^a-z0-9_]/gi, '').slice(0, 32) || '', email: '', password: '' }))
+  // A /login?u=name link (from a public page) can't prefill the email, but it can greet them by name
+  // so the page doesn't look like it ignored the link.
+  const hintedName = isLogin ? new URLSearchParams(location.search).get('u')?.replace(/[^a-z0-9_]/gi, '').slice(0, 32) || '' : ''
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [agree, setAgree] = useState(false)
@@ -103,6 +106,13 @@ export default function Auth({ mode }) {
                       autoFocus={isLogin} autoCapitalize="none" autoCorrect="off" spellCheck={false}
                       aria-invalid={!!error} aria-describedby={error ? 'auth-error' : undefined}
                       onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                    {/* Usernames are public, so they aren't accepted for log-in. Say so here rather
+                        than letting people find out by failing. */}
+                    {isLogin && <p className="text-xs text-muted-foreground">
+                      {hintedName
+                        ? <>Welcome back, <span className="font-medium text-foreground">@{hintedName}</span>. Log in with the email you signed up with.</>
+                        : 'The email you signed up with, not your username.'}
+                    </p>}
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-baseline justify-between">
