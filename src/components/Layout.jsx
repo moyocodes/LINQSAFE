@@ -163,7 +163,13 @@ function Footer() {
       </motion.div>
 
       <div className="container relative flex flex-wrap items-center justify-between gap-4 border-t border-white/10 py-6 text-xs text-[hsl(36_20%_70%)]">
-        <p>© {new Date().getFullYear()} {SITE.company}. All rights reserved.</p>
+        <div className="space-y-1">
+          <p>© {new Date().getFullYear()} {SITE.company}. All rights reserved.</p>
+          <p>{SITE.name} is a product of {SITE.parentCompany}.</p>
+          <p>
+            Contact <a href={`mailto:${SITE.contactEmail}`} className="underline underline-offset-2 hover:text-[hsl(36_30%_94%)]">{SITE.contactEmail}</a>
+          </p>
+        </div>
         <motion.button type="button" whileHover={{ y: -3 }} whileTap={{ scale: 0.9 }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 hover:bg-white/5">
           <ArrowUp className="size-3.5" aria-hidden="true" /> Back to top
