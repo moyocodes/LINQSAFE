@@ -4,13 +4,14 @@
 //
 // The key lives only on the server (ANTHROPIC_API_KEY). Without it the endpoint reports that the
 // feature is off rather than failing at the request, so a stage without a key degrades quietly.
-import Anthropic from '@anthropic-ai/sdk'
-
+// The SDK is loaded on first use, not at startup. The server's node_modules is installed by hand
+// (npm run deps), so a deploy can land this file before the package exists; a top-level import would
+// then stop the whole app from booting. This way a missing package only disables bio suggestions.
 const MODEL = 'claude-opus-5-5'
 export const bioAvailable = () => !!process.env.ANTHROPIC_API_KEY
 
-let client = null
-const getClient = () => (client ||= new Anthropic())
+let clientPromise = null
+const getClient = () => (clientPromise ||= import('@anthropic-ai/sdk').then((m) => new m.default()))
 
 // Three choices, so it reads as a starting point to pick from rather than one "right" answer.
 const COUNT = 3
@@ -67,7 +68,7 @@ export function createBio({ pool }) {
       return res.status(400).json({ error: 'Add your name and what you do first, then try again.' })
 
     try {
-      const r = await getClient().messages.create({
+      const r = await (await getClient()).messages.create({
         model: MODEL,
         max_tokens: 1000,
         output_config: {
@@ -100,6 +101,8 @@ export function createBio({ pool }) {
     } catch (e) {
       // Never surface the provider's error text to the page; log it for us, show a plain line to them.
       console.error('bio suggest failed:', e.status || '', e.message)
+      // The SDK isn't installed on this server yet (run npm run deps).
+      if (e.code === 'ERR_MODULE_NOT_FOUND') return res.status(503).json({ error: 'Bio suggestions are not switched on yet.' })
       if (e.status === 429) return res.status(429).json({ error: 'Busy right now. Try again in a moment.' })
       res.status(502).json({ error: "Couldn't write a bio just then. Please try again." })
     }
