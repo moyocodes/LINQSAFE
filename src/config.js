@@ -9,8 +9,10 @@ export const SITE = {
   // Public contact address shown in the footer. `email` above stays the support/reply-to address.
   contactEmail: 'hello@linqsafe.com',
   company: 'linqsafe',
-  // Legal owner, shown in the footer line.
+  // Legal owner, shown in the footer line. The registration number lets anyone check the site against
+  // the business registration, so it must match the certificate exactly.
   parentCompany: 'Motechs Digital Enterprise',
+  parentCompanyReg: 'BN 9898631',
   // Shown on /pricing in naira, e.g. '₦3,000 / month'. Leave empty until payments are connected; the page then says "Coming soon".
   proPrice: '',
   legalUpdated: 'October 7, 2026',

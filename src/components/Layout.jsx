@@ -165,7 +165,7 @@ function Footer() {
       <div className="container relative flex flex-wrap items-center justify-between gap-4 border-t border-white/10 py-6 text-xs text-[hsl(36_20%_70%)]">
         <div className="space-y-1">
           <p>© {new Date().getFullYear()} {SITE.company}. All rights reserved.</p>
-          <p>{SITE.name} is a product of {SITE.parentCompany}.</p>
+          <p>{SITE.name} is a product of {SITE.parentCompany} ({SITE.parentCompanyReg}).</p>
           <p>
             Contact <a href={`mailto:${SITE.contactEmail}`} className="underline underline-offset-2 hover:text-[hsl(36_30%_94%)]">{SITE.contactEmail}</a>
           </p>

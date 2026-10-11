@@ -97,7 +97,13 @@ export function createSeo({ pool, dist }) {
     if (PAGES[p]) {
       const ld = p === '/' ? [
         { '@context': 'https://schema.org', '@type': 'WebSite', name: NAME, url: `${base}/`, description: DEFAULT_DESC },
-        { '@context': 'https://schema.org', '@type': 'Organization', name: NAME, url: `${base}/`, logo: `${base}/icon-512.png`, email: 'support@linqsafe.com' },
+        // parentOrganization carries the legal owner and its registration number, so the structured
+        // data says the same thing as the footer to anyone checking the site against the registration.
+        {
+          '@context': 'https://schema.org', '@type': 'Organization', name: NAME, url: `${base}/`,
+          logo: `${base}/icon-512.png`, email: 'support@linqsafe.com',
+          parentOrganization: { '@type': 'Organization', name: 'Motechs Digital Enterprise', identifier: 'BN 9898631' },
+        },
       ] : []
       return { html: block({ ...PAGES[p], url, image, noindex, ld }), status: 200 }
     }
