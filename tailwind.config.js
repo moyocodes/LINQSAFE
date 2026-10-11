@@ -3,6 +3,9 @@ import animate from 'tailwindcss-animate'
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
+  // The app sets data-theme="dark" on <html> (src/lib/theme.js), so dark: follows that, not the OS.
+  // A public page in a light template keeps its own colours inside .theme-light regardless.
+  darkMode: ['selector', ':root[data-theme="dark"]'],
   theme: {
     container: { center: true, padding: '1rem', screens: { '2xl': '1200px' } },
     extend: {

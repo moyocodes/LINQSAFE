@@ -3,6 +3,7 @@
 // Drawn as SVG and rendered with resvg using the brand fonts in server/assets/fonts (OFL).
 // resvg is optional: if it isn't installed yet (cPanel: Run JS script → deps), previews use /og-image.png.
 import path from 'node:path'
+import fsSync from 'node:fs'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import * as icons from 'simple-icons'
@@ -53,9 +54,22 @@ function lines(text, width, max = 2) {
 }
 
 // The logo mark from src/components/Logo.jsx, at 64×64.
-const LOGO = `<rect width="64" height="64" rx="16" fill="#2B4FAF"/>
-  <g stroke="#F2B88C" stroke-width="4" stroke-linecap="round" fill="none"><path d="M32 34V16"/><path d="M32 34 17 44"/><path d="M32 34l15 10"/></g>
-  <circle cx="32" cy="34" r="7" fill="#F2B88C"/><circle cx="32" cy="14" r="5" fill="#F2D29A"/><circle cx="15" cy="45" r="5" fill="#6CC3BA"/><circle cx="49" cy="45" r="5" fill="#F2D29A"/>`
+// The brand mark, embedded from public/logo-mark.png so these cards use the same artwork as the
+// site rather than a second copy drawn in code. The file's ink sits in a 548x754 box inside
+// 2000x2000, so it's cropped to that and scaled into the 64x64 the card lays out.
+const markData = (() => {
+  try {
+    const p = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'logo-mark.png')
+    return `data:image/png;base64,${fsSync.readFileSync(p).toString('base64')}`
+  } catch { return '' } // no build output next to the server (dev): cards simply omit the mark
+})()
+const LOGO = markData
+  ? (() => {
+      const INK = { x: 726, y: 623, w: 548, h: 754 }
+      const h = 64, w = h * (INK.w / INK.h), s = w / INK.w
+      return `<image href="${markData}" x="${((64 - w) / 2 - INK.x * s).toFixed(2)}" y="${(-INK.y * s).toFixed(2)}" width="${(2000 * s).toFixed(2)}" height="${(2000 * s).toFixed(2)}"/>`
+    })()
+  : ''
 
 function cardSvg({ name, handle, line, bio, avatar, links, domain }) {
   const icons = platformIcons(links)

@@ -140,7 +140,8 @@ function Footer() {
         className="container relative grid gap-10 pb-10 pt-16 md:grid-cols-[1.4fr_1fr_1fr]"
       >
         <motion.div variants={reveal}>
-          <div className="[&_a]:text-[hsl(36_30%_94%)]"><Logo /></div>
+          {/* The footer is dark in both themes, so it always takes the light wordmark. */}
+          <div className="[&_a]:text-[hsl(36_30%_94%)]"><Logo onDark /></div>
           <p className="mt-4 max-w-xs text-sm text-[hsl(36_20%_75%)]">{SITE.tagline} Made for creators and small businesses.</p>
           <motion.div whileHover={{ x: 3 }} className="mt-6 inline-block">
             <Link to="/signup" className="group inline-flex items-center gap-2 rounded-full bg-[hsl(36_30%_94%)] px-5 py-2.5 text-sm font-semibold text-[hsl(20_16%_12%)]">

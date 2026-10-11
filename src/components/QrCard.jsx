@@ -8,29 +8,30 @@ import { SITE } from '@/config'
 
 const INK = '#261F1C'
 const COBALT = '#2B4FAF'
-const LOGO = { tile: '#2B4FAF', a: '#F2D29A', b: '#F2A07E', c: '#6CC3BA' }
 
-// The hub mark (same shapes as LogoMark) drawn onto a canvas at (x, y), `size` px square.
-function drawLogo(ctx, x, y, size) {
-  const s = size / 64
-  ctx.save()
-  ctx.translate(x, y)
-  ctx.scale(s, s)
-  ctx.fillStyle = LOGO.tile
-  ctx.beginPath(); ctx.roundRect(0, 0, 64, 64, 16); ctx.fill()
-  const g = ctx.createLinearGradient(0, 0, 64, 64)
-  g.addColorStop(0, LOGO.a); g.addColorStop(1, LOGO.b)
-  ctx.strokeStyle = g; ctx.lineWidth = 4; ctx.lineCap = 'round'
-  ctx.beginPath(); ctx.moveTo(32, 34); ctx.lineTo(32, 16); ctx.moveTo(32, 34); ctx.lineTo(17, 44); ctx.moveTo(32, 34); ctx.lineTo(47, 44); ctx.stroke()
-  const dot = (cx, cy, r, fill) => { ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill() }
-  dot(32, 34, 7, g); dot(32, 14, 5, LOGO.a); dot(15, 45, 5, LOGO.c); dot(49, 45, 5, LOGO.a)
-  ctx.restore()
+// The brand mark, loaded once from /logo-mark.png so the code's centre carries the same artwork as
+// the site. The file's ink sits in a 548x754 box inside 2000x2000, so only that part is drawn.
+const MARK_BOX = { x: 726, y: 623, w: 548, h: 754 }
+let markPromise = null
+const loadMark = () => (markPromise ||= new Promise((resolve) => {
+  const img = new Image()
+  img.onload = () => resolve(img)
+  img.onerror = () => resolve(null) // the card still renders, just without the mark
+  img.src = '/logo-mark.png'
+}))
+
+// Draw the mark centred in a `size` box at (x, y), keeping its proportions.
+function drawLogo(ctx, mark, x, y, size) {
+  if (!mark) return
+  const h = size, w = h * (MARK_BOX.w / MARK_BOX.h)
+  ctx.drawImage(mark, MARK_BOX.x, MARK_BOX.y, MARK_BOX.w, MARK_BOX.h, x + (size - w) / 2, y, w, h)
 }
 
 // A printable card: the code with the logo in its centre, the site's wordmark under it and the
 // username small and quiet. High error correction keeps it scannable with the logo covering the middle.
 export async function renderCard(url, username) {
   await document.fonts?.ready
+  const mark = await loadMark()
   const W = 1080, H = 1320, pad = 90, qr = W - pad * 2
   const canvas = document.createElement('canvas')
   canvas.width = W; canvas.height = H
@@ -47,7 +48,7 @@ export async function renderCard(url, username) {
   const logo = Math.round(qr * 0.2), lx = (W - logo) / 2, ly = pad + (qr - logo) / 2
   ctx.fillStyle = '#FCFAF8'
   ctx.beginPath(); ctx.roundRect(lx - 18, ly - 18, logo + 36, logo + 36, 36); ctx.fill()
-  drawLogo(ctx, lx, ly, logo)
+  drawLogo(ctx, mark, lx, ly, logo)
 
   // Wordmark "linqsafe." with the cobalt full stop, then the username, low-key.
   const base = pad + qr + 120

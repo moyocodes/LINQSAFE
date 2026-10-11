@@ -2,53 +2,56 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { SITE } from '@/config'
 
-// Hub mark: one centre linking out to three nodes ("one link for everything").
-// Colours come from --logo-* in styles.css: cobalt tile in light mode, cream tile with cobalt wiring in dark mode.
+// The brand logo files in /public, all transparent PNGs:
+//   logo-mark.png           the square mark on its own
+//   logo-wordmark.png       mark + "LINQSAFE" in navy, for light backgrounds
+//   logo-wordmark-dark.png  the same with cream letters, for dark backgrounds
+// The mark itself is blue, orange and rust, which reads on either, so only the word needs a variant.
+const MARK = '/logo-mark.png'
+const WORDMARK = '/logo-wordmark.png'
+const WORDMARK_DARK = '/logo-wordmark-dark.png'
+
 export function LogoMark({ className = 'size-9', animate = true }) {
-  const draw = (i) => ({
-    initial: animate ? { pathLength: 0 } : false,
-    animate: { pathLength: 1 },
-    transition: { duration: 0.6, delay: 0.15 + i * 0.12 },
-  })
-  const pop = (i) => ({
-    initial: animate ? { scale: 0 } : false,
-    animate: { scale: 1 },
-    transition: { type: 'spring', stiffness: 400, damping: 15, delay: 0.5 + i * 0.1 },
-  })
   return (
-    <svg viewBox="0 0 64 64" className={className} role="img" aria-label={`${SITE.name} logo`}>
-      <defs>
-        <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" style={{ stopColor: 'var(--logo-a)' }} />
-          <stop offset="1" style={{ stopColor: 'var(--logo-b)' }} />
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="16" style={{ fill: 'var(--logo-tile)' }} />
-      <g stroke="url(#logo-g)" strokeWidth="4" strokeLinecap="round" fill="none">
-        <motion.path d="M32 34V16" {...draw(0)} />
-        <motion.path d="M32 34 17 44" {...draw(1)} />
-        <motion.path d="M32 34l15 10" {...draw(2)} />
-      </g>
-      <circle cx="32" cy="34" r="7" fill="url(#logo-g)" />
-      <motion.circle cx="32" cy="14" r="5" style={{ fill: 'var(--logo-a)', transformOrigin: '32px 14px' }} {...pop(0)} />
-      <motion.circle cx="15" cy="45" r="5" style={{ fill: 'var(--logo-c)', transformOrigin: '15px 45px' }} {...pop(1)} />
-      <motion.circle cx="49" cy="45" r="5" style={{ fill: 'var(--logo-a)', transformOrigin: '49px 45px' }} {...pop(2)} />
-    </svg>
+    <motion.img
+      src={MARK} alt={`${SITE.name} logo`} width={2000} height={2000} loading="eager" decoding="async"
+      initial={animate ? { opacity: 0, scale: 0.9 } : false}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      className={`${className} object-contain`}
+    />
   )
 }
 
-// The wordmark is "linqsafe." with an accent full stop.
+// The word on its own, for places that set their own type (the footer watermark).
 export function Wordmark({ className = '' }) {
   return <span className={className}>{SITE.name}<span className="text-accent">.</span></span>
 }
 
-export default function Logo() {
+// The full lock-up. Both variants are rendered and CSS shows one, so the right logo is painted on
+// the first frame - no flash of the wrong one while JavaScript works out the theme.
+//
+// `onDark` forces the light version for a surface that is dark in both themes (the footer, a photo
+// header). Left off, it follows the page theme.
+export function LogoLockup({ className = 'h-7 w-auto sm:h-8', onDark = false }) {
+  const img = 'absolute inset-0 size-full object-contain object-left'
   return (
-    <Link to="/" className="group flex items-center gap-2.5 font-display text-lg font-extrabold tracking-tight" aria-label={`${SITE.name} home`}>
-      <motion.span whileHover={{ rotate: 12, scale: 1.08 }} whileTap={{ scale: 0.92 }} transition={{ type: 'spring', stiffness: 300, damping: 12 }} className="block">
-        <LogoMark />
+    <span className={`relative inline-block ${className}`} style={{ aspectRatio: '1186 / 356' }}>
+      <img src={WORDMARK_DARK} alt="" aria-hidden="true" width={1186} height={356} decoding="async"
+        className={`${img} ${onDark ? '' : 'hidden dark:block'}`} />
+      <img src={WORDMARK} alt={SITE.name} width={1186} height={356} loading="eager" decoding="async"
+        className={`${img} ${onDark ? 'hidden' : 'dark:hidden'}`} />
+    </span>
+  )
+}
+
+export default function Logo({ onDark = false }) {
+  return (
+    <Link to="/" className="group flex items-center" aria-label={`${SITE.name} home`}>
+      <motion.span whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 15 }} className="block">
+        <LogoLockup onDark={onDark} />
       </motion.span>
-      <Wordmark />
     </Link>
   )
 }
