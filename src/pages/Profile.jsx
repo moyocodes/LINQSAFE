@@ -150,9 +150,10 @@ export function ProfileView({ data: raw, layout, theme: chosen, preview = null, 
             </motion.div>
           ) : (
             // A small linqsafe mark for visitors; opens the site in a new tab so they keep this page.
+            // No tile behind it - the mark's own artwork reads fine straight on the page.
             <Link to="/" target="_blank" rel="noopener" aria-label="Made with linqsafe" title="Made with linqsafe"
-              className="grid size-8 place-items-center rounded-lg opacity-70 transition-opacity hover:opacity-100">
-              <LogoMark className="size-5" animate={false} />
+              className="block opacity-80 transition-opacity hover:opacity-100">
+              <LogoMark className="size-8" animate={false} />
             </Link>
           )}
           <ShareButton url={location.href} title={name} />

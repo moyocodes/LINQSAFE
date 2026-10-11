@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { SITE } from '@/config'
 
 // The brand logo files in /public, all transparent PNGs:
@@ -11,13 +11,23 @@ const MARK = '/logo-mark.png'
 const WORDMARK = '/logo-wordmark.png'
 const WORDMARK_DARK = '/logo-wordmark-dark.png'
 
+// The mark alone (no wordmark) is raster artwork, so it can't draw itself stroke-by-stroke the way the
+// old hand-drawn SVG did. Instead it eases in, then idles in a slow, slight float + tilt - small enough
+// to read as "alive" without competing with whatever it sits next to. `animate={false}` for small UI
+// chrome (the footer credit, the corner mark on a public page) that should just sit still.
 export function LogoMark({ className = 'size-9', animate = true }) {
+  const reduce = useReducedMotion()
+  const loop = animate && !reduce
   return (
     <motion.img
       src={MARK} alt={`${SITE.name} logo`} width={2000} height={2000} loading="eager" decoding="async"
       initial={animate ? { opacity: 0, scale: 0.9 } : false}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      animate={loop ? { opacity: 1, scale: 1, y: [0, -4, 0], rotate: [0, -3, 0, 3, 0] } : { opacity: 1, scale: 1 }}
+      transition={loop
+        ? { opacity: { duration: 0.4 }, scale: { type: 'spring', stiffness: 300, damping: 20 },
+            y: { duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 0.6 },
+            rotate: { duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 0.6 } }
+        : { type: 'spring', stiffness: 300, damping: 20 }}
       className={`${className} object-contain`}
     />
   )

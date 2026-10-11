@@ -71,7 +71,7 @@ function layout({ preheader, eyebrow, heading, body, footnote, person }) {
       </td>
       ${personChip(person)}
     </tr></table></td></tr>
-    <tr><td style=""background:${C.card};border:1px solid ${C.line};border-radius:10px;padding:36px 32px">
+    <tr><td style="background:${C.card};border:1px solid ${C.line};border-radius:10px;padding:36px 32px">
       ${eyebrow ? `<p style="margin:0 0 10px;font:600 11px ${MONO};letter-spacing:.14em;text-transform:uppercase;color:${C.cobalt}">${esc(eyebrow)}</p>` : ''}
       <h1 style="margin:0 0 20px;font:600 30px/1.15 ${SERIF};color:${C.ink};letter-spacing:-.01em">${heading}</h1>
       ${body}

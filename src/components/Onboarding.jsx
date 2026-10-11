@@ -77,11 +77,15 @@ export default function Onboarding({ me, onDone }) {
   }
 
   return (
-    <motion.div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    // The dialog is capped to the viewport height (dvh, so a phone's keyboard/URL bar doesn't change
+    // it) with its own internal scroll, header and footer pinned. It used to have no height limit and
+    // overflow-hidden on the card, so on a phone the template step - a legend, the theme row and 8
+    // cards - ran well past the screen with no way to scroll to it or ever reach Next/Finish.
+    <motion.div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-0 backdrop-blur-sm sm:p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <motion.div role="dialog" aria-modal="true" aria-labelledby="onb-title"
         initial={{ y: 30, scale: 0.97 }} animate={{ y: 0, scale: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-        className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-card shadow-2xl">
-        <div className="bg-gradient-to-br from-rose/50 via-card to-lilac/40 px-6 pb-4 pt-6">
+        className="relative flex h-[100dvh] w-full max-w-lg flex-col overflow-hidden bg-card shadow-2xl sm:h-auto sm:max-h-[min(44rem,90dvh)] sm:rounded-3xl">
+        <div className="shrink-0 bg-gradient-to-br from-rose/50 via-card to-lilac/40 px-6 pb-4 pt-6">
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-accent"><Sparkles className="size-3.5" aria-hidden="true" /> Set up your page</p>
           <h2 id="onb-title" className="mt-1 text-2xl font-bold">Step {step + 1} of {STEPS.length}: {STEPS[step]}</h2>
           <div className="mt-4 flex gap-1.5" aria-hidden="true">
@@ -93,7 +97,7 @@ export default function Onboarding({ me, onDone }) {
           </div>
         </div>
 
-        <div className="relative min-h-[19rem] px-6 py-5">
+        <div className="relative min-h-[19rem] flex-1 overflow-y-auto px-6 py-5">
           <AnimatePresence mode="wait" custom={dir} initial={false}>
             <motion.div key={step} custom={dir}
               initial={{ opacity: 0, x: 40 * dir }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 * dir }} transition={{ duration: 0.25 }}
@@ -181,8 +185,8 @@ export default function Onboarding({ me, onDone }) {
           </AnimatePresence>
         </div>
 
-        {error && <p role="alert" className="px-6 text-sm font-medium text-destructive">{error}</p>}
-        <div className="flex items-center justify-between gap-3 border-t px-6 py-4">
+        {error && <p role="alert" className="shrink-0 px-6 text-sm font-medium text-destructive">{error}</p>}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t px-6 py-4">
           <button type="button" onClick={() => finish(true)} disabled={busy} className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Skip for now</button>
           <div className="flex gap-2">
             {step > 0 && <Button variant="outline" onClick={() => go(step - 1)} disabled={busy}><ArrowLeft /> Back</Button>}

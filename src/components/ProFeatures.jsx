@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, CircleCheck, Crown, Eye, Image, Lock, Loader2, Plus, Sparkles, Trash2, UserRound, X } from 'lucide-react'
+import { Check, ChevronUp, CircleCheck, Crown, Eye, Image, Lock, Loader2, Plus, Sparkles, Trash2, UserRound, X } from 'lucide-react'
 import { api } from '@/api'
 import PhoneInput from '@/components/PhoneInput'
 import { useErrorToast } from '@/lib/toast'
@@ -138,44 +138,121 @@ export function UnlockChip({ feature: key, label = 'Add' }) {
   )
 }
 
-// Sticky bar with everything selected: pick the period, see the total, pay once.
+// Sticky bar with everything selected: tap it to open the cart drawer (see every item, remove any one
+// of them), pick the period, see the total, pay once.
 function CartBar() {
   const b = useBilling()
+  const [open, setOpen] = useState(false)
   const show = b.cart.length > 0 || b.done || (b.error && b.cart.length > 0)
+  useEffect(() => { if (!b.cart.length) setOpen(false) }, [b.cart.length])
   return (
-    <AnimatePresence>
-      {show && (
-        <motion.div role="region" aria-label="Selected features"
-          initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-          className="paper fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-md p-3 shadow-2xl sm:p-4">
-          {b.cart.length > 0 ? (<>
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="min-w-0 flex-1 text-sm">
-                <b>{b.cart.length} selected:</b> <span className="text-muted-foreground">{b.cart.map((k) => b.feature(k)?.name).join(', ')}</span>
-              </p>
-              <button type="button" onClick={() => b.cart.forEach(b.toggle)} className="text-xs text-muted-foreground underline-offset-4 hover:underline">Clear</button>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div role="radiogroup" aria-label="How long" className="grid flex-1 grid-cols-4 rounded-[4px] bg-muted p-1">
-                {b.cfg.durations.map((m) => (
-                  <button key={m} type="button" role="radio" aria-checked={b.months === m} onClick={() => b.setMonths(m)}
-                    className={`relative rounded-[3px] py-1 text-xs font-semibold ${b.months === m ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-                    {b.months === m && <motion.span layoutId="cart-dur" className="absolute inset-0 rounded-[3px] bg-card shadow-sm" />}
-                    <span className="relative">{m} mo{b.cfg.discounts?.[m] > 0 ? ` −${b.cfg.discounts[m]}%` : ''}</span>
-                  </button>
-                ))}
+    <>
+      <AnimatePresence>
+        {show && (
+          <motion.div role="region" aria-label="Selected features"
+            initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+            className="paper fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-md p-3 shadow-2xl sm:p-4">
+            {b.cart.length > 0 ? (<>
+              <div className="flex flex-wrap items-center gap-3">
+                <button type="button" onClick={() => setOpen(true)}
+                  className="group flex min-w-0 flex-1 items-center gap-1.5 rounded-md py-0.5 text-left text-sm hover:text-accent">
+                  <b className="shrink-0">{b.cart.length} selected</b>
+                  <span className="min-w-0 truncate text-muted-foreground group-hover:text-accent/70">{b.cart.map((k) => b.feature(k)?.name).join(', ')}</span>
+                  <ChevronUp className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5" aria-hidden="true" />
+                </button>
+                <button type="button" onClick={() => b.cart.forEach(b.toggle)} className="shrink-0 text-xs text-muted-foreground underline-offset-4 hover:underline">Clear</button>
               </div>
-              <Button onClick={b.pay} disabled={b.busy} className="bg-accent text-accent-foreground hover:bg-accent/90">
-                {b.busy && <Loader2 className="animate-spin" aria-hidden="true" />} Pay {naira(b.total)}
-              </Button>
-            </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">One secure Paystack payment for everything selected. Buying more time adds to what's left.</p>
-          </>) : (
-            <p role="status" className="flex items-center gap-2 text-sm font-medium text-emerald-800"><CircleCheck className="size-4" aria-hidden="true" />{b.done}</p>
-          )}
-        </motion.div>
-      )}
-    </AnimatePresence>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <div role="radiogroup" aria-label="How long" className="grid flex-1 grid-cols-4 rounded-[4px] bg-muted p-1">
+                  {b.cfg.durations.map((m) => (
+                    <button key={m} type="button" role="radio" aria-checked={b.months === m} onClick={() => b.setMonths(m)}
+                      className={`relative rounded-[3px] py-1 text-xs font-semibold ${b.months === m ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                      {b.months === m && <motion.span layoutId="cart-dur" className="absolute inset-0 rounded-[3px] bg-card shadow-sm" />}
+                      <span className="relative">{m} mo{b.cfg.discounts?.[m] > 0 ? ` −${b.cfg.discounts[m]}%` : ''}</span>
+                    </button>
+                  ))}
+                </div>
+                <Button onClick={b.pay} disabled={b.busy} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                  {b.busy && <Loader2 className="animate-spin" aria-hidden="true" />} Pay {naira(b.total)}
+                </Button>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">One secure Paystack payment for everything selected. Buying more time adds to what's left.</p>
+            </>) : (
+              <p role="status" className="flex items-center gap-2 text-sm font-medium text-emerald-800"><CircleCheck className="size-4" aria-hidden="true" />{b.done}</p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>{open && <CartDrawer onClose={() => setOpen(false)} />}</AnimatePresence>
+    </>
+  )
+}
+
+// Every item in the cart, each with its own remove button, reachable from anywhere on the dashboard
+// (the CartBar stays fixed, so this is never more than a tap away). A side drawer on wide screens, a
+// bottom sheet on phones, closes on Escape, a backdrop tap, or Clear/Pay emptying the cart.
+function CartDrawer({ onClose }) {
+  const b = useBilling()
+  const panel = useRef(null)
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    const t = setTimeout(() => panel.current?.focus(), 60)
+    document.body.style.overflow = 'hidden'
+    return () => { window.removeEventListener('keydown', onKey); clearTimeout(t); document.body.style.overflow = '' }
+  }, [onClose])
+  return createPortal(
+    <motion.div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-stretch sm:justify-end"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+      <motion.div ref={panel} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Your cart" onClick={(e) => e.stopPropagation()}
+        initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+        className="paper relative flex max-h-[80vh] w-full flex-col overflow-hidden rounded-t-2xl border-0 shadow-2xl outline-none sm:h-full sm:max-h-none sm:w-96 sm:rounded-none sm:rounded-l-2xl">
+        {/* A quiet wash behind the header only, echoing the onboarding modal's gradient band - just
+            enough warmth that the panel doesn't read as a flat white sheet next to the paper texture. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-rose/[0.14] via-lilac/[0.07] to-transparent" />
+        <div className="relative flex items-center justify-between gap-3 px-5 pb-3 pt-5">
+          <p className="font-display text-base font-semibold">Your cart <span className="font-sans text-xs font-normal text-muted-foreground">· {b.cart.length}</span></p>
+          <button type="button" onClick={onClose} aria-label="Close" className="-mr-1.5 grid size-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"><X className="size-3.5" aria-hidden="true" /></button>
+        </div>
+        <ul className="flex-1 overflow-y-auto px-2 pb-1">
+          {b.cart.map((key) => {
+            const f = b.feature(key)
+            return (
+              <li key={key} className="group flex items-center gap-2 rounded-lg px-3 py-2.5 hover:bg-muted/60">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium leading-tight">{f?.name || key}</p>
+                  <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">{naira(b.price(key))} <span className="opacity-70">/ {b.months} mo</span></p>
+                </div>
+                <button type="button" onClick={() => b.toggle(key)} aria-label={`Remove ${f?.name || key}`}
+                  className="shrink-0 rounded-full p-1.5 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:!bg-destructive/10 hover:!text-destructive focus-visible:text-muted-foreground">
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+        <div className="space-y-3 border-t border-foreground/[0.07] px-5 py-4">
+          <div role="radiogroup" aria-label="How long" className="grid grid-cols-4 rounded-full bg-muted/70 p-0.5 text-[11px]">
+            {b.cfg.durations.map((m) => (
+              <button key={m} type="button" role="radio" aria-checked={b.months === m} onClick={() => b.setMonths(m)}
+                className={`relative rounded-full py-1.5 font-semibold transition-colors ${b.months === m ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                {b.months === m && <motion.span layoutId="cart-drawer-dur" className="absolute inset-0 rounded-full bg-card shadow-sm" transition={{ type: 'spring', stiffness: 500, damping: 36 }} />}
+                <span className="relative">{m}mo{b.cfg.discounts?.[m] > 0 ? ` −${b.cfg.discounts[m]}%` : ''}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-[.08em] text-muted-foreground">Total</span>
+            <span className="font-display text-xl font-semibold tabular-nums">{naira(b.total)}</span>
+          </div>
+          <Button onClick={() => { onClose(); b.pay() }} disabled={b.busy || !b.cart.length} className="h-11 w-full rounded-full bg-accent text-accent-foreground hover:bg-accent/90">
+            {b.busy && <Loader2 className="animate-spin" aria-hidden="true" />} Pay {naira(b.total)}
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>,
+    document.body,
   )
 }
 
