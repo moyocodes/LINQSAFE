@@ -21,6 +21,7 @@ import { FREE_LINK_LIMIT, TEMPLATES, has } from '@/lib/plans'
 import { LINK_TYPES, TypeBadge, detectType } from '@/lib/linkTypes'
 import PageLoader from '@/components/PageLoader'
 import useKeyboardOpen from '@/lib/useKeyboardOpen'
+import BioSuggest from '@/components/BioSuggest'
 import { useConfirm } from '@/components/ui/confirm'
 
 // What your link does: show your page (default), or send visitors straight to one of your links.
@@ -716,6 +717,7 @@ export default function Admin() {
             <div className="space-y-2">
               <Label htmlFor="bio">Bio</Label>
               <Input id="bio" placeholder="Designer & creator. Sharing my work and ideas." maxLength={255} value={me.bio} onChange={(e) => setMe({ ...me, bio: e.target.value })} />
+              {me.bio_ai && <BioSuggest me={me} onPick={(bio) => setMe({ ...me, bio })} />}
             </div>
             <AvatarPicker value={me.avatar_url || ''} name={me.display_name || me.username} onChange={(avatar_url) => setMe({ ...me, avatar_url })} />
             <AvatarPicker shape="cover" id="cover" value={me.cover_url || ''} onChange={(cover_url) => setMe({ ...me, cover_url })} />

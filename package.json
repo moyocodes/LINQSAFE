@@ -22,6 +22,7 @@
     "email:test": "node server/scripts/email-test.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "@paystack/inline-js": "^2.26.0",
     "@radix-ui/react-label": "^2.1.16",
     "@radix-ui/react-slot": "^1.4.0",

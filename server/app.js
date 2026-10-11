@@ -16,6 +16,7 @@ import { send } from './mailer.js'
 import * as Email from './emails.js'
 import { createSeo, indexable } from './seo.js'
 import { createOg } from './og.js'
+import { bioAvailable, createBio } from './bio.js'
 import { DURATIONS, FEATURES, FEATURE_KEYS, LAYOUT_FEATURE, featureByKey, pricing } from './features.js'
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -179,6 +180,9 @@ app.use('/api', rateLimit({ windowMs: 60_000, limit: 600, standardHeaders: 'draf
 const authLimiter = limiter(15 * 60_000, 30, 'Too many attempts, try again in a few minutes.')
 const clickLimiter = limiter(60_000, 30, 'Too many clicks.')
 const contactLimiter = limiter(60 * 60_000, 5, 'You have sent a few messages already. Please try again later.')
+// Each suggestion is a paid model call, so it's capped tightly per IP. Writing a bio is a
+// once-in-a-while job: a handful of tries is plenty, and this bounds what a loop can spend.
+const bioLimiter = limiter(60 * 60_000, 12, 'You have asked for a few bios already. Please try again later.')
 
 // Usernames that would collide with site pages or static files.
 const LINK_TYPES = ['instagram', 'threads', 'tiktok', 'youtube', 'snapchat', 'pinterest', 'x', 'facebook', 'linkedin', 'github', 'whatsapp', 'music', 'store', 'website', 'other']
@@ -541,7 +545,7 @@ app.get('/api/me', auth, async (req, res) => {
   const { limits } = await currentPricing()
   const { username_changes: _n, username_changed_at: _at, ...me } = user
   res.json({ ...me, is_owner: ownsSite(user), next_username_change: nextUsernameChange(user), limits, clicks_this_month: await clicksThisMonth(req.userId), testimonials: parseList(user.testimonials),
-    features: await featureAccess(req.userId), links })
+    features: await featureAccess(req.userId), links, bio_ai: bioAvailable() })
 })
 
 // Floating QR code on your public page (needs the paid QR feature).
@@ -1404,6 +1408,9 @@ app.get('/robots.txt', seo.robots)
 app.get('/sitemap.xml', seo.sitemap)
 app.get('/api/u/:username/avatar', seo.avatar)
 app.get('/og/:username.png', createOg({ pool }).image)
+
+// Writes bio options from details the owner already gave. Signed in only; they pick and save.
+app.post('/api/bio/suggest', auth, bioLimiter, createBio({ pool }))
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }))
 
