@@ -7,7 +7,9 @@
 // The SDK is loaded on first use, not at startup. The server's node_modules is installed by hand
 // (npm run deps), so a deploy can land this file before the package exists; a top-level import would
 // then stop the whole app from booting. This way a missing package only disables bio suggestions.
-const MODEL = 'claude-opus-5-5'
+// The cheapest model: writing one short bio from a few given details needs no deliberation, and at
+// roughly 1/40th of Opus per token it keeps the per-suggestion cost near nothing.
+const MODEL = 'claude-haiku-5-5'
 export const bioAvailable = () => !!process.env.ANTHROPIC_API_KEY
 
 let clientPromise = null
@@ -70,7 +72,7 @@ export function createBio({ pool }) {
     try {
       const r = await (await getClient()).messages.create({
         model: MODEL,
-        max_tokens: 1000,
+        max_tokens: 600, // Three bios of <=160 characters; well clear of the cap.
         output_config: {
           effort: 'low', // A short bio needs no deliberation; low effort keeps it fast and cheap.
           format: {
