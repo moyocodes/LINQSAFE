@@ -22,6 +22,9 @@ const PAGES = {
   '/terms': { title: `Terms of Service · ${NAME}`, desc: `The terms for using ${NAME}.`, priority: '0.2' },
   '/privacy': { title: `Privacy Policy · ${NAME}`, desc: `What ${NAME} collects, why, and the choices you have.`, priority: '0.2' },
 }
+// X, WhatsApp and the rest keep a link's preview for days, keyed by the image URL. Bump this whenever
+// public/og-image.png changes so they fetch the new one.
+export const OG_VERSION = 2
 const PRIVATE = /^\/(admin|owner|verify|forgot-password|reset-password|billing|404)(\/|$)/
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
@@ -91,7 +94,7 @@ export function createSeo({ pool, dist }) {
     const base = baseUrl(req)
     const p = req.path.replace(/\/+$/, '') || '/'
     const url = base + (p === '/' ? '/' : p)
-    const image = `${base}/og-image.png`
+    const image = `${base}/og-image.png?v=${OG_VERSION}`
     const noindex = !indexable(req.hostname)
 
     if (PAGES[p]) {
@@ -162,7 +165,7 @@ export function createSeo({ pool, dist }) {
       seo = await meta(req)
     } catch (e) {
       console.error('seo:', e.message)
-      seo = { html: block({ title: `${NAME} — ${TAGLINE}`, desc: DEFAULT_DESC, url: baseUrl(req) + req.path, image: `${baseUrl(req)}/og-image.png` }), status: 200 }
+      seo = { html: block({ title: `${NAME} — ${TAGLINE}`, desc: DEFAULT_DESC, url: baseUrl(req) + req.path, image: `${baseUrl(req)}/og-image.png?v=${OG_VERSION}` }), status: 200 }
     }
     res.status(seo.status).type('html').set('Cache-Control', 'no-cache')
       .send(html.replace(/<!--seo-->[\s\S]*?<!--\/seo-->/, `<!--seo-->\n    ${seo.html}\n    <!--/seo-->`))

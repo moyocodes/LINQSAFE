@@ -11,12 +11,18 @@ import * as icons from 'simple-icons'
 let Resvg = null
 try { ({ Resvg } = await import('@resvg/resvg-js')) } catch { console.warn('@resvg/resvg-js not installed: profile previews use og-image.png') }
 
-const FONTS = path.join(path.dirname(fileURLToPath(import.meta.url)), 'assets', 'fonts')
-const fontFiles = [path.join(FONTS, 'DMSans.ttf'), path.join(FONTS, 'Fraunces.ttf')]
+const HERE = path.dirname(fileURLToPath(import.meta.url))
+const FONTS = path.join(HERE, 'assets', 'fonts')
+// Montserrat is the geometric sans closest to the LINQSAFE wordmark; DM Sans fills in any glyph it lacks.
+const fontFiles = ['Montserrat-ExtraBold.ttf', 'Montserrat-SemiBold.ttf', 'Montserrat-Medium.ttf', 'DMSans.ttf'].map((f) => path.join(FONTS, f))
 export const ogAvailable = () => !!Resvg
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c])
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s)
+
+// The logo's own colours (sampled from public/logo-wordmark.png).
+const C = { navy: '#2B4257', blue: '#6DA7CC', blueInk: '#2F6E99', orange: '#FFA500', paper: '#F7F5F1' }
+const FONT = 'Montserrat'
 
 // Brand colours and Simple Icons paths for the platform row (same set as src/lib/linkTypes.jsx).
 const BRANDS = {
@@ -53,65 +59,114 @@ function lines(text, width, max = 2) {
   return out.filter(Boolean)
 }
 
-// The logo mark from src/components/Logo.jsx, at 64×64.
-// The brand mark, embedded from public/logo-mark.png so these cards use the same artwork as the
-// site rather than a second copy drawn in code. The file's ink sits in a 548x754 box inside
-// 2000x2000, so it's cropped to that and scaled into the 64x64 the card lays out.
-const markData = (() => {
-  try {
-    const p = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'logo-mark.png')
-    return `data:image/png;base64,${fsSync.readFileSync(p).toString('base64')}`
-  } catch { return '' } // no build output next to the server (dev): cards simply omit the mark
-})()
-const LOGO = markData
-  ? (() => {
-      const INK = { x: 726, y: 623, w: 548, h: 754 }
-      const h = 64, w = h * (INK.w / INK.h), s = w / INK.w
-      return `<image href="${markData}" x="${((64 - w) / 2 - INK.x * s).toFixed(2)}" y="${(-INK.y * s).toFixed(2)}" width="${(2000 * s).toFixed(2)}" height="${(2000 * s).toFixed(2)}"/>`
-    })()
-  : ''
+// The brand artwork, embedded from the built site (dist/, or public/ when there is no build) so the
+// cards use the same files as the site rather than a copy drawn in code.
+function embed(file) {
+  for (const dir of ['dist', 'public']) {
+    try { return `data:image/png;base64,${fsSync.readFileSync(path.join(HERE, '..', dir, file)).toString('base64')}` } catch { /* try the next */ }
+  }
+  return '' // no artwork next to the server: cards simply omit the logo
+}
+const WORDMARK_DARK = embed('logo-wordmark-dark.png')
 
-function cardSvg({ name, handle, line, bio, avatar, links, domain }) {
-  const icons = platformIcons(links)
-  const bioLines = lines(bio, 46)
-  const nameSize = name.length > 18 ? 64 : 80
+// The cream-lettered wordmark with its ink (962x317 at 127,19 inside 1186x356) placed at x, y, `h` tall.
+function wordmark(x, y, h) {
+  if (!WORDMARK_DARK) return `<text x="${x}" y="${y + h * 0.8}" font-family="${FONT}" font-weight="800" font-size="${h * 0.8}" fill="${C.paper}">LINQSAFE</text>`
+  const s = h / 317
+  return `<image href="${WORDMARK_DARK}" x="${(x - 127 * s).toFixed(2)}" y="${(y - 19 * s).toFixed(2)}" width="${(1186 * s).toFixed(2)}" height="${(356 * s).toFixed(2)}"/>`
+}
+
+// The logo's folded ribbons, blown up as a corner motif: bands rising at 30° with upright ends,
+// blue and orange like the mark's S.
+function ribbon(x, y, len, t, fill) {
+  const r = len * Math.tan(Math.PI / 6)
+  return `<path d="M${x} ${y} L${x + len} ${y - r} V${y - r + t} L${x} ${y + t} Z" fill="${fill}"/>`
+}
+const RIBBONS = `<g>
+    ${ribbon(1010, 92, 220, 34, C.blue)}
+    ${ribbon(1060, 160, 170, 34, C.orange)}
+  </g>`
+
+// The shared frame: paper, the ribbon corner, and a navy footer band with the wordmark and the address.
+function frame(body, { domain, handle }) {
+  const url = `${domain}/`
+  const w = Math.round((url.length + handle.length) * 16.2 + 56)
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <defs>
-    <radialGradient id="g1" cx="85%" cy="5%" r="55%"><stop offset="0" stop-color="#F2A07E" stop-opacity=".55"/><stop offset="1" stop-color="#F2A07E" stop-opacity="0"/></radialGradient>
-    <radialGradient id="g2" cx="5%" cy="100%" r="60%"><stop offset="0" stop-color="#93ACCF" stop-opacity=".6"/><stop offset="1" stop-color="#93ACCF" stop-opacity="0"/></radialGradient>
-    <radialGradient id="g3" cx="40%" cy="45%" r="35%"><stop offset="0" stop-color="#6CC3BA" stop-opacity=".18"/><stop offset="1" stop-color="#6CC3BA" stop-opacity="0"/></radialGradient>
-    <clipPath id="av"><circle cx="230" cy="285" r="130"/></clipPath>
-  </defs>
-  <rect width="1200" height="630" fill="#F6F3EE"/>
-  <rect width="1200" height="630" fill="url(#g1)"/><rect width="1200" height="630" fill="url(#g2)"/><rect width="1200" height="630" fill="url(#g3)"/>
-  <rect x="36" y="36" width="1128" height="558" rx="28" fill="none" stroke="#261F1C" stroke-opacity=".10" stroke-width="2"/>
-
-  <circle cx="230" cy="285" r="142" fill="#FFFFFF"/>
-  ${avatar
-    ? `<image href="${avatar}" x="100" y="155" width="260" height="260" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>`
-    : `<circle cx="230" cy="285" r="130" fill="#261F1C"/><text x="230" y="320" text-anchor="middle" font-family="Fraunces" font-size="110" fill="#F6F3EE">${esc(name[0]?.toUpperCase() || '?')}</text>`}
-
-  <text x="420" y="${bioLines.length ? 228 : 260}" font-family="Fraunces" font-size="${nameSize}" fill="#261F1C">${esc(clip(name, 24))}</text>
-  <text x="422" y="${bioLines.length ? 278 : 312}" font-family="DM Sans" font-size="28" fill="#2B4FAF">${esc(handle)}${line ? `<tspan fill="#261F1C" fill-opacity=".55">  ·  ${esc(clip(line, 34))}</tspan>` : ''}</text>
-  ${bioLines.map((l, i) => `<text x="422" y="${330 + i * 40}" font-family="DM Sans" font-size="30" fill="#261F1C" fill-opacity=".72">${esc(l)}</text>`).join('\n  ')}
-  ${icons.map((ic, i) => `<g transform="translate(${422 + i * 70}, ${bioLines.length ? 395 : 350})"><circle cx="28" cy="28" r="28" fill="${ic.bg}"/><g transform="translate(14,14) scale(1.1667)"><path d="${ic.path}" fill="${ic.fg}"/></g></g>`).join('\n  ')}
-
-  <g transform="translate(72, 506)"><g transform="scale(0.875)">${LOGO}</g>
-    <text x="72" y="40" font-family="Fraunces" font-size="34" fill="#261F1C">linqsafe<tspan fill="#2B4FAF">.</tspan></text></g>
-  <g transform="translate(${1128 - 30 - (domain.length + handle.length) * 15.2}, 500)">
-    <rect width="${(domain.length + handle.length) * 15.2 + 30}" height="64" rx="32" fill="#261F1C"/>
-    <text x="${((domain.length + handle.length) * 15.2 + 30) / 2}" y="42" text-anchor="middle" font-family="DM Sans" font-size="26" fill="#F6F3EE">${esc(domain)}/<tspan fill="#F2B88C">${esc(handle.slice(1))}</tspan></text>
+  <rect width="1200" height="630" fill="${C.paper}"/>
+  ${RIBBONS}
+  ${body}
+  <rect y="526" width="1200" height="104" fill="${C.navy}"/>
+  ${wordmark(64, 546, 64)}
+  <g transform="translate(${1136 - w}, 548)">
+    <rect width="${w}" height="60" rx="30" fill="#FFFFFF" fill-opacity=".1" stroke="#FFFFFF" stroke-opacity=".22" stroke-width="2"/>
+    <text x="${w / 2}" y="39" text-anchor="middle" font-family="${FONT}" font-weight="600" font-size="26" fill="${C.paper}">${esc(url)}<tspan fill="${C.orange}" font-weight="800">${esc(handle)}</tspan></text>
   </g>
 </svg>`
 }
 
-function render(svg) {
-  return new Resvg(svg, { font: { fontFiles, loadSystemFonts: false, defaultFontFamily: 'DM Sans' }, fitTo: { mode: 'width', value: 1200 } }).render().asPng()
+const iconRow = (icons, x, y, size = 56) => icons.map((ic, i) =>
+  `<g transform="translate(${x + i * (size + 14)}, ${y})"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="${ic.bg}"/><g transform="translate(${size / 4},${size / 4}) scale(${size / 48})"><path d="${ic.path}" fill="${ic.fg}"/></g></g>`).join('\n  ')
+
+function cardSvg({ name, handle, line, bio, avatar, links, domain }) {
+  const icons = platformIcons(links)
+  const bioLines = lines(bio, 40)
+  const shown = clip(name, 24)
+  const nameSize = Math.min(68, Math.floor(1000 / shown.length)) // ExtraBold runs ~0.68em a letter; keep it under ~680px
+  // Name, handle line, bio and icons stacked and centred on the photo.
+  const blockH = nameSize + 46 + bioLines.length * 40 + (icons.length ? 84 : 0)
+  const top = 262 - blockH / 2 + nameSize * 0.78
+  const hy = top + 50, by = hy + 50, iy = by + (bioLines.length ? bioLines.length * 40 - 6 : -24)
+  return frame(`<defs><clipPath id="av"><circle cx="232" cy="262" r="140"/></clipPath></defs>
+  <circle cx="232" cy="262" r="158" fill="${C.navy}"/>
+  <circle cx="232" cy="262" r="150" fill="#FFFFFF"/>
+  ${avatar
+    ? `<image href="${avatar}" x="92" y="122" width="280" height="280" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>`
+    : `<circle cx="232" cy="262" r="140" fill="${C.blue}"/><text x="232" y="306" text-anchor="middle" font-family="${FONT}" font-weight="800" font-size="120" fill="#FFFFFF">${esc(name[0]?.toUpperCase() || '?')}</text>`}
+
+  <text x="440" y="${top}" font-family="${FONT}" font-weight="800" font-size="${nameSize}" letter-spacing="-1.5" fill="${C.navy}">${esc(shown)}</text>
+  <text x="442" y="${hy}" font-family="${FONT}" font-weight="600" font-size="26" fill="${C.blueInk}">${esc(handle)}${line ? `<tspan fill="${C.navy}" fill-opacity=".6" font-weight="500" dx="14">·</tspan><tspan fill="${C.navy}" fill-opacity=".6" font-weight="500" dx="14">${esc(clip(line, 34))}</tspan>` : ''}</text>
+  ${bioLines.map((l, i) => `<text x="442" y="${by + i * 40}" font-family="${FONT}" font-weight="500" font-size="27" fill="${C.navy}" fill-opacity=".78">${esc(l)}</text>`).join('\n  ')}
+  ${iconRow(icons, 442, iy)}`, { domain, handle: handle.slice(1) })
 }
+
+// The site-wide card (public/og-image.png), for the home page and every page without its own.
+// Rendered by `npm run og-image`; run it again after changing this or the logo.
+export function siteCardSvg({ domain = 'linqsafe.com' } = {}) {
+  const pill = (label, y, solid) => `<g transform="translate(0, ${y})">
+      <rect width="300" height="54" rx="14" fill="${solid ? C.navy : '#FFFFFF'}" stroke="${C.navy}" stroke-opacity="${solid ? 0 : 0.14}" stroke-width="2"/>
+      <text x="150" y="35" text-anchor="middle" font-family="${FONT}" font-weight="600" font-size="20" fill="${solid ? '#FFFFFF' : C.navy}">${label}</text></g>`
+  const dots = [['#E1306C', 0], ['#000000', 1], ['#FF0000', 2], ['#25D366', 3]]
+  return frame(`<text font-family="${FONT}" font-weight="800" font-size="76" letter-spacing="-2.5" fill="${C.navy}">
+    <tspan x="64" y="150">One link for</tspan>
+    <tspan x="64" y="236" fill="${C.orange}">everything</tspan>
+    <tspan x="64" y="322">you share.</tspan>
+  </text>
+  <rect x="66" y="252" width="420" height="10" rx="5" fill="${C.blue}"/>
+  <text x="66" y="402" font-family="${FONT}" font-weight="500" font-size="27" fill="${C.navy}" fill-opacity=".72">Socials, shop, WhatsApp and more,</text>
+  <text x="66" y="440" font-family="${FONT}" font-weight="500" font-size="27" fill="${C.navy}" fill-opacity=".72">all on one page.</text>
+
+  <g transform="translate(790, 70) rotate(4)">
+    <rect x="6" y="14" width="340" height="420" rx="34" fill="${C.navy}" fill-opacity=".14"/>
+    <rect width="340" height="420" rx="34" fill="#FFFFFF" stroke="${C.navy}" stroke-opacity=".12" stroke-width="2"/>
+    <circle cx="170" cy="74" r="40" fill="${C.blue}"/>
+    <text x="170" y="89" text-anchor="middle" font-family="${FONT}" font-weight="800" font-size="40" fill="#FFFFFF">A</text>
+    <text x="170" y="148" text-anchor="middle" font-family="${FONT}" font-weight="800" font-size="24" fill="${C.navy}">Ada Bello</text>
+    <text x="170" y="174" text-anchor="middle" font-family="${FONT}" font-weight="600" font-size="14" letter-spacing="2" fill="${C.navy}" fill-opacity=".5">DESIGN · TRAVEL · FOOD</text>
+    ${dots.map(([c, i]) => `<circle cx="${122 + i * 32}" cy="204" r="11" fill="${c}"/>`).join('')}
+    <g transform="translate(20, 236)">${pill('My latest video', 0)}${pill('Shop my picks', 66)}${pill('Chat on WhatsApp', 132, true)}</g>
+  </g>`, { domain, handle: 'yourname' })
+}
+
+export function renderPng(svg) {
+  return new Resvg(svg, { font: { fontFiles, loadSystemFonts: false, defaultFontFamily: FONT }, fitTo: { mode: 'width', value: 1200 } }).render().asPng()
+}
+
+// Bump when the card design changes, so every profile's share URL changes and apps refetch it.
+const DESIGN = 2
 
 // A short fingerprint of what's on the card, so share URLs change (and apps refetch) when the profile does.
 export const ogSignature = (u) => crypto.createHash('sha1')
-  .update([u.display_name, u.bio, u.occupation, u.location, u.avatar_url?.length, u.avatar_url?.slice(-40), u.links.map((l) => l.type).join()].join('|'))
+  .update([DESIGN, u.display_name, u.bio, u.occupation, u.location, u.avatar_url?.length, u.avatar_url?.slice(-40), u.links.map((l) => l.type).join()].join('|'))
   .digest('hex').slice(0, 10)
 
 export function createOg({ pool }) {
@@ -155,9 +210,9 @@ export function createOg({ pool }) {
     }
     let png
     try {
-      png = render(cardSvg({ ...data, avatar: await avatarData(u.avatar_url) }))
+      png = renderPng(cardSvg({ ...data, avatar: await avatarData(u.avatar_url) }))
     } catch {
-      png = render(cardSvg({ ...data, avatar: null })) // e.g. an image format resvg can't decode
+      png = renderPng(cardSvg({ ...data, avatar: null })) // e.g. an image format resvg can't decode
     }
     if (cache.size > 300) cache.delete(cache.keys().next().value)
     cache.set(u.username, { sig, png, at: Date.now() })

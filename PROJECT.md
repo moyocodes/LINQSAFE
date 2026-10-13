@@ -222,7 +222,7 @@ linqsafe is a single-page app, so the server fills in each page's `<head>` befor
 | What | Where |
 |---|---|
 | Title, description, canonical URL | every page; profiles use `Name (@username) · linqsafe` and their bio |
-| Share image (Open Graph / Twitter card) | `public/og-image.png` (1200×630); profiles use their own picture (uploaded pictures are served from `/api/u/:username/avatar`) |
+| Share image (Open Graph / Twitter card) | `public/og-image.png` (1200×630), drawn by `siteCardSvg()` in `server/og.js` in Montserrat and the logo colours: `npm run og-image` re-renders it, then bump `OG_VERSION` in `server/seo.js` so X/WhatsApp refetch; profiles use their own picture (uploaded pictures are served from `/api/u/:username/avatar`) |
 | Structured data (JSON-LD) | home: `WebSite` + `Organization`; profiles: `ProfilePage` with a `Person` or `Organization` (business accounts) and their social links as `sameAs` |
 | `robots.txt` | generated; blocks `/admin`, `/owner`, `/api/`, `/billing/`, password and verify pages; points to the sitemap |
 | `sitemap.xml` | generated live: the public pages plus every live (verified) profile with at least one link |
