@@ -15,7 +15,7 @@ Everything the site uses is generated from these:
 | `public/logo-mark.png` | `LOGO TRANSPARENT.png`, unchanged |
 | `public/logo-wordmark.png` | `LINQSAFE 2.png`, unchanged (navy letters, for light backgrounds) |
 | `public/logo-wordmark-dark.png` | the same with the navy letters recoloured cream, for dark backgrounds |
-| `public/favicon-32.png`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` | the mark, cropped to its ink and centred |
+| `public/favicon.ico`, `public/favicon-32.png`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` | the mark, cropped to its ink and centred |
 | `public/og-image.png` | `siteCardSvg()` in `server/og.js`, rendered by `npm run og-image` (then bump `OG_VERSION` in `server/seo.js`) |
 
 The mark's ink sits in a 548×754 box at (726, 623) inside the 2000×2000 file; the code that crops it

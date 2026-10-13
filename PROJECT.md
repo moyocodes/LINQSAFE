@@ -229,7 +229,7 @@ linqsafe is a single-page app, so the server fills in each page's `<head>` befor
 | Keywords | `linqsafe, linksafe, linq safe, …` (Google ignores the keywords tag; Search Console is what helps) |
 | No indexing on dev and admin | `dev.*` and `admin.*` hosts get `Disallow: /` and an `X-Robots-Tag: noindex` header |
 | Private pages | `noindex, nofollow`; unknown usernames return a real 404 |
-| Icons | `favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192/512.png`, `site.webmanifest` |
+| Icons | `favicon.ico` (16/32/48), `favicon-32.png`, `favicon-48.png`, `apple-touch-icon.png`, `icon-192/512.png`, `site.webmanifest` |
 
 ## 8. Security notes
 

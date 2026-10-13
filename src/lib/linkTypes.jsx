@@ -42,6 +42,8 @@ export function detectType(url) {
 
 // Generic links (website, other, shop) show the site's own icon when it has one, via our server's cache.
 const FAVICON_TYPES = ['website', 'other', 'store']
+// Our own address uses our own icon: the favicon service can keep an old logo for weeks.
+const OWN_HOST = /(^|\.)linqsafe\.com$/
 export const hostOf = (url) => { try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? u.hostname.replace(/^www\./, '') : '' } catch { return '' } }
 
 export function TypeBadge({ type, url, icon, className = 'size-9' }) {
@@ -60,7 +62,7 @@ export function TypeBadge({ type, url, icon, className = 'size-9' }) {
   if (host && !failed) {
     return (
       <span className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-white ring-1 ring-black/10 ${className}`} title={host}>
-        <img src={`/api/favicon/${host}`} alt="" loading="lazy" onError={() => setFailed(true)} className="size-[60%] object-contain" />
+        <img src={OWN_HOST.test(host) ? '/icon-192.png' : `/api/favicon/${host}`} alt="" loading="lazy" onError={() => setFailed(true)} className="size-[60%] object-contain" />
         <span className="sr-only">{t.label}</span>
       </span>
     )

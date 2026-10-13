@@ -373,6 +373,8 @@ const favicons = new Map() // host → { buf, type, at } | { missing, at }
 app.get('/api/favicon/:host', async (req, res) => {
   const host = String(req.params.host || '').toLowerCase()
   if (!/^(?=.{3,253}$)([a-z0-9-]+\.)+[a-z]{2,}$/.test(host) || /^(localhost|127\.|10\.|192\.168\.)/.test(host)) return res.status(400).end()
+  // Our own domain: our own icon, never the favicon service's copy (it kept the old logo for weeks).
+  if (/(^|\.)linqsafe\.com$/.test(host)) return res.set('Cache-Control', 'public, max-age=3600').sendFile(path.join(dist, 'icon-192.png'))
   let hit = favicons.get(host)
   if (!hit || Date.now() - hit.at > 86_400_000) {
     hit = { missing: true, at: Date.now() }
@@ -388,6 +390,9 @@ app.get('/api/favicon/:host', async (req, res) => {
   if (hit.missing) return res.status(404).set('Cache-Control', 'public, max-age=3600').end()
   res.type(hit.type).set('Cache-Control', 'public, max-age=86400').send(hit.buf)
 })
+
+// The old hub-mark favicon.svg may still sit in an older upload on the server; send it to the new icon.
+app.get('/favicon.svg', (req, res) => res.redirect(301, '/favicon-32.png'))
 
 // Is a username free? Used by the "claim your link" box on the home page.
 // After a change the old username stays with its owner for this long (others can't take it; visits forward).
