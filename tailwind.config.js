@@ -14,7 +14,7 @@ export default {
         serif: ['Fraunces', 'Georgia', 'serif'],
         script: ['Allura', 'cursive'],
         mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
-        display: ['Fraunces', 'Georgia', 'serif'],
+        display: ['Montserrat', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       // Two kinds of colour:
       //  1. Theme tokens (CSS variables in src/styles.css). Profile themes (Midnight, Blush, Auto…) swap these,

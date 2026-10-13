@@ -1,6 +1,6 @@
 // Branded email templates. Each returns { subject, html, text }.
 // Email clients ignore most modern CSS, so the layout is table-based with inline styles, a 600px card,
-// web-safe font stacks (Georgia stands in for Fraunces) and a plain-text version of every message.
+// web-safe font stacks (headings ask for Montserrat and fall back to the system sans) and a plain-text version of every message.
 // Preview them all: `npm run emails:preview` (writes HTML files to ./email-previews).
 
 // The founder's inbox for sign-up alerts and the daily summary. Hardcoded on purpose so a missing or
@@ -8,7 +8,7 @@
 export const OWNER_EMAIL = 'moyosorejames@gmail.com'
 const APP = () => (process.env.APP_URL || 'https://linqsafe.com').replace(/\/$/, '')
 const C = { paper: '#F6F3EE', card: '#FCFAF8', ink: '#261F1C', muted: '#6B625D', line: '#E7E1DA', cobalt: '#2B4FAF', saffron: '#D99A2B', soft: '#EEF1FA' }
-const SERIF = "Georgia, 'Times New Roman', serif"
+const HEAD = "Montserrat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 const SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 const MONO = "'SFMono-Regular', Menlo, Consolas, monospace"
 
@@ -50,7 +50,7 @@ function personChip(person) {
   if (!person) return ''
   const pic = person.avatar
     ? `<img src="${esc(person.avatar)}" width="36" height="36" alt="" style="display:inline-block;vertical-align:middle;width:36px;height:36px;border-radius:18px;object-fit:cover;border:2px solid ${C.card}">`
-    : `<span style="display:inline-block;vertical-align:middle;width:36px;height:36px;border-radius:18px;background:${C.cobalt};color:#fff;font:600 16px/36px ${SERIF};text-align:center">${esc((person.name || '?')[0].toUpperCase())}</span>`
+    : `<span style="display:inline-block;vertical-align:middle;width:36px;height:36px;border-radius:18px;background:${C.cobalt};color:#fff;font:700 16px/36px ${HEAD};text-align:center">${esc((person.name || '?')[0].toUpperCase())}</span>`
   return `<td align="right" style="padding:0 8px 20px;white-space:nowrap"><span style="vertical-align:middle;margin-right:10px;font:600 13px ${SANS};color:${C.muted}">@${esc(person.username)}</span>${pic}</td>`
 }
 
@@ -73,7 +73,7 @@ function layout({ preheader, eyebrow, heading, body, footnote, person }) {
     </tr></table></td></tr>
     <tr><td style="background:${C.card};border:1px solid ${C.line};border-radius:10px;padding:36px 32px">
       ${eyebrow ? `<p style="margin:0 0 10px;font:600 11px ${MONO};letter-spacing:.14em;text-transform:uppercase;color:${C.cobalt}">${esc(eyebrow)}</p>` : ''}
-      <h1 style="margin:0 0 20px;font:600 30px/1.15 ${SERIF};color:${C.ink};letter-spacing:-.01em">${heading}</h1>
+      <h1 style="margin:0 0 20px;font:700 28px/1.2 ${HEAD};color:${C.ink};letter-spacing:-.01em">${heading}</h1>
       ${body}
     </td></tr>
     <tr><td style="padding:22px 8px 0;font:12px/1.6 ${SANS};color:${C.muted}">

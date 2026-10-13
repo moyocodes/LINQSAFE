@@ -137,7 +137,7 @@ export function WeekSummary({ week, subject = 'Your page', own = 'your' }) {
       <span className={`mt-0.5 grid size-8 shrink-0 place-items-center rounded-full ${up ? 'bg-emerald-50 text-emerald-700' : 'bg-accent/10 text-accent'}`}>
         {up ? <TrendingUp className="size-4" aria-hidden="true" /> : <TrendingDown className="size-4" aria-hidden="true" />}
       </span>
-      <p className="font-serif text-lg leading-snug"><span className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em] mr-2 align-middle">This week</span>{parts.join(' ')}</p>
+      <p className="font-display text-lg font-medium leading-snug"><span className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em] mr-2 align-middle">This week</span>{parts.join(' ')}</p>
     </motion.div>
   )
 }

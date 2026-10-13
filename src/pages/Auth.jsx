@@ -82,7 +82,7 @@ export default function Auth({ mode }) {
 
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={mode} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}>
-                <h1 className="mt-5 font-serif text-[2.2rem] font-medium leading-[0.95] tracking-tight">
+                <h1 className="mt-5 font-display text-[2.2rem] font-bold leading-[0.95] tracking-tight">
                   {isLogin ? <>Welcome <em className="text-accent">back</em></> : <>Make it <em className="text-accent">yours</em></>}
                 </h1>
                 <p className="mt-2 text-sm text-muted-foreground">{isLogin ? 'Log in to manage your page.' : 'Pick a username. It becomes your link.'}</p>
@@ -117,7 +117,7 @@ export default function Auth({ mode }) {
                   <div className="space-y-1.5">
                     <div className="flex items-baseline justify-between">
                       <Label htmlFor="password" className="font-mono text-[.64rem] font-medium uppercase tracking-[.06em] text-foreground/60 sm:text-[.68rem] sm:tracking-[.12em]">Password</Label>
-                      {isLogin && <Link to="/forgot-password" className="font-serif text-sm italic text-muted-foreground underline-offset-4 hover:text-accent hover:underline">Forgot it?</Link>}
+                      {isLogin && <Link to="/forgot-password" className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-accent hover:underline">Forgot it?</Link>}
                     </div>
                     <PasswordInput id="password" name="password" placeholder={isLogin ? 'Your password' : 'At least 6 characters'} required minLength={isLogin ? undefined : 6}
                       autoComplete={isLogin ? 'current-password' : 'new-password'} value={form.password}
@@ -141,7 +141,7 @@ export default function Auth({ mode }) {
                 </form>
                 <p className="mt-4 text-center text-sm text-muted-foreground">
                   {isLogin ? 'New here? ' : 'Already have a page? '}
-                  <Link className="font-serif text-base italic text-foreground underline decoration-accent/50 underline-offset-4 hover:decoration-accent" to={isLogin ? '/signup' : '/login'} replace>
+                  <Link className="text-base font-semibold text-foreground underline decoration-accent/50 underline-offset-4 hover:decoration-accent" to={isLogin ? '/signup' : '/login'} replace>
                     {isLogin ? 'Create one' : 'Log in'}
                   </Link>
                 </p>
