@@ -61,8 +61,9 @@ export function TypeBadge({ type, url, icon, className = 'size-9' }) {
   useEffect(() => setFailed(false), [host])
   if (host && !failed) {
     return (
-      <span className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-white ring-1 ring-black/10 ${className}`} title={host}>
-        <img src={OWN_HOST.test(host) ? '/icon-192.png' : `/api/favicon/${host}`} alt="" loading="lazy" onError={() => setFailed(true)} className="size-[60%] object-contain" />
+      // The site's own icon fills the whole badge, same size as the brand circles, with no white disc or ring behind it.
+      <span className={`block shrink-0 overflow-hidden rounded-[24%] ${className}`} title={host}>
+        <img src={OWN_HOST.test(host) ? '/icon-192.png' : `/api/favicon/${host}`} alt="" loading="lazy" onError={() => setFailed(true)} className="size-full object-cover" />
         <span className="sr-only">{t.label}</span>
       </span>
     )

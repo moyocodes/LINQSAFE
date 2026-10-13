@@ -379,7 +379,7 @@ app.get('/api/favicon/:host', async (req, res) => {
   if (!hit || Date.now() - hit.at > 86_400_000) {
     hit = { missing: true, at: Date.now() }
     try {
-      const r = await fetch(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`, { signal: AbortSignal.timeout(3000) })
+      const r = await fetch(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`, { signal: AbortSignal.timeout(3000) })
       const type = r.headers.get('content-type') || ''
       const buf = Buffer.from(await r.arrayBuffer())
       if (r.ok && type.startsWith('image/') && buf.length > 0 && buf.length < 200_000) hit = { buf, type, at: Date.now() }
