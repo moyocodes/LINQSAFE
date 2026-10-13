@@ -66,15 +66,27 @@ export async function renderCard(url, username) {
   return canvas.toDataURL('image/png')
 }
 
+// Turn the card's data: URL into a File without awaiting anything (see saveCard).
+function cardFile(dataUrl, username) {
+  const bytes = atob(dataUrl.slice(dataUrl.indexOf(',') + 1))
+  const buf = new Uint8Array(bytes.length)
+  for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i)
+  return new File([buf], `${username}-qr.png`, { type: 'image/png' })
+}
+
 // Saving the card. `download` on a multi-megabyte data: URL silently does nothing in iOS Safari and in
 // some in-app browsers, so turn it into a Blob first.
+//
+// iOS Safari only lets share() and a download start straight from the tap: anything awaited before them
+// (the old fetch(dataUrl).blob()) uses up the gesture and both are silently refused. So the File is
+// built synchronously and share() / click() are the first async things that happen.
 //
 // On a phone, the share sheet is how a picture actually reaches Photos, so prefer it there. On a desktop
 // (including a touchscreen laptop) a plain download is what people expect, and Chrome advertises
 // canShare for files too, so check for a coarse pointer rather than trusting canShare alone.
 export async function saveCard(dataUrl, username) {
   if (!dataUrl) return
-  const file = new File([await (await fetch(dataUrl)).blob()], `${username}-qr.png`, { type: 'image/png' })
+  const file = cardFile(dataUrl, username)
   const phone = matchMedia('(pointer: coarse)').matches && matchMedia('(max-width: 820px)').matches
   if (phone && navigator.canShare?.({ files: [file] })) {
     try {
@@ -82,6 +94,10 @@ export async function saveCard(dataUrl, username) {
       return
     } catch (e) {
       if (e.name === 'AbortError') return // they closed the share sheet
+      // NotAllowedError etc.: the gesture is spent, so a download below may be refused too; the
+      // image opens in a new tab instead, where press-and-hold saves it.
+      window.open(URL.createObjectURL(file), '_blank', 'noopener')
+      return
     }
   }
   const href = URL.createObjectURL(file)
